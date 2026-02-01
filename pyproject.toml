@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "read-no-evil-mcp"
+version = "0.1.0"
+description = "A secure email gateway MCP server that protects AI agents from prompt injection attacks in emails"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [
+    { name = "read-no-evil-mcp contributors" }
+]
+keywords = ["mcp", "email", "security", "prompt-injection", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Communications :: Email",
+]
+dependencies = [
+    "mcp",
+    "llm-guard",
+    "imapclient",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "mypy",
+    "pytest",
+]
+
+[project.urls]
+Homepage = "https://github.com/thekie/read-no-evil-mcp"
+Repository = "https://github.com/thekie/read-no-evil-mcp"
+Issues = "https://github.com/thekie/read-no-evil-mcp/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/read_no_evil_mcp"]
