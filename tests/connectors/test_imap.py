@@ -5,67 +5,26 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from read_no_evil_mcp.connectors.imap import IMAPConnector, _parse_address, _parse_addresses
+from read_no_evil_mcp.connectors.imap import IMAPConnector
 from read_no_evil_mcp.models import IMAPConfig
-
-
-class TestParseAddress:
-    def test_with_name(self):
-        addr = _parse_address(("John Doe", "john@example.com"))
-        assert addr.name == "John Doe"
-        assert addr.address == "john@example.com"
-
-    def test_without_name(self):
-        addr = _parse_address(("", "john@example.com"))
-        assert addr.name is None
-        assert addr.address == "john@example.com"
-
-    def test_none(self):
-        assert _parse_address(None) is None
-
-
-class TestParseAddresses:
-    def test_multiple(self):
-        addrs = _parse_addresses(
-            (
-                ("Alice", "alice@example.com"),
-                ("Bob", "bob@example.com"),
-            )
-        )
-        assert len(addrs) == 2
-        assert addrs[0].name == "Alice"
-        assert addrs[1].address == "bob@example.com"
-
-    def test_empty(self):
-        addrs = _parse_addresses(())
-        assert addrs == []
-
-    def test_filters_empty_addresses(self):
-        addrs = _parse_addresses(
-            (
-                ("Alice", "alice@example.com"),
-                ("", ""),
-            )
-        )
-        assert len(addrs) == 1
 
 
 class TestIMAPConnector:
     @pytest.fixture
-    def config(self):
+    def config(self) -> IMAPConfig:
         return IMAPConfig(
             host="imap.example.com",
             username="user",
             password="secret",
         )
 
-    def test_init(self, config):
+    def test_init(self, config: IMAPConfig) -> None:
         connector = IMAPConnector(config)
         assert connector.config == config
         assert connector._mailbox is None
 
     @patch("read_no_evil_mcp.connectors.imap.MailBox")
-    def test_connect_ssl(self, mock_mailbox_class, config):
+    def test_connect_ssl(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
 
@@ -76,7 +35,7 @@ class TestIMAPConnector:
         mock_mailbox.login.assert_called_once_with("user", "secret")
 
     @patch("read_no_evil_mcp.connectors.imap.MailBox")
-    def test_disconnect(self, mock_mailbox_class, config):
+    def test_disconnect(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
 
@@ -88,7 +47,7 @@ class TestIMAPConnector:
         assert connector._mailbox is None
 
     @patch("read_no_evil_mcp.connectors.imap.MailBox")
-    def test_context_manager(self, mock_mailbox_class, config):
+    def test_context_manager(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
 
@@ -98,7 +57,7 @@ class TestIMAPConnector:
         mock_mailbox.logout.assert_called_once()
 
     @patch("read_no_evil_mcp.connectors.imap.MailBox")
-    def test_list_folders(self, mock_mailbox_class, config):
+    def test_list_folders(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
 
@@ -116,21 +75,24 @@ class TestIMAPConnector:
         assert folders[0].name == "INBOX"
         assert folders[0].delimiter == "/"
 
-    def test_list_folders_not_connected(self, config):
+    def test_list_folders_not_connected(self, config: IMAPConfig) -> None:
         connector = IMAPConnector(config)
         with pytest.raises(RuntimeError, match="Not connected"):
             connector.list_folders()
 
     @patch("read_no_evil_mcp.connectors.imap.MailBox")
-    def test_fetch_emails(self, mock_mailbox_class, config):
+    def test_fetch_emails(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
+
+        mock_from = MagicMock()
+        mock_from.name = "Sender"
+        mock_from.email = "sender@example.com"
 
         mock_msg = MagicMock()
         mock_msg.uid = "123"
         mock_msg.subject = "Test Subject"
-        mock_msg.from_values.name = "Sender"
-        mock_msg.from_values.email = "sender@example.com"
+        mock_msg.from_values = mock_from
         mock_msg.date = datetime(2026, 2, 3, 12, 0, 0)
         mock_msg.attachments = []
         mock_mailbox.fetch.return_value = [mock_msg]
@@ -145,17 +107,22 @@ class TestIMAPConnector:
         assert emails[0].sender.address == "sender@example.com"
 
     @patch("read_no_evil_mcp.connectors.imap.MailBox")
-    def test_fetch_emails_with_limit(self, mock_mailbox_class, config):
+    def test_fetch_emails_with_limit(
+        self, mock_mailbox_class: MagicMock, config: IMAPConfig
+    ) -> None:
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
 
         mock_msgs = []
         for i in range(10):
+            mock_from = MagicMock()
+            mock_from.name = ""
+            mock_from.email = f"sender{i}@example.com"
+
             mock_msg = MagicMock()
             mock_msg.uid = str(i)
             mock_msg.subject = f"Subject {i}"
-            mock_msg.from_values.name = ""
-            mock_msg.from_values.email = f"sender{i}@example.com"
+            mock_msg.from_values = mock_from
             mock_msg.date = datetime(2026, 2, 3, 12, 0, 0)
             mock_msg.attachments = []
             mock_msgs.append(mock_msg)
@@ -167,23 +134,30 @@ class TestIMAPConnector:
 
         assert len(emails) == 3
 
-    def test_fetch_emails_not_connected(self, config):
+    def test_fetch_emails_not_connected(self, config: IMAPConfig) -> None:
         connector = IMAPConnector(config)
         with pytest.raises(RuntimeError, match="Not connected"):
             connector.fetch_emails("INBOX", lookback=timedelta(days=7))
 
     @patch("read_no_evil_mcp.connectors.imap.MailBox")
-    def test_get_email(self, mock_mailbox_class, config):
+    def test_get_email(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
+
+        mock_from = MagicMock()
+        mock_from.name = "Sender"
+        mock_from.email = "sender@example.com"
+
+        mock_to = MagicMock()
+        mock_to.name = "Recipient"
+        mock_to.email = "recipient@example.com"
 
         mock_msg = MagicMock()
         mock_msg.uid = "123"
         mock_msg.subject = "Test Subject"
-        mock_msg.from_values.name = "Sender"
-        mock_msg.from_values.email = "sender@example.com"
+        mock_msg.from_values = mock_from
         mock_msg.date = datetime(2026, 2, 3, 12, 0, 0)
-        mock_msg.to_values = (("Recipient", "recipient@example.com"),)
+        mock_msg.to_values = (mock_to,)
         mock_msg.cc_values = ()
         mock_msg.text = "Plain text body"
         mock_msg.html = "<p>HTML body</p>"
@@ -202,7 +176,7 @@ class TestIMAPConnector:
         assert len(email.to) == 1
 
     @patch("read_no_evil_mcp.connectors.imap.MailBox")
-    def test_get_email_not_found(self, mock_mailbox_class, config):
+    def test_get_email_not_found(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
         mock_mailbox.fetch.return_value = []
@@ -213,7 +187,7 @@ class TestIMAPConnector:
 
         assert email is None
 
-    def test_get_email_not_connected(self, config):
+    def test_get_email_not_connected(self, config: IMAPConfig) -> None:
         connector = IMAPConnector(config)
         with pytest.raises(RuntimeError, match="Not connected"):
             connector.get_email("INBOX", 123)

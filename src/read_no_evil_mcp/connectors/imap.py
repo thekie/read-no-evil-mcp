@@ -1,8 +1,10 @@
 """IMAP connector for reading emails using imap-tools."""
 
 from datetime import date, timedelta
+from types import TracebackType
+from typing import Any
 
-from imap_tools import AND, MailBox
+from imap_tools import AND, MailBox, MailBoxUnencrypted
 
 from read_no_evil_mcp.models import (
     Attachment,
@@ -14,39 +16,25 @@ from read_no_evil_mcp.models import (
 )
 
 
-def _parse_address(addr: tuple[str, str] | None) -> EmailAddress | None:
-    """Parse imap-tools address tuple to EmailAddress."""
-    if not addr:
-        return None
-    name, address = addr
-    return EmailAddress(name=name or None, address=address)
-
-
-def _parse_addresses(addrs: tuple[tuple[str, str], ...]) -> list[EmailAddress]:
-    """Parse multiple addresses."""
-    return [EmailAddress(name=name or None, address=addr) for name, addr in addrs if addr]
-
-
 class IMAPConnector:
     """Connector for reading emails via IMAP using imap-tools."""
 
     def __init__(self, config: IMAPConfig) -> None:
         self.config = config
-        self._mailbox: MailBox | None = None
+        self._mailbox: MailBox | MailBoxUnencrypted | None = None
 
     def connect(self) -> None:
         """Establish connection to IMAP server."""
         if self.config.ssl:
-            self._mailbox = MailBox(self.config.host, self.config.port)
+            mailbox: MailBox | MailBoxUnencrypted = MailBox(self.config.host, self.config.port)
         else:
-            from imap_tools import MailBoxUnencrypted
+            mailbox = MailBoxUnencrypted(self.config.host, self.config.port)
 
-            self._mailbox = MailBoxUnencrypted(self.config.host, self.config.port)
-
-        self._mailbox.login(
+        mailbox.login(
             self.config.username,
             self.config.password.get_secret_value(),
         )
+        self._mailbox = mailbox
 
     def disconnect(self) -> None:
         """Close connection to IMAP server."""
@@ -103,9 +91,12 @@ class IMAPConnector:
 
         summaries = []
         for msg in self._mailbox.fetch(criteria, reverse=True, bulk=True):
-            sender = _parse_address((msg.from_values.name, msg.from_values.email))
-            if not sender:
-                sender = EmailAddress(address="unknown@unknown")
+            # msg.from_values is an EmailAddress object from imap-tools
+            from_addr = msg.from_values
+            sender = EmailAddress(
+                name=from_addr.name or None,
+                address=from_addr.email or "unknown@unknown",
+            )
 
             summaries.append(
                 EmailSummary(
@@ -131,9 +122,12 @@ class IMAPConnector:
         self._mailbox.folder.set(folder)
 
         for msg in self._mailbox.fetch(AND(uid=str(uid))):
-            sender = _parse_address((msg.from_values.name, msg.from_values.email))
-            if not sender:
-                sender = EmailAddress(address="unknown@unknown")
+            # msg.from_values is an EmailAddress object from imap-tools
+            from_addr = msg.from_values
+            sender = EmailAddress(
+                name=from_addr.name or None,
+                address=from_addr.email or "unknown@unknown",
+            )
 
             attachments = [
                 Attachment(
@@ -144,6 +138,18 @@ class IMAPConnector:
                 for att in msg.attachments
             ]
 
+            # to_values and cc_values are tuples of EmailAddress objects
+            to_list = [
+                EmailAddress(name=addr.name or None, address=addr.email)
+                for addr in msg.to_values
+                if addr.email
+            ]
+            cc_list = [
+                EmailAddress(name=addr.name or None, address=addr.email)
+                for addr in msg.cc_values
+                if addr.email
+            ]
+
             return Email(
                 uid=int(msg.uid) if msg.uid else 0,
                 folder=folder,
@@ -151,8 +157,8 @@ class IMAPConnector:
                 sender=sender,
                 date=msg.date,
                 has_attachments=len(attachments) > 0,
-                to=_parse_addresses(msg.to_values),
-                cc=_parse_addresses(msg.cc_values),
+                to=to_list,
+                cc=cc_list,
                 body_plain=msg.text or None,
                 body_html=msg.html or None,
                 attachments=attachments,
@@ -165,5 +171,10 @@ class IMAPConnector:
         self.connect()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.disconnect()
