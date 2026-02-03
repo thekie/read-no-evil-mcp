@@ -27,7 +27,7 @@ classifiers = [
 dependencies = [
     "mcp",
     "llm-guard",
-    "imapclient",
+    "imap-tools",
 ]
 
 [project.optional-dependencies]
