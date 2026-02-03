@@ -123,10 +123,15 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 - [ ] Configurable sensitivity levels
 
 ### v0.3 (Future)
-- [ ] Docker image
-- [ ] Outbound email scanning
+- [ ] Write/send emails
+- [ ] Delete emails
+- [ ] Mark as spam
 - [ ] Attachment scanning
-- [ ] Admin dashboard
+- [ ] Docker image
+
+### v0.4 (Later)
+- [ ] Rights management (per-folder, per-action permissions)
+- [ ] Multi-account support
 
 ## Contributing
 
