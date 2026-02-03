@@ -26,7 +26,9 @@ classifiers = [
 ]
 dependencies = [
     "fastmcp",
-    "llm-guard",
+    "transformers>=4.30",
+    "torch",
+    "structlog>=24",
     "imap-tools",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
@@ -62,7 +64,8 @@ module = [
     "imap_tools.*",
     "mcp.*",
     "fastmcp.*",
-    "llm_guard.*",
+    "transformers.*",
+    "optimum.*",
     "pydantic_settings.*",
 ]
 ignore_missing_imports = true

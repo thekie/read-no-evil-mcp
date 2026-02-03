@@ -7,8 +7,8 @@ from read_no_evil_mcp.protection.heuristic import HeuristicScanner
 class ProtectionService:
     """Orchestrates content scanning for prompt injection attacks.
 
-    Delegates to HeuristicScanner which uses LLM Guard's PromptInjection
-    scanner under the hood for pattern-based detection.
+    Delegates to HeuristicScanner which uses ProtectAI's DeBERTa model
+    for ML-based prompt injection detection.
     """
 
     def __init__(self, scanner: HeuristicScanner | None = None) -> None:
