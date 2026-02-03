@@ -1,11 +1,11 @@
 """IMAP connector for reading emails using imap-tools."""
 
 from datetime import date, timedelta
-from types import TracebackType
 
 from imap_tools import AND, MailBox, MailBoxUnencrypted
 from imap_tools import EmailAddress as IMAPEmailAddress
 
+from read_no_evil_mcp.connectors.base import BaseConnector
 from read_no_evil_mcp.models import (
     Attachment,
     Email,
@@ -33,7 +33,7 @@ def _convert_addresses(addrs: tuple[IMAPEmailAddress, ...]) -> list[EmailAddress
     ]
 
 
-class IMAPConnector:
+class IMAPConnector(BaseConnector):
     """Connector for reading emails via IMAP using imap-tools."""
 
     def __init__(self, config: IMAPConfig) -> None:
@@ -161,15 +161,3 @@ class IMAPConnector:
             )
 
         return None
-
-    def __enter__(self) -> "IMAPConnector":
-        self.connect()
-        return self
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        self.disconnect()
