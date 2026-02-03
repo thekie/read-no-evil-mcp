@@ -33,7 +33,7 @@ jobs:
 
       - name: Type check with mypy
         run: |
-          mypy src --ignore-missing-imports
+          mypy src
 
       - name: Run tests
         run: |
