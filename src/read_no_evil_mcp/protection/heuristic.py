@@ -1,11 +1,10 @@
 """Heuristic scanner for prompt injection detection.
 
-Uses the ProtectAI DeBERTa model directly with ONNX Runtime for efficient
-CPU-based inference without the heavy llm-guard dependency.
+Uses the ProtectAI DeBERTa model with ONNX Runtime for efficient
+CPU-based inference without heavy PyTorch dependencies.
 """
 
 import structlog
-from optimum.onnxruntime import ORTModelForSequenceClassification
 from transformers import AutoTokenizer, pipeline
 
 from read_no_evil_mcp.models import ScanResult
@@ -33,12 +32,9 @@ class HeuristicScanner:
         """Lazy load the classifier to avoid slow startup."""
         if self._classifier is None:
             logger.debug("Loading prompt injection model", model=MODEL_ID)
-            tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-            model = ORTModelForSequenceClassification.from_pretrained(MODEL_ID)
             self._classifier = pipeline(
                 "text-classification",
-                model=model,
-                tokenizer=tokenizer,
+                model=MODEL_ID,
                 truncation=True,
                 max_length=512,
             )

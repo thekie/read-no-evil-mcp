@@ -14,13 +14,27 @@ This MCP (Model Context Protocol) server provides a secure interface for AI agen
 
 ## Installation
 
+### CPU-only (Recommended)
+
+For most deployments, install PyTorch CPU-only first for a smaller footprint (~200MB vs ~2GB):
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install read-no-evil-mcp
+```
+
+### With GPU Support
+
+For GPU-accelerated inference:
+
 ```bash
 pip install read-no-evil-mcp
 ```
 
-For development:
+### Development
 
 ```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -e ".[dev]"
 ```
 
@@ -30,7 +44,7 @@ Configure the MCP server with your email credentials and add it to your MCP clie
 
 ## Security
 
-This project uses [ProtectAI's DeBERTa model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2) to detect and block prompt injection attempts in email content before they are processed by AI agents. The model runs locally using ONNX Runtime for efficient CPU inference.
+This project uses [ProtectAI's DeBERTa model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2) to detect and block prompt injection attempts in email content before they are processed by AI agents. The model runs locally using PyTorch for inference.
 
 ## License
 
