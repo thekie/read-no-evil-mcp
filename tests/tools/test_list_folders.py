@@ -16,6 +16,8 @@ class TestListFolders:
             Folder(name="INBOX"),
             Folder(name="Sent"),
         ]
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
             "read_no_evil_mcp.tools.list_folders.create_service",
@@ -25,13 +27,13 @@ class TestListFolders:
 
         assert "INBOX" in result
         assert "Sent" in result
-        mock_service.connect.assert_called_once()
-        mock_service.disconnect.assert_called_once()
 
     def test_empty_folders(self) -> None:
         """Test list_folders with no folders."""
         mock_service = MagicMock()
         mock_service.list_folders.return_value = []
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
             "read_no_evil_mcp.tools.list_folders.create_service",
@@ -41,10 +43,12 @@ class TestListFolders:
 
         assert "No folders found" in result
 
-    def test_disconnect_called_on_exception(self) -> None:
-        """Test that disconnect is called even when exception occurs."""
+    def test_exit_called_on_exception(self) -> None:
+        """Test that __exit__ is called even when exception occurs."""
         mock_service = MagicMock()
         mock_service.list_folders.side_effect = RuntimeError("Connection error")
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
             "read_no_evil_mcp.tools.list_folders.create_service",
@@ -53,4 +57,4 @@ class TestListFolders:
             with pytest.raises(RuntimeError):
                 list_folders_impl()
 
-        mock_service.disconnect.assert_called_once()
+        mock_service.__exit__.assert_called_once()

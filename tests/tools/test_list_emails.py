@@ -21,6 +21,8 @@ class TestListEmails:
                 has_attachments=True,
             ),
         ]
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_service",
@@ -37,6 +39,8 @@ class TestListEmails:
         """Test list_emails with no emails."""
         mock_service = MagicMock()
         mock_service.fetch_emails.return_value = []
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_service",
@@ -50,6 +54,8 @@ class TestListEmails:
         """Test list_emails respects limit parameter."""
         mock_service = MagicMock()
         mock_service.fetch_emails.return_value = []
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_service",
@@ -64,6 +70,8 @@ class TestListEmails:
         """Test list_emails uses default parameters."""
         mock_service = MagicMock()
         mock_service.fetch_emails.return_value = []
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_service",

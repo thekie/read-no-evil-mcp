@@ -123,3 +123,29 @@ class TestEmailService:
 
         assert email is None
         mock_connector.get_email.assert_called_once_with("INBOX", 999)
+
+    def test_context_manager(self):
+        """Test that service can be used as context manager."""
+        mock_connector = MagicMock()
+        mock_connector.list_folders.return_value = [Folder(name="INBOX")]
+
+        with EmailService(mock_connector) as service:
+            folders = service.list_folders()
+
+        assert len(folders) == 1
+        mock_connector.connect.assert_called_once()
+        mock_connector.disconnect.assert_called_once()
+
+    def test_context_manager_disconnects_on_exception(self):
+        """Test that context manager disconnects even on exception."""
+        mock_connector = MagicMock()
+        mock_connector.list_folders.side_effect = RuntimeError("Error")
+
+        try:
+            with EmailService(mock_connector) as service:
+                service.list_folders()
+        except RuntimeError:
+            pass
+
+        mock_connector.connect.assert_called_once()
+        mock_connector.disconnect.assert_called_once()

@@ -21,6 +21,8 @@ class TestGetEmail:
             body_plain="Hello, World!",
             message_id="<abc@example.com>",
         )
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_service",
@@ -37,6 +39,8 @@ class TestGetEmail:
         """Test get_email with non-existent email."""
         mock_service = MagicMock()
         mock_service.get_email.return_value = None
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_service",
@@ -57,6 +61,8 @@ class TestGetEmail:
             date=datetime(2026, 2, 3, 12, 0, 0),
             body_html="<p>HTML content</p>",
         )
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_service",

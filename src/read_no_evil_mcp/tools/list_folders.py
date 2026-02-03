@@ -10,15 +10,11 @@ def list_folders_impl() -> str:
     Returns:
         A formatted list of folder names.
     """
-    service = create_service()
-    try:
-        service.connect()
+    with create_service() as service:
         folders = service.list_folders()
         if not folders:
             return "No folders found."
         return "\n".join(f"- {f.name}" for f in folders)
-    finally:
-        service.disconnect()
 
 
 @mcp.tool

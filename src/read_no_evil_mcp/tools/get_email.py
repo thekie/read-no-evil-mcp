@@ -15,9 +15,7 @@ def get_email_impl(folder: str, uid: int) -> str:
     Returns:
         Formatted email content or error message if not found.
     """
-    service = create_service()
-    try:
-        service.connect()
+    with create_service() as service:
         email_result: Email | None = service.get_email(folder, uid)
 
         if not email_result:
@@ -52,8 +50,6 @@ def get_email_impl(folder: str, uid: int) -> str:
             lines.append("[No body content]")
 
         return "\n".join(lines)
-    finally:
-        service.disconnect()
 
 
 @mcp.tool

@@ -21,9 +21,7 @@ def list_emails_impl(
     Returns:
         A formatted list of email summaries.
     """
-    service = create_service()
-    try:
-        service.connect()
+    with create_service() as service:
         emails = service.fetch_emails(
             folder,
             lookback=timedelta(days=days_back),
@@ -43,8 +41,6 @@ def list_emails_impl(
             )
 
         return "\n".join(lines)
-    finally:
-        service.disconnect()
 
 
 @mcp.tool
