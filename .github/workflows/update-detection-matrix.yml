@@ -44,6 +44,7 @@ jobs:
           fi
 
       - name: Create Pull Request
+        id: cpr
         if: steps.check.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
@@ -57,3 +58,9 @@ jobs:
           branch: auto/update-detection-matrix
           delete-branch: true
           labels: documentation, automated
+
+      - name: Enable auto-merge
+        if: steps.cpr.outputs.pull-request-number
+        run: gh pr merge --auto --squash "${{ steps.cpr.outputs.pull-request-number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
