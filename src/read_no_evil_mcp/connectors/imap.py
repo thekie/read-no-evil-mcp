@@ -1,6 +1,8 @@
 """IMAP connector for reading emails using imap-tools."""
 
-from imap_tools import AND, MailBox, MailboxFolderInfo
+from datetime import date, datetime, timedelta
+
+from imap_tools import AND, MailBox
 
 from read_no_evil_mcp.models import (
     Attachment,
@@ -70,22 +72,36 @@ class IMAPConnector:
     def fetch_emails(
         self,
         folder: str = "INBOX",
-        limit: int = 10,
-        offset: int = 0,
+        *,
+        lookback: timedelta,
+        from_date: date | None = None,
+        limit: int | None = None,
     ) -> list[EmailSummary]:
-        """Fetch email summaries from a folder with pagination."""
+        """Fetch email summaries from a folder within a time range.
+
+        Args:
+            folder: IMAP folder to fetch from (default: INBOX)
+            lookback: Required. How far back to look (e.g., timedelta(days=7))
+            from_date: Starting point for lookback (default: today)
+            limit: Optional max number of emails to return
+
+        Returns:
+            List of EmailSummary, newest first
+        """
         if not self._mailbox:
             raise RuntimeError("Not connected. Call connect() first.")
 
         self._mailbox.folder.set(folder)
 
-        summaries = []
-        for i, msg in enumerate(self._mailbox.fetch(AND(all=True), reverse=True, bulk=True)):
-            if i < offset:
-                continue
-            if i >= offset + limit:
-                break
+        # Calculate date range
+        end_date = from_date or date.today()
+        start_date = end_date - lookback
 
+        # Build IMAP criteria - filter happens server-side
+        criteria = AND(date_gte=start_date, date_lt=end_date + timedelta(days=1))
+
+        summaries = []
+        for msg in self._mailbox.fetch(criteria, reverse=True, bulk=True):
             sender = _parse_address((msg.from_values.name, msg.from_values.email))
             if not sender:
                 sender = EmailAddress(address="unknown@unknown")
@@ -100,6 +116,9 @@ class IMAPConnector:
                     has_attachments=len(msg.attachments) > 0,
                 )
             )
+
+            if limit and len(summaries) >= limit:
+                break
 
         return summaries
 
