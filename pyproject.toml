@@ -40,6 +40,7 @@ dev = [
     "mypy",
     "pytest",
     "pytest-asyncio",
+    "pyyaml",
 ]
 
 [project.scripts]
@@ -74,3 +75,6 @@ ignore_missing_imports = true
 pythonpath = ["src"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "integration: marks tests as integration tests (may be slower, require model loading)",
+]
