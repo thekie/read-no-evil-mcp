@@ -8,7 +8,7 @@ This MCP (Model Context Protocol) server provides a secure interface for AI agen
 
 ## Features
 
-- **Prompt Injection Detection**: Scans email content for prompt injection attempts using LLM Guard
+- **Prompt Injection Detection**: Scans email content for prompt injection attempts using ML-based detection
 - **IMAP Support**: Connects to any IMAP-compatible email provider
 - **MCP Integration**: Exposes email functionality through the Model Context Protocol
 
@@ -30,7 +30,7 @@ Configure the MCP server with your email credentials and add it to your MCP clie
 
 ## Security
 
-This project uses [LLM Guard](https://llm-guard.com/) to detect and block prompt injection attempts in email content before they are processed by AI agents.
+This project uses [ProtectAI's DeBERTa model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2) to detect and block prompt injection attempts in email content before they are processed by AI agents. The model runs locally using ONNX Runtime for efficient CPU inference.
 
 ## License
 

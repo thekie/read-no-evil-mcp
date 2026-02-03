@@ -12,7 +12,7 @@ Instructions for AI coding assistants working on this project.
 - **Pydantic** v2 for data models
 - **imap-tools** for IMAP access
 - **MCP SDK** for Model Context Protocol server
-- **LLM Guard** for prompt injection detection
+- **ProtectAI DeBERTa model** for prompt injection detection
 
 ## Code Style
 
@@ -38,7 +38,7 @@ src/read_no_evil_mcp/
 ├── models.py            # Pydantic data models
 ├── connectors/          # Email provider connectors
 │   └── imap.py
-├── protection/          # Security scanners (LLM Guard)
+├── protection/          # Security scanners (ProtectAI DeBERTa model)
 └── server/              # MCP server implementation
 
 tests/                   # Mirrors src/ structure

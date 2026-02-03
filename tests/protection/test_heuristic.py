@@ -1,4 +1,4 @@
-"""Tests for HeuristicScanner using LLM Guard."""
+"""Tests for HeuristicScanner using ProtectAI's prompt injection model."""
 
 import pytest
 
