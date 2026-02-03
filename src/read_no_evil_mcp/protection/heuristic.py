@@ -1,11 +1,13 @@
 """Heuristic scanner for prompt injection detection.
 
-Uses the ProtectAI DeBERTa model with ONNX Runtime for efficient
-CPU-based inference without heavy PyTorch dependencies.
+Uses the ProtectAI DeBERTa model with PyTorch for ML-based
+prompt injection detection.
 """
 
+from typing import Any
+
 import structlog
-from transformers import pipeline
+from transformers import Pipeline, pipeline
 
 from read_no_evil_mcp.models import ScanResult
 
@@ -26,9 +28,9 @@ class HeuristicScanner:
                 considered prompt injection. Defaults to 0.5.
         """
         self._threshold = threshold
-        self._classifier = None  # Lazy load
+        self._classifier: Pipeline | None = None  # Lazy load
 
-    def _get_classifier(self):
+    def _get_classifier(self) -> Any:
         """Lazy load the classifier to avoid slow startup."""
         if self._classifier is None:
             logger.debug("Loading prompt injection model", model=MODEL_ID)
@@ -62,7 +64,7 @@ class HeuristicScanner:
 
         # Model returns label "INJECTION" or "SAFE" with a score
         is_injection = result["label"] == "INJECTION"
-        score = result["score"] if is_injection else 1.0 - result["score"]
+        score: float = result["score"] if is_injection else 1.0 - result["score"]
 
         is_safe = score < self._threshold
         detected_patterns: list[str] = []
