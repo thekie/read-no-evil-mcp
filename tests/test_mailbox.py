@@ -21,9 +21,7 @@ class TestSecureMailbox:
         return MagicMock(spec=ProtectionLayer)
 
     @pytest.fixture
-    def mailbox(
-        self, mock_service: MagicMock, mock_protection: MagicMock
-    ) -> SecureMailbox:
+    def mailbox(self, mock_service: MagicMock, mock_protection: MagicMock) -> SecureMailbox:
         return SecureMailbox(mock_service, mock_protection)
 
     def test_connect(self, mailbox: SecureMailbox, mock_service: MagicMock) -> None:
@@ -34,9 +32,7 @@ class TestSecureMailbox:
         mailbox.disconnect()
         mock_service.disconnect.assert_called_once()
 
-    def test_context_manager(
-        self, mock_service: MagicMock, mock_protection: MagicMock
-    ) -> None:
+    def test_context_manager(self, mock_service: MagicMock, mock_protection: MagicMock) -> None:
         with SecureMailbox(mock_service, mock_protection) as mailbox:
             assert mailbox is not None
         mock_service.connect.assert_called_once()
