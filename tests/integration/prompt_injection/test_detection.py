@@ -6,7 +6,7 @@ The test behavior depends on the `expected` field in each payload:
 
 - expected: detected  → FAIL if not detected (REGRESSION)
 - expected: missed    → PASS even if not detected (known limitation)
-- expected: unknown   → PASS regardless, just recording (inventory mode)
+- expected: unknown   → PASS regardless, records result (inventory mode)
 
 This allows us to:
 1. Protect against regressions for working detections
@@ -20,6 +20,8 @@ import pytest
 
 from read_no_evil_mcp.protection.service import ProtectionService
 
+from .conftest import record_result
+
 
 @pytest.mark.integration
 class TestPromptInjectionDetection:
@@ -30,18 +32,12 @@ class TestPromptInjectionDetection:
         payload: dict[str, Any],
         protection_service: ProtectionService,
     ) -> None:
-        """
-        Test a single payload against the protection service.
-
-        Args:
-            payload: Payload dict from YAML with at minimum 'id' and 'payload' keys
-            protection_service: The ProtectionService instance to test
-        """
+        """Test a single payload against the protection service."""
         payload_id = payload.get("id", "unknown")
         payload_text = payload.get("payload", "")
         expected = payload.get("expected", "unknown")
-        severity = payload.get("severity", "medium")
-        notes = payload.get("notes", "")
+        category = payload.get("_category", "unknown")
+        technique = payload.get("technique", "unknown")
 
         # Skip empty payloads
         if not payload_text:
@@ -50,33 +46,41 @@ class TestPromptInjectionDetection:
         # Run detection
         result = protection_service.scan(payload_text)
         detected = not result.is_safe
+        actual = "detected" if detected else "missed"
         score = result.score
+
+        # Record result for report generation
+        is_regression = expected == "detected" and not detected
+        is_improvement = expected == "missed" and detected
+
+        record_result(
+            payload_id=payload_id,
+            category=category,
+            technique=technique,
+            expected=expected,
+            actual=actual,
+            score=score,
+            is_regression=is_regression,
+            is_improvement=is_improvement,
+        )
 
         # Evaluate based on expected value
         if expected == "detected":
             # This MUST be detected - regression if not
             assert detected, (
-                f"REGRESSION: {payload_id} was expected to be detected but wasn't.\n"
-                f"  Score: {score}\n"
-                f"  Severity: {severity}\n"
-                f"  Category: {payload.get('_category', 'unknown')}\n"
-                f"  Notes: {notes}"
+                f"REGRESSION: {payload_id} was expected to be detected but wasn't. "
+                f"Score: {score}, Category: {category}"
             )
 
         elif expected == "missed":
-            # Known limitation - we don't expect detection
+            # Known limitation - log if now detected (improvement!)
             if detected:
-                # Surprise! We now detect it - this is an improvement
-                pytest.skip(
-                    f"🎉 IMPROVEMENT: {payload_id} is now detected! "
-                    f"(score: {score}). Consider updating expected → detected"
-                )
-            # Otherwise, expected miss - pass silently
+                # Not a failure, just notable
+                print(f"🎉 IMPROVEMENT: {payload_id} is now detected! (score: {score})")
 
         elif expected == "unknown":
-            # Inventory mode - just record the result, don't fail
-            status = "detected" if detected else "missed"
-            pytest.skip(f"INVENTORY: {payload_id} → {status} (score: {score:.3f})")
+            # Inventory mode - just record, always pass
+            print(f"📊 {payload_id}: {actual} (score: {score:.3f})")
 
         else:
             pytest.fail(f"Invalid expected value '{expected}' for {payload_id}")
@@ -91,8 +95,7 @@ class TestEmailContentDetection:
         payload: dict[str, Any],
         protection_service: ProtectionService,
     ) -> None:
-        """
-        Test payloads in an email context.
+        """Test payloads in an email context.
 
         Some payloads may only be detected when processed as email content
         (e.g., HTML-based attacks).
@@ -101,9 +104,10 @@ class TestEmailContentDetection:
         payload_text = payload.get("payload", "")
         email_context = payload.get("email_context", {})
         expected = payload.get("expected", "unknown")
+        category = payload.get("_category", "unknown")
 
         # Skip if no email context defined and not an email-specific payload
-        if not email_context and payload.get("_category") != "email_specific":
+        if not email_context and category != "email_specific":
             pytest.skip(f"{payload_id}: No email context defined")
 
         # Build email parts
@@ -118,13 +122,13 @@ class TestEmailContentDetection:
             body_html=body_html,
         )
         detected = not result.is_safe
+        actual = "detected" if detected else "missed"
 
         # Same evaluation logic as above
         if expected == "detected":
             assert detected, f"REGRESSION (email): {payload_id} not detected in email context"
         elif expected == "missed":
             if detected:
-                pytest.skip(f"🎉 IMPROVEMENT (email): {payload_id} now detected!")
+                print(f"🎉 IMPROVEMENT (email): {payload_id} now detected!")
         else:
-            status = "detected" if detected else "missed"
-            pytest.skip(f"INVENTORY (email): {payload_id} → {status}")
+            print(f"📊 (email) {payload_id}: {actual}")

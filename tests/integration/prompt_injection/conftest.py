@@ -1,5 +1,6 @@
 """Fixtures and utilities for prompt injection tests."""
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,7 @@ import yaml
 from read_no_evil_mcp.protection.service import ProtectionService
 
 PAYLOADS_DIR = Path(__file__).parent / "payloads"
+RESULTS_FILE = Path(__file__).parent / "results.json"
 
 
 def load_yaml_file(path: Path) -> dict[str, Any]:
@@ -18,8 +20,7 @@ def load_yaml_file(path: Path) -> dict[str, Any]:
 
 
 def load_all_payloads() -> list[dict[str, Any]]:
-    """
-    Load all payload YAML files from the payloads directory.
+    """Load all payload YAML files from the payloads directory.
 
     Returns a flat list of all payload entries with category metadata attached.
     """
@@ -48,10 +49,38 @@ def payload_id(payload: dict[str, Any]) -> str:
     return payload.get("id", "unknown")
 
 
+# Global results collector
+_test_results: list[dict[str, Any]] = []
+
+
+def record_result(
+    payload_id: str,
+    category: str,
+    technique: str,
+    expected: str,
+    actual: str,
+    score: float,
+    is_regression: bool = False,
+    is_improvement: bool = False,
+) -> None:
+    """Record a test result for report generation."""
+    _test_results.append(
+        {
+            "id": payload_id,
+            "category": category,
+            "technique": technique,
+            "expected": expected,
+            "actual": actual,
+            "score": round(score, 4),
+            "is_regression": is_regression,
+            "is_improvement": is_improvement,
+        }
+    )
+
+
 @pytest.fixture(scope="module")
 def protection_service() -> ProtectionService:
-    """
-    Create a ProtectionService instance for testing.
+    """Create a ProtectionService instance for testing.
 
     Module-scoped to avoid reinitializing the model for each test.
     """
@@ -59,8 +88,7 @@ def protection_service() -> ProtectionService:
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    """
-    Dynamically parametrize tests based on payload files.
+    """Dynamically parametrize tests based on payload files.
 
     This allows tests to be generated from YAML without explicit @pytest.mark.parametrize.
     """
@@ -71,3 +99,23 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
             payloads,
             ids=[payload_id(p) for p in payloads],
         )
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """Write results to JSON file after all tests complete."""
+    if _test_results:
+        # Sort by category, then by id
+        sorted_results = sorted(_test_results, key=lambda x: (x["category"], x["id"]))
+        with open(RESULTS_FILE, "w") as f:
+            json.dump(
+                {
+                    "total": len(sorted_results),
+                    "detected": sum(1 for r in sorted_results if r["actual"] == "detected"),
+                    "missed": sum(1 for r in sorted_results if r["actual"] == "missed"),
+                    "regressions": sum(1 for r in sorted_results if r["is_regression"]),
+                    "improvements": sum(1 for r in sorted_results if r["is_improvement"]),
+                    "results": sorted_results,
+                },
+                f,
+                indent=2,
+            )

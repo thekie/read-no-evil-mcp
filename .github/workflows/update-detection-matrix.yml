@@ -1,0 +1,40 @@
+name: Update Detection Matrix
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  update-matrix:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run integration tests
+        run: |
+          pytest tests/integration/prompt_injection/ -v --tb=short || true
+          # Continue even if tests fail (we want to capture results)
+
+      - name: Generate detection matrix
+        run: |
+          python scripts/generate_detection_matrix.py
+
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add DETECTION_MATRIX.md
+          git diff --staged --quiet || git commit -m "docs: Update detection matrix [skip ci]"
+          git push
