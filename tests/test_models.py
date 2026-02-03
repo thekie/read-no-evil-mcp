@@ -9,6 +9,7 @@ from read_no_evil_mcp.models import (
     EmailSummary,
     Folder,
     IMAPConfig,
+    ScanResult,
 )
 
 
@@ -140,3 +141,33 @@ class TestEmail:
         assert len(email.cc) == 1
         assert len(email.attachments) == 1
         assert email.message_id == "<abc123@example.com>"
+
+
+class TestScanResult:
+    def test_safe_result(self) -> None:
+        result = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        assert result.is_safe
+        assert not result.is_blocked
+        assert result.score == 0.0
+        assert result.detected_patterns == []
+
+    def test_unsafe_result(self) -> None:
+        result = ScanResult(
+            is_safe=False,
+            score=0.8,
+            detected_patterns=["ignore_instructions", "you_are_now"],
+        )
+        assert not result.is_safe
+        assert result.is_blocked
+        assert result.score == 0.8
+        assert len(result.detected_patterns) == 2
+
+    def test_is_blocked_property(self) -> None:
+        safe = ScanResult(is_safe=True, score=0.0)
+        unsafe = ScanResult(is_safe=False, score=0.5, detected_patterns=["test"])
+        assert not safe.is_blocked
+        assert unsafe.is_blocked
+
+    def test_default_detected_patterns(self) -> None:
+        result = ScanResult(is_safe=True, score=0.0)
+        assert result.detected_patterns == []

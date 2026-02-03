@@ -3,7 +3,8 @@
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from read_no_evil_mcp.models import Email, EmailAddress
+from read_no_evil_mcp.mailbox import PromptInjectionError
+from read_no_evil_mcp.models import Email, EmailAddress, ScanResult
 from read_no_evil_mcp.tools.get_email import get_email
 
 
@@ -25,7 +26,7 @@ class TestGetEmail:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.get_email.create_service",
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_service,
         ):
             result = get_email.fn(folder="INBOX", uid=123)
@@ -43,7 +44,7 @@ class TestGetEmail:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.get_email.create_service",
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_service,
         ):
             result = get_email.fn(folder="INBOX", uid=999)
@@ -65,10 +66,61 @@ class TestGetEmail:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.get_email.create_service",
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_service,
         ):
             result = get_email.fn(folder="INBOX", uid=123)
 
         assert "HTML content - plain text not available" in result
         assert "<p>HTML content</p>" in result
+
+    def test_blocked_email(self) -> None:
+        """Test get_email with prompt injection detected."""
+        mock_service = MagicMock()
+        scan_result = ScanResult(
+            is_safe=False,
+            score=0.8,
+            detected_patterns=["ignore_instructions", "you_are_now"],
+        )
+        mock_service.get_email.side_effect = PromptInjectionError(
+            scan_result, email_uid=123, folder="INBOX"
+        )
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
+
+        with patch(
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
+            return_value=mock_service,
+        ):
+            result = get_email.fn(folder="INBOX", uid=123)
+
+        assert "BLOCKED" in result
+        assert "INBOX/123" in result
+        assert "ignore_instructions" in result
+        assert "you_are_now" in result
+        assert "0.80" in result  # Score
+        assert "prompt injection" in result.lower()
+
+    def test_blocked_email_single_pattern(self) -> None:
+        """Test blocked email message with single pattern."""
+        mock_service = MagicMock()
+        scan_result = ScanResult(
+            is_safe=False,
+            score=0.5,
+            detected_patterns=["system_tag"],
+        )
+        mock_service.get_email.side_effect = PromptInjectionError(
+            scan_result, email_uid=456, folder="Sent"
+        )
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
+
+        with patch(
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
+            return_value=mock_service,
+        ):
+            result = get_email.fn(folder="Sent", uid=456)
+
+        assert "BLOCKED" in result
+        assert "Sent/456" in result
+        assert "system_tag" in result

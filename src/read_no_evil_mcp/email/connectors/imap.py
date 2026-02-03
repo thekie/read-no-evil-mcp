@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from imap_tools import AND, MailBox, MailBoxUnencrypted
 from imap_tools import EmailAddress as IMAPEmailAddress
 
-from read_no_evil_mcp.connectors.base import BaseConnector
+from read_no_evil_mcp.email.connectors.base import BaseConnector
 from read_no_evil_mcp.models import (
     Attachment,
     Email,
