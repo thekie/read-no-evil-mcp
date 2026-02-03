@@ -32,7 +32,7 @@ class TestPromptInjectionDetection:
     ) -> None:
         """
         Test a single payload against the protection service.
-        
+
         Args:
             payload: Payload dict from YAML with at minimum 'id' and 'payload' keys
             protection_service: The ProtectionService instance to test
@@ -42,16 +42,16 @@ class TestPromptInjectionDetection:
         expected = payload.get("expected", "unknown")
         severity = payload.get("severity", "medium")
         notes = payload.get("notes", "")
-        
+
         # Skip empty payloads
         if not payload_text:
             pytest.skip(f"{payload_id}: Empty payload")
-        
+
         # Run detection
         result = protection_service.scan(payload_text)
         detected = not result.is_safe
         score = result.score
-        
+
         # Evaluate based on expected value
         if expected == "detected":
             # This MUST be detected - regression if not
@@ -62,7 +62,7 @@ class TestPromptInjectionDetection:
                 f"  Category: {payload.get('_category', 'unknown')}\n"
                 f"  Notes: {notes}"
             )
-            
+
         elif expected == "missed":
             # Known limitation - we don't expect detection
             if detected:
@@ -72,14 +72,12 @@ class TestPromptInjectionDetection:
                     f"(score: {score}). Consider updating expected → detected"
                 )
             # Otherwise, expected miss - pass silently
-            
+
         elif expected == "unknown":
             # Inventory mode - just record the result, don't fail
             status = "detected" if detected else "missed"
-            pytest.skip(
-                f"INVENTORY: {payload_id} → {status} (score: {score:.3f})"
-            )
-            
+            pytest.skip(f"INVENTORY: {payload_id} → {status} (score: {score:.3f})")
+
         else:
             pytest.fail(f"Invalid expected value '{expected}' for {payload_id}")
 
@@ -95,7 +93,7 @@ class TestEmailContentDetection:
     ) -> None:
         """
         Test payloads in an email context.
-        
+
         Some payloads may only be detected when processed as email content
         (e.g., HTML-based attacks).
         """
@@ -103,16 +101,16 @@ class TestEmailContentDetection:
         payload_text = payload.get("payload", "")
         email_context = payload.get("email_context", {})
         expected = payload.get("expected", "unknown")
-        
+
         # Skip if no email context defined and not an email-specific payload
         if not email_context and payload.get("_category") != "email_specific":
             pytest.skip(f"{payload_id}: No email context defined")
-        
+
         # Build email parts
         subject = email_context.get("subject", "Test Subject")
         body_plain = email_context.get("body_plain", payload_text)
         body_html = email_context.get("body_html")
-        
+
         # Run email-specific detection
         result = protection_service.scan_email_content(
             subject=subject,
@@ -120,7 +118,7 @@ class TestEmailContentDetection:
             body_html=body_html,
         )
         detected = not result.is_safe
-        
+
         # Same evaluation logic as above
         if expected == "detected":
             assert detected, f"REGRESSION (email): {payload_id} not detected in email context"
