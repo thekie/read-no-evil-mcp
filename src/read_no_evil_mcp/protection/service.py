@@ -7,11 +7,12 @@ from read_no_evil_mcp.protection.heuristic import HeuristicScanner
 class ProtectionService:
     """Orchestrates content scanning for prompt injection attacks.
 
-    Uses LLM Guard's PromptInjection scanner for ML-based detection.
+    Delegates to HeuristicScanner which uses LLM Guard's PromptInjection
+    scanner under the hood for pattern-based detection.
     """
 
     def __init__(self, scanner: HeuristicScanner | None = None) -> None:
-        """Initialize the protection layer.
+        """Initialize the protection service.
 
         Args:
             scanner: Heuristic scanner to use. Defaults to standard scanner.
