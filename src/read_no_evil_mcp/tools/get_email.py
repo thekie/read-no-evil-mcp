@@ -5,15 +5,13 @@ from read_no_evil_mcp.tools._app import mcp
 from read_no_evil_mcp.tools._service import create_service
 
 
-def get_email_impl(folder: str, uid: int) -> str:
+@mcp.tool
+def get_email(folder: str, uid: int) -> str:
     """Get full email content by UID.
 
     Args:
         folder: Folder containing the email.
         uid: Unique identifier of the email.
-
-    Returns:
-        Formatted email content or error message if not found.
     """
     with create_service() as service:
         email_result: Email | None = service.get_email(folder, uid)
@@ -21,7 +19,6 @@ def get_email_impl(folder: str, uid: int) -> str:
         if not email_result:
             return f"Email not found: {folder}/{uid}"
 
-        # Format email content
         lines = [
             f"Subject: {email_result.subject}",
             f"From: {email_result.sender}",
@@ -50,14 +47,3 @@ def get_email_impl(folder: str, uid: int) -> str:
             lines.append("[No body content]")
 
         return "\n".join(lines)
-
-
-@mcp.tool
-def get_email(folder: str, uid: int) -> str:
-    """Get full email content by UID.
-
-    Args:
-        folder: Folder containing the email.
-        uid: Unique identifier of the email.
-    """
-    return get_email_impl(folder, uid)

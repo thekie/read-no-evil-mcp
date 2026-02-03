@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from read_no_evil_mcp.models import Folder
-from read_no_evil_mcp.tools.list_folders import list_folders_impl
+from read_no_evil_mcp.tools.list_folders import list_folders
 
 
 class TestListFolders:
@@ -23,7 +23,7 @@ class TestListFolders:
             "read_no_evil_mcp.tools.list_folders.create_service",
             return_value=mock_service,
         ):
-            result = list_folders_impl()
+            result = list_folders.fn()
 
         assert "INBOX" in result
         assert "Sent" in result
@@ -39,7 +39,7 @@ class TestListFolders:
             "read_no_evil_mcp.tools.list_folders.create_service",
             return_value=mock_service,
         ):
-            result = list_folders_impl()
+            result = list_folders.fn()
 
         assert "No folders found" in result
 
@@ -55,6 +55,6 @@ class TestListFolders:
             return_value=mock_service,
         ):
             with pytest.raises(RuntimeError):
-                list_folders_impl()
+                list_folders.fn()
 
         mock_service.__exit__.assert_called_once()

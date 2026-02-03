@@ -4,7 +4,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 from read_no_evil_mcp.models import Email, EmailAddress
-from read_no_evil_mcp.tools.get_email import get_email_impl
+from read_no_evil_mcp.tools.get_email import get_email
 
 
 class TestGetEmail:
@@ -28,7 +28,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_service",
             return_value=mock_service,
         ):
-            result = get_email_impl(folder="INBOX", uid=123)
+            result = get_email.fn(folder="INBOX", uid=123)
 
         assert "Subject: Test Email" in result
         assert "From: Sender <sender@example.com>" in result
@@ -46,7 +46,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_service",
             return_value=mock_service,
         ):
-            result = get_email_impl(folder="INBOX", uid=999)
+            result = get_email.fn(folder="INBOX", uid=999)
 
         assert "Email not found" in result
 
@@ -68,7 +68,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_service",
             return_value=mock_service,
         ):
-            result = get_email_impl(folder="INBOX", uid=123)
+            result = get_email.fn(folder="INBOX", uid=123)
 
         assert "HTML content - plain text not available" in result
         assert "<p>HTML content</p>" in result

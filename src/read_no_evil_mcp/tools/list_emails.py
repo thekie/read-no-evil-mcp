@@ -6,7 +6,8 @@ from read_no_evil_mcp.tools._app import mcp
 from read_no_evil_mcp.tools._service import create_service
 
 
-def list_emails_impl(
+@mcp.tool
+def list_emails(
     folder: str = "INBOX",
     days_back: int = 7,
     limit: int | None = None,
@@ -17,9 +18,6 @@ def list_emails_impl(
         folder: Folder to list emails from (default: INBOX).
         days_back: Number of days to look back (default: 7).
         limit: Maximum number of emails to return.
-
-    Returns:
-        A formatted list of email summaries.
     """
     with create_service() as service:
         emails = service.fetch_emails(
@@ -41,19 +39,3 @@ def list_emails_impl(
             )
 
         return "\n".join(lines)
-
-
-@mcp.tool
-def list_emails(
-    folder: str = "INBOX",
-    days_back: int = 7,
-    limit: int | None = None,
-) -> str:
-    """List email summaries from a folder.
-
-    Args:
-        folder: Folder to list emails from (default: INBOX).
-        days_back: Number of days to look back (default: 7).
-        limit: Maximum number of emails to return.
-    """
-    return list_emails_impl(folder, days_back, limit)
