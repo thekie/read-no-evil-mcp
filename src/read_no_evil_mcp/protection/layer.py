@@ -7,8 +7,7 @@ from read_no_evil_mcp.protection.heuristic import HeuristicScanner
 class ProtectionLayer:
     """Orchestrates content scanning for prompt injection attacks.
 
-    Currently uses heuristic pattern matching. Future versions may
-    integrate ML-based detection (e.g., LLM Guard).
+    Uses LLM Guard's PromptInjection scanner for ML-based detection.
     """
 
     def __init__(self, scanner: HeuristicScanner | None = None) -> None:

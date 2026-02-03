@@ -1,9 +1,0 @@
-"""Email connectors for read-no-evil-mcp.
-
-This module is deprecated. Use read_no_evil_mcp.email.connectors instead.
-"""
-
-from read_no_evil_mcp.email.connectors.base import BaseConnector
-from read_no_evil_mcp.email.connectors.imap import IMAPConnector
-
-__all__ = ["BaseConnector", "IMAPConnector"]

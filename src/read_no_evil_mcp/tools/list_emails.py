@@ -3,7 +3,7 @@
 from datetime import timedelta
 
 from read_no_evil_mcp.tools._app import mcp
-from read_no_evil_mcp.tools._service import create_service
+from read_no_evil_mcp.tools._service import create_securemailbox
 
 
 @mcp.tool
@@ -19,7 +19,7 @@ def list_emails(
         days_back: Number of days to look back (default: 7).
         limit: Maximum number of emails to return.
     """
-    with create_service() as service:
+    with create_securemailbox() as service:
         emails = service.fetch_emails(
             folder,
             lookback=timedelta(days=days_back),

@@ -7,7 +7,7 @@ from read_no_evil_mcp.mailbox import SecureMailbox
 from read_no_evil_mcp.models import IMAPConfig
 
 
-def create_service() -> SecureMailbox:
+def create_securemailbox() -> SecureMailbox:
     """Create a SecureMailbox from environment configuration."""
     settings = Settings()  # type: ignore[call-arg]
     config = IMAPConfig(
