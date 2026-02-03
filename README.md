@@ -46,6 +46,25 @@ Configure the MCP server with your email credentials and add it to your MCP clie
 
 This project uses [ProtectAI's DeBERTa model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2) to detect and block prompt injection attempts in email content before they are processed by AI agents. The model runs locally using PyTorch for inference.
 
+### Detection Capabilities
+
+See **[DETECTION_MATRIX.md](DETECTION_MATRIX.md)** for a complete overview of:
+- ✅ What attack techniques are currently detected
+- ❌ Known limitations and gaps
+- 📊 Detection rates by category
+
+**Want to help improve detection?** Check the matrix for missed techniques and contribute new test cases or detection improvements!
+
+### Test Coverage
+
+The project includes a comprehensive prompt injection test suite with 80+ payloads across categories:
+- Encoding (Base64, ROT13, hex)
+- Character substitution (leetspeak, homoglyphs)
+- Invisible text (zero-width chars, Unicode tags)
+- Structural (payload splitting, markdown injection)
+- Email-specific (hidden HTML, alt-text attacks)
+- Semantic (roleplay, authority claims)
+
 ## License
 
 Apache-2.0
