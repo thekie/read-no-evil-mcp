@@ -5,7 +5,7 @@ from types import TracebackType
 
 from read_no_evil_mcp.email.service import EmailService
 from read_no_evil_mcp.models import Email, EmailSummary, Folder, ScanResult
-from read_no_evil_mcp.protection.service import ProtectionService
+from read_no_evil_mcp.protection.service import ProtectionService, strip_html_tags
 
 
 class PromptInjectionError(Exception):
@@ -158,7 +158,10 @@ class SecureMailbox:
         if email.body_plain:
             parts.append(email.body_plain)
         if email.body_html:
-            parts.append(email.body_html)
+            # Always strip HTML tags for better detection
+            plain_from_html = strip_html_tags(email.body_html)
+            if plain_from_html:
+                parts.append(plain_from_html)
 
         combined = "\n".join(parts)
         scan_result = self._protection.scan(combined)
