@@ -2,7 +2,6 @@
 
 from datetime import date, timedelta
 from types import TracebackType
-from typing import Any
 
 from imap_tools import AND, MailBox, MailBoxUnencrypted
 
