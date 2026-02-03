@@ -20,7 +20,7 @@ class TestListFolders:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.list_folders.create_service",
+            "read_no_evil_mcp.tools.list_folders.create_securemailbox",
             return_value=mock_service,
         ):
             result = list_folders.fn()
@@ -36,7 +36,7 @@ class TestListFolders:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.list_folders.create_service",
+            "read_no_evil_mcp.tools.list_folders.create_securemailbox",
             return_value=mock_service,
         ):
             result = list_folders.fn()
@@ -51,7 +51,7 @@ class TestListFolders:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.list_folders.create_service",
+            "read_no_evil_mcp.tools.list_folders.create_securemailbox",
             return_value=mock_service,
         ):
             with pytest.raises(RuntimeError):

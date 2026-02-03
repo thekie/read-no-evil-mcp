@@ -25,7 +25,7 @@ class TestListEmails:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.list_emails.create_service",
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
             return_value=mock_service,
         ):
             result = list_emails.fn(folder="INBOX", days_back=7)
@@ -43,7 +43,7 @@ class TestListEmails:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.list_emails.create_service",
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
             return_value=mock_service,
         ):
             result = list_emails.fn()
@@ -58,7 +58,7 @@ class TestListEmails:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.list_emails.create_service",
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
             return_value=mock_service,
         ):
             list_emails.fn(folder="INBOX", limit=5)
@@ -74,7 +74,7 @@ class TestListEmails:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.list_emails.create_service",
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
             return_value=mock_service,
         ):
             list_emails.fn()

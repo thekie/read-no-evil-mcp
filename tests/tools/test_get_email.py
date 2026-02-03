@@ -26,7 +26,7 @@ class TestGetEmail:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.get_email.create_service",
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_service,
         ):
             result = get_email.fn(folder="INBOX", uid=123)
@@ -44,7 +44,7 @@ class TestGetEmail:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.get_email.create_service",
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_service,
         ):
             result = get_email.fn(folder="INBOX", uid=999)
@@ -66,7 +66,7 @@ class TestGetEmail:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.get_email.create_service",
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_service,
         ):
             result = get_email.fn(folder="INBOX", uid=123)
@@ -89,7 +89,7 @@ class TestGetEmail:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.get_email.create_service",
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_service,
         ):
             result = get_email.fn(folder="INBOX", uid=123)
@@ -116,7 +116,7 @@ class TestGetEmail:
         mock_service.__exit__ = MagicMock(return_value=None)
 
         with patch(
-            "read_no_evil_mcp.tools.get_email.create_service",
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_service,
         ):
             result = get_email.fn(folder="Sent", uid=456)

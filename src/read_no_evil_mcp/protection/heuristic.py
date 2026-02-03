@@ -38,7 +38,7 @@ class HeuristicScanner:
                 detected_patterns=[],
             )
 
-        sanitized_output, is_valid, risk_score = self._scanner.scan("", content)
+        sanitized_output, is_valid, risk_score = self._scanner.scan(content)
 
         detected_patterns: list[str] = []
         if not is_valid:
