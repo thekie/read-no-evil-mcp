@@ -1,6 +1,7 @@
 """Email service that orchestrates connectors."""
 
 from datetime import date, timedelta
+from types import TracebackType
 
 from read_no_evil_mcp.connectors.base import BaseConnector
 from read_no_evil_mcp.models import Email, EmailSummary, Folder
@@ -28,6 +29,20 @@ class EmailService:
     def disconnect(self) -> None:
         """Disconnect from the email server."""
         self._connector.disconnect()
+
+    def __enter__(self) -> "EmailService":
+        """Enter context manager, connecting to the server."""
+        self.connect()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        """Exit context manager, disconnecting from the server."""
+        self.disconnect()
 
     def list_folders(self) -> list[Folder]:
         """List all available folders.
