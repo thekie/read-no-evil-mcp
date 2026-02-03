@@ -28,6 +28,7 @@ dependencies = [
     "mcp",
     "llm-guard",
     "imap-tools",
+    "pydantic>=2.0",
 ]
 
 [project.optional-dependencies]
