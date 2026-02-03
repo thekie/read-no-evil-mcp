@@ -1,6 +1,6 @@
 """IMAP connector for reading emails using imap-tools."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from imap_tools import AND, MailBox
 
@@ -40,6 +40,7 @@ class IMAPConnector:
             self._mailbox = MailBox(self.config.host, self.config.port)
         else:
             from imap_tools import MailBoxUnencrypted
+
             self._mailbox = MailBoxUnencrypted(self.config.host, self.config.port)
 
         self._mailbox.login(

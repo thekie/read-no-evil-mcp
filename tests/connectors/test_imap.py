@@ -1,12 +1,12 @@
 """Tests for IMAP connector."""
 
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from read_no_evil_mcp.connectors.imap import IMAPConnector, _parse_address, _parse_addresses
-from read_no_evil_mcp.models import EmailAddress, IMAPConfig
+from read_no_evil_mcp.models import IMAPConfig
 
 
 class TestParseAddress:
@@ -26,10 +26,12 @@ class TestParseAddress:
 
 class TestParseAddresses:
     def test_multiple(self):
-        addrs = _parse_addresses((
-            ("Alice", "alice@example.com"),
-            ("Bob", "bob@example.com"),
-        ))
+        addrs = _parse_addresses(
+            (
+                ("Alice", "alice@example.com"),
+                ("Bob", "bob@example.com"),
+            )
+        )
         assert len(addrs) == 2
         assert addrs[0].name == "Alice"
         assert addrs[1].address == "bob@example.com"
@@ -39,10 +41,12 @@ class TestParseAddresses:
         assert addrs == []
 
     def test_filters_empty_addresses(self):
-        addrs = _parse_addresses((
-            ("Alice", "alice@example.com"),
-            ("", ""),
-        ))
+        addrs = _parse_addresses(
+            (
+                ("Alice", "alice@example.com"),
+                ("", ""),
+            )
+        )
         assert len(addrs) == 1
 
 

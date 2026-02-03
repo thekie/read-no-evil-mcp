@@ -2,8 +2,6 @@
 
 from datetime import datetime
 
-import pytest
-
 from read_no_evil_mcp.models import (
     Attachment,
     Email,
@@ -135,9 +133,7 @@ class TestEmail:
             cc=[EmailAddress(address="cc@example.com")],
             body_plain="Plain text",
             body_html="<p>HTML</p>",
-            attachments=[
-                Attachment(filename="file.pdf", content_type="application/pdf", size=100)
-            ],
+            attachments=[Attachment(filename="file.pdf", content_type="application/pdf", size=100)],
             message_id="<abc123@example.com>",
         )
         assert len(email.to) == 1
