@@ -5,7 +5,7 @@ CPU-based inference without heavy PyTorch dependencies.
 """
 
 import structlog
-from transformers import AutoTokenizer, pipeline
+from transformers import pipeline
 
 from read_no_evil_mcp.models import ScanResult
 
