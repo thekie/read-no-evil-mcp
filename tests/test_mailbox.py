@@ -276,7 +276,7 @@ class TestSecureMailbox:
         mock_service: MagicMock,
         mock_protection: MagicMock,
     ) -> None:
-        """Test that HTML-only emails are scanned after stripping tags (issue #27)."""
+        """Test that HTML-only emails are scanned and blocked (issue #27)."""
         email = Email(
             uid=123,
             folder="INBOX",
@@ -296,12 +296,9 @@ class TestSecureMailbox:
         with pytest.raises(PromptInjectionError):
             mailbox.get_email("INBOX", 123)
 
-        # Verify HTML was stripped - scan should contain plain text, not HTML tags
+        # Verify scan was called with HTML content (scan() handles stripping internally)
         call_args = mock_protection.scan.call_args[0][0]
         assert "Ignore previous instructions" in call_args
-        assert "<html>" not in call_args
-        assert "<body>" not in call_args
-        assert "<p>" not in call_args
 
 
 class TestPromptInjectionError:

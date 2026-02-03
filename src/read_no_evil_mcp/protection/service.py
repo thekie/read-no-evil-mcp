@@ -55,6 +55,8 @@ class ProtectionService:
     def scan(self, content: str) -> ScanResult:
         """Scan content for prompt injection attacks.
 
+        Automatically strips HTML tags if content contains HTML markup.
+
         Args:
             content: Text content to scan (email body, subject, etc.)
 
@@ -63,6 +65,12 @@ class ProtectionService:
         """
         if not content:
             return ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+
+        # Strip HTML tags if content looks like HTML
+        if "<" in content and ">" in content:
+            content = strip_html_tags(content)
+            if not content:
+                return ScanResult(is_safe=True, score=0.0, detected_patterns=[])
 
         return self._scanner.scan(content)
 
@@ -74,14 +82,13 @@ class ProtectionService:
     ) -> ScanResult:
         """Scan all email content fields.
 
-        Combines subject and body content for scanning. If body_plain is empty
-        but body_html is provided, HTML tags are stripped to extract plain text
-        for scanning.
+        Combines subject and body content for scanning. HTML content is
+        automatically stripped by scan().
 
         Args:
             subject: Email subject line.
             body_plain: Plain text body.
-            body_html: HTML body (stripped to plain text if body_plain is empty).
+            body_html: HTML body (will be stripped automatically).
 
         Returns:
             ScanResult with combined detection results.
@@ -94,11 +101,7 @@ class ProtectionService:
         if body_plain:
             parts.append(body_plain)
         if body_html:
-            # Always strip HTML tags for better detection
-            # (scanning raw HTML dilutes malicious content with tags)
-            plain_from_html = strip_html_tags(body_html)
-            if plain_from_html:
-                parts.append(plain_from_html)
+            parts.append(body_html)
 
         if not parts:
             return ScanResult(is_safe=True, score=0.0, detected_patterns=[])
