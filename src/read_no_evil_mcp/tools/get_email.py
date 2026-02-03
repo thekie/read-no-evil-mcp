@@ -1,5 +1,6 @@
 """Get email MCP tool."""
 
+from read_no_evil_mcp.mailbox import PromptInjectionError
 from read_no_evil_mcp.models import Email
 from read_no_evil_mcp.tools._app import mcp
 from read_no_evil_mcp.tools._service import create_service
@@ -14,7 +15,16 @@ def get_email(folder: str, uid: int) -> str:
         uid: Unique identifier of the email.
     """
     with create_service() as service:
-        email_result: Email | None = service.get_email(folder, uid)
+        try:
+            email_result: Email | None = service.get_email(folder, uid)
+        except PromptInjectionError as e:
+            patterns = ", ".join(e.scan_result.detected_patterns)
+            return (
+                f"BLOCKED: Email {folder}/{uid} contains suspected prompt injection.\n"
+                f"Detected patterns: {patterns}\n"
+                f"Score: {e.scan_result.score:.2f}\n\n"
+                "This email has been blocked to protect against prompt injection attacks."
+            )
 
         if not email_result:
             return f"Email not found: {folder}/{uid}"

@@ -3,12 +3,12 @@
 from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock
 
+from read_no_evil_mcp.email.service import EmailService
 from read_no_evil_mcp.models import Email, EmailAddress, EmailSummary, Folder
-from read_no_evil_mcp.service import EmailService
 
 
 class TestEmailService:
-    def test_connect(self):
+    def test_connect(self) -> None:
         """Test that connect delegates to connector."""
         mock_connector = MagicMock()
         service = EmailService(mock_connector)
@@ -17,7 +17,7 @@ class TestEmailService:
 
         mock_connector.connect.assert_called_once()
 
-    def test_disconnect(self):
+    def test_disconnect(self) -> None:
         """Test that disconnect delegates to connector."""
         mock_connector = MagicMock()
         service = EmailService(mock_connector)
@@ -26,7 +26,7 @@ class TestEmailService:
 
         mock_connector.disconnect.assert_called_once()
 
-    def test_list_folders(self):
+    def test_list_folders(self) -> None:
         """Test listing folders through service."""
         mock_connector = MagicMock()
         expected_folders = [
@@ -42,7 +42,7 @@ class TestEmailService:
         assert folders == expected_folders
         mock_connector.list_folders.assert_called_once()
 
-    def test_fetch_emails(self):
+    def test_fetch_emails(self) -> None:
         """Test fetching email summaries through service."""
         mock_connector = MagicMock()
         expected_emails = [
@@ -79,7 +79,7 @@ class TestEmailService:
             limit=10,
         )
 
-    def test_fetch_emails_defaults(self):
+    def test_fetch_emails_defaults(self) -> None:
         """Test fetch_emails with default folder."""
         mock_connector = MagicMock()
         mock_connector.fetch_emails.return_value = []
@@ -94,7 +94,7 @@ class TestEmailService:
             limit=None,
         )
 
-    def test_get_email(self):
+    def test_get_email(self) -> None:
         """Test getting full email through service."""
         mock_connector = MagicMock()
         expected_email = Email(
@@ -113,7 +113,7 @@ class TestEmailService:
         assert email == expected_email
         mock_connector.get_email.assert_called_once_with("INBOX", 123)
 
-    def test_get_email_not_found(self):
+    def test_get_email_not_found(self) -> None:
         """Test getting non-existent email returns None."""
         mock_connector = MagicMock()
         mock_connector.get_email.return_value = None
@@ -124,7 +124,7 @@ class TestEmailService:
         assert email is None
         mock_connector.get_email.assert_called_once_with("INBOX", 999)
 
-    def test_context_manager(self):
+    def test_context_manager(self) -> None:
         """Test that service can be used as context manager."""
         mock_connector = MagicMock()
         mock_connector.list_folders.return_value = [Folder(name="INBOX")]
@@ -136,7 +136,7 @@ class TestEmailService:
         mock_connector.connect.assert_called_once()
         mock_connector.disconnect.assert_called_once()
 
-    def test_context_manager_disconnects_on_exception(self):
+    def test_context_manager_disconnects_on_exception(self) -> None:
         """Test that context manager disconnects even on exception."""
         mock_connector = MagicMock()
         mock_connector.list_folders.side_effect = RuntimeError("Error")
