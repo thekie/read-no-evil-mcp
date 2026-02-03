@@ -37,7 +37,8 @@ jobs:
       - name: Check for changes
         id: check
         run: |
-          if git diff --quiet DETECTION_MATRIX.md 2>/dev/null; then
+          git add DETECTION_MATRIX.md
+          if git diff --staged --quiet DETECTION_MATRIX.md; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "changed=true" >> $GITHUB_OUTPUT
