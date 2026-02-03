@@ -46,8 +46,29 @@ The AI reads this, follows the hidden instruction, and your data is compromised.
 
 ## Installation
 
+### Using uvx (Recommended)
+
 ```bash
-# Install with CPU-only PyTorch (recommended, ~200MB)
+# One-liner, auto-installs everything
+uvx read-no-evil-mcp
+```
+
+Or in your MCP client config:
+```json
+{
+  "mcpServers": {
+    "email": {
+      "command": "uvx",
+      "args": ["read-no-evil-mcp"]
+    }
+  }
+}
+```
+
+### Using pip
+
+```bash
+# Install with CPU-only PyTorch (smaller, ~200MB)
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install read-no-evil-mcp
 ```
