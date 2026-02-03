@@ -15,7 +15,7 @@ from read_no_evil_mcp.models import (
     ScanResult,
 )
 from read_no_evil_mcp.protection.heuristic import HeuristicScanner
-from read_no_evil_mcp.protection.layer import ProtectionLayer
+from read_no_evil_mcp.protection.service import ProtectionService
 
 __version__ = "0.1.0"
 
@@ -31,7 +31,7 @@ __all__ = [
     "IMAPConfig",
     "IMAPConnector",
     "PromptInjectionError",
-    "ProtectionLayer",
+    "ProtectionService",
     "ScanResult",
     "SecureMailbox",
     "Settings",

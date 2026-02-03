@@ -1,11 +1,11 @@
-"""Secure mailbox that wraps EmailService with protection layer."""
+"""Secure mailbox that wraps EmailService with protection service."""
 
 from datetime import date, timedelta
 from types import TracebackType
 
 from read_no_evil_mcp.email.service import EmailService
 from read_no_evil_mcp.models import Email, EmailSummary, Folder, ScanResult
-from read_no_evil_mcp.protection.layer import ProtectionLayer
+from read_no_evil_mcp.protection.service import ProtectionService
 
 
 class PromptInjectionError(Exception):
@@ -32,16 +32,16 @@ class SecureMailbox:
     def __init__(
         self,
         email_service: EmailService,
-        protection: ProtectionLayer | None = None,
+        protection: ProtectionService | None = None,
     ) -> None:
         """Initialize secure mailbox.
 
         Args:
             email_service: Email service for fetching emails.
-            protection: Protection layer for scanning. Defaults to standard layer.
+            protection: Protection service for scanning. Defaults to standard service.
         """
         self._service = email_service
-        self._protection = protection or ProtectionLayer()
+        self._protection = protection or ProtectionService()
 
     def connect(self) -> None:
         """Connect to the email server."""

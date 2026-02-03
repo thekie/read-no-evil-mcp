@@ -8,7 +8,7 @@ import pytest
 from read_no_evil_mcp.email.service import EmailService
 from read_no_evil_mcp.mailbox import PromptInjectionError, SecureMailbox
 from read_no_evil_mcp.models import Email, EmailAddress, EmailSummary, Folder, ScanResult
-from read_no_evil_mcp.protection.layer import ProtectionLayer
+from read_no_evil_mcp.protection.service import ProtectionService
 
 
 class TestSecureMailbox:
@@ -18,7 +18,7 @@ class TestSecureMailbox:
 
     @pytest.fixture
     def mock_protection(self) -> MagicMock:
-        return MagicMock(spec=ProtectionLayer)
+        return MagicMock(spec=ProtectionService)
 
     @pytest.fixture
     def mailbox(self, mock_service: MagicMock, mock_protection: MagicMock) -> SecureMailbox:
@@ -145,8 +145,8 @@ class TestSecureMailbox:
         mock_service.get_email.assert_called_once_with("INBOX", 999)
         mock_protection.scan_email_content.assert_not_called()
 
-    def test_default_protection_layer(self, mock_service: MagicMock) -> None:
-        """Test that default protection layer is created if not provided."""
+    def test_default_protection_service(self, mock_service: MagicMock) -> None:
+        """Test that default protection service is created if not provided."""
         mailbox = SecureMailbox(mock_service)
 
         # Create a test email with malicious content

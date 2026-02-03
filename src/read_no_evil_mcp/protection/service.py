@@ -1,10 +1,10 @@
-"""Protection layer for orchestrating security scanning."""
+"""Protection service for orchestrating security scanning."""
 
 from read_no_evil_mcp.models import ScanResult
 from read_no_evil_mcp.protection.heuristic import HeuristicScanner
 
 
-class ProtectionLayer:
+class ProtectionService:
     """Orchestrates content scanning for prompt injection attacks.
 
     Uses LLM Guard's PromptInjection scanner for ML-based detection.
