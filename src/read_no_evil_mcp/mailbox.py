@@ -73,6 +73,24 @@ class SecureMailbox:
         """
         return self._service.list_folders()
 
+    def _scan_summary(self, summary: EmailSummary) -> ScanResult:
+        """Scan email summary fields for prompt injection.
+
+        Args:
+            summary: Email summary to scan.
+
+        Returns:
+            ScanResult from scanning subject and sender.
+        """
+        parts: list[str] = [summary.subject]
+
+        if summary.sender.name:
+            parts.append(summary.sender.name)
+        parts.append(summary.sender.address)
+
+        combined = "\n".join(parts)
+        return self._protection.scan(combined)
+
     def fetch_emails(
         self,
         folder: str = "INBOX",
@@ -81,9 +99,10 @@ class SecureMailbox:
         from_date: date | None = None,
         limit: int | None = None,
     ) -> list[EmailSummary]:
-        """Fetch email summaries from a folder.
+        """Fetch email summaries from a folder with protection scanning.
 
-        Summaries are considered safe (no full body content).
+        Scans subject and sender fields for prompt injection.
+        Emails with detected attacks are filtered out.
 
         Args:
             folder: Folder to fetch from (default: INBOX)
@@ -92,14 +111,22 @@ class SecureMailbox:
             limit: Maximum number of emails to return
 
         Returns:
-            List of EmailSummary objects, newest first.
+            List of safe EmailSummary objects, newest first.
         """
-        return self._service.fetch_emails(
+        summaries = self._service.fetch_emails(
             folder,
             lookback=lookback,
             from_date=from_date,
             limit=limit,
         )
+
+        safe_summaries: list[EmailSummary] = []
+        for summary in summaries:
+            scan_result = self._scan_summary(summary)
+            if not scan_result.is_blocked:
+                safe_summaries.append(summary)
+
+        return safe_summaries
 
     def get_email(self, folder: str, uid: int) -> Email | None:
         """Get full email content by UID with protection scanning.
@@ -121,12 +148,20 @@ class SecureMailbox:
         if email is None:
             return None
 
-        # Scan email content
-        scan_result = self._protection.scan_email_content(
-            subject=email.subject,
-            body_plain=email.body_plain,
-            body_html=email.body_html,
-        )
+        # Build content to scan: subject, sender, body
+        parts: list[str] = [email.subject]
+
+        if email.sender.name:
+            parts.append(email.sender.name)
+        parts.append(email.sender.address)
+
+        if email.body_plain:
+            parts.append(email.body_plain)
+        if email.body_html:
+            parts.append(email.body_html)
+
+        combined = "\n".join(parts)
+        scan_result = self._protection.scan(combined)
 
         if scan_result.is_blocked:
             raise PromptInjectionError(scan_result, uid, folder)
