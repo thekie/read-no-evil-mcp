@@ -2,6 +2,7 @@
 
 from datetime import date, timedelta
 from types import TracebackType
+from typing import Any
 
 from imap_tools import AND, MailBox, MailBoxUnencrypted
 
@@ -13,6 +14,33 @@ from read_no_evil_mcp.models import (
     Folder,
     IMAPConfig,
 )
+
+# Default sender for emails without from address
+_DEFAULT_SENDER = EmailAddress(address="unknown@unknown")
+
+
+def _get_sender(from_values: Any) -> EmailAddress:
+    """Extract sender from imap-tools from_values, handling None case."""
+    if from_values is None:
+        return _DEFAULT_SENDER
+    name = getattr(from_values, "name", None)
+    email = getattr(from_values, "email", None)
+    if not email:
+        return _DEFAULT_SENDER
+    return EmailAddress(name=name or None, address=email)
+
+
+def _get_addresses(values: Any) -> list[EmailAddress]:
+    """Extract list of addresses from imap-tools to/cc_values."""
+    if values is None:
+        return []
+    result = []
+    for addr in values:
+        email = getattr(addr, "email", None)
+        if email:
+            name = getattr(addr, "name", None)
+            result.append(EmailAddress(name=name or None, address=email))
+    return result
 
 
 class IMAPConnector:
@@ -90,12 +118,7 @@ class IMAPConnector:
 
         summaries = []
         for msg in self._mailbox.fetch(criteria, reverse=True, bulk=True):
-            # msg.from_values is an EmailAddress object from imap-tools
-            from_addr = msg.from_values
-            sender = EmailAddress(
-                name=from_addr.name or None,
-                address=from_addr.email or "unknown@unknown",
-            )
+            sender = _get_sender(msg.from_values)
 
             summaries.append(
                 EmailSummary(
@@ -121,12 +144,7 @@ class IMAPConnector:
         self._mailbox.folder.set(folder)
 
         for msg in self._mailbox.fetch(AND(uid=str(uid))):
-            # msg.from_values is an EmailAddress object from imap-tools
-            from_addr = msg.from_values
-            sender = EmailAddress(
-                name=from_addr.name or None,
-                address=from_addr.email or "unknown@unknown",
-            )
+            sender = _get_sender(msg.from_values)
 
             attachments = [
                 Attachment(
@@ -137,18 +155,6 @@ class IMAPConnector:
                 for att in msg.attachments
             ]
 
-            # to_values and cc_values are tuples of EmailAddress objects
-            to_list = [
-                EmailAddress(name=addr.name or None, address=addr.email)
-                for addr in msg.to_values
-                if addr.email
-            ]
-            cc_list = [
-                EmailAddress(name=addr.name or None, address=addr.email)
-                for addr in msg.cc_values
-                if addr.email
-            ]
-
             return Email(
                 uid=int(msg.uid) if msg.uid else 0,
                 folder=folder,
@@ -156,8 +162,8 @@ class IMAPConnector:
                 sender=sender,
                 date=msg.date,
                 has_attachments=len(attachments) > 0,
-                to=to_list,
-                cc=cc_list,
+                to=_get_addresses(msg.to_values),
+                cc=_get_addresses(msg.cc_values),
                 body_plain=msg.text or None,
                 body_html=msg.html or None,
                 attachments=attachments,
