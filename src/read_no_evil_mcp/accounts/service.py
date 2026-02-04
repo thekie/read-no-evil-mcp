@@ -3,7 +3,6 @@
 from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.accounts.credentials.base import CredentialBackend
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
-from read_no_evil_mcp.email.service import EmailService
 from read_no_evil_mcp.exceptions import AccountNotFoundError, UnsupportedConnectorError
 from read_no_evil_mcp.mailbox import SecureMailbox
 from read_no_evil_mcp.models import IMAPConfig
@@ -71,5 +70,4 @@ class AccountService:
         else:
             raise UnsupportedConnectorError(config.type)
 
-        email_service = EmailService(connector)
-        return SecureMailbox(email_service)
+        return SecureMailbox(connector, config.permissions)

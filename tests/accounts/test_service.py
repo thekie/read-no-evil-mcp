@@ -55,12 +55,10 @@ class TestAccountService:
         assert exc_info.value.account_id == "nonexistent"
 
     @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
-    @patch("read_no_evil_mcp.accounts.service.EmailService")
     @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
     def test_get_mailbox_creates_correct_config(
         self,
         mock_mailbox: MagicMock,
-        mock_email_service: MagicMock,
         mock_connector: MagicMock,
     ) -> None:
         """Test get_mailbox creates connector with correct config."""
@@ -88,12 +86,10 @@ class TestAccountService:
         assert imap_config.ssl is True
 
     @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
-    @patch("read_no_evil_mcp.accounts.service.EmailService")
     @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
     def test_get_mailbox_returns_secure_mailbox(
         self,
         mock_mailbox: MagicMock,
-        mock_email_service: MagicMock,
         mock_connector: MagicMock,
     ) -> None:
         """Test get_mailbox returns SecureMailbox instance."""
@@ -106,3 +102,31 @@ class TestAccountService:
 
         mock_mailbox.assert_called_once()
         assert result == mock_mailbox.return_value
+
+    @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_passes_permissions(
+        self,
+        mock_mailbox: MagicMock,
+        mock_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox passes account permissions to SecureMailbox."""
+        from read_no_evil_mcp.accounts.permissions import AccountPermissions
+
+        accounts = [
+            AccountConfig(
+                id="work",
+                host="mail.work.com",
+                username="work@example.com",
+                permissions=AccountPermissions(read=True, folders=["INBOX"]),
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}))
+
+        service.get_mailbox("work")
+
+        # Verify SecureMailbox was called with connector and permissions
+        call_args = mock_mailbox.call_args
+        assert call_args.args[0] == mock_connector.return_value
+        assert call_args.args[1].read is True
+        assert call_args.args[1].folders == ["INBOX"]
