@@ -319,3 +319,36 @@ class TestIMAPConnector:
         connector = IMAPConnector(config)
         with pytest.raises(RuntimeError, match="Not connected"):
             connector.mark_spam("INBOX", 123)
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_delete_email(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        connector = IMAPConnector(config)
+        connector.connect()
+        result = connector.delete_email("INBOX", 123)
+
+        assert result is True
+        mock_mailbox.folder.set.assert_called_with("INBOX")
+        mock_mailbox.delete.assert_called_once_with("123")
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_delete_email_different_folder(
+        self, mock_mailbox_class: MagicMock, config: IMAPConfig
+    ) -> None:
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        connector = IMAPConnector(config)
+        connector.connect()
+        result = connector.delete_email("Sent", 456)
+
+        assert result is True
+        mock_mailbox.folder.set.assert_called_with("Sent")
+        mock_mailbox.delete.assert_called_once_with("456")
+
+    def test_delete_email_not_connected(self, config: IMAPConfig) -> None:
+        connector = IMAPConnector(config)
+        with pytest.raises(RuntimeError, match="Not connected"):
+            connector.delete_email("INBOX", 123)

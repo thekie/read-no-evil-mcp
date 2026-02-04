@@ -249,3 +249,22 @@ class SecureMailbox:
         self._require_folder(folder)
 
         return self._connector.mark_spam(folder, uid)
+
+    def delete_email(self, folder: str, uid: int) -> bool:
+        """Delete an email by UID.
+
+        Args:
+            folder: Folder containing the email
+            uid: Unique identifier of the email
+
+        Returns:
+            True if email was deleted successfully, False otherwise.
+
+        Raises:
+            PermissionDeniedError: If delete access is denied or folder is not allowed.
+        """
+        if not self._permissions.delete:
+            raise PermissionDeniedError("Delete access denied for this account")
+        self._require_folder(folder)
+
+        return self._connector.delete_email(folder, uid)
