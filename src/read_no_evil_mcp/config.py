@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-from pydantic import SecretStr
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -61,34 +60,21 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
 class Settings(BaseSettings):
     """Application settings loaded from environment variables with RNOE_ prefix.
 
-    Supports both legacy flat configuration (single account) and new multi-account
-    configuration via YAML file.
-
-    Environment variables (legacy single account):
-        RNOE_IMAP_HOST, RNOE_IMAP_PORT, RNOE_IMAP_USERNAME, RNOE_IMAP_PASSWORD, etc.
-
-    YAML configuration (multi-account):
+    Multi-account configuration via YAML file:
         accounts:
           - id: "work"
             type: "imap"
             host: "mail.company.com"
             username: "user@company.com"
 
-    Account passwords are always retrieved via credential backends
+    Account passwords are retrieved via credential backends
     (e.g., RNOE_ACCOUNT_WORK_PASSWORD environment variable).
     """
 
     model_config = SettingsConfigDict(env_prefix="RNOE_")
 
-    # Multi-account configuration (preferred)
+    # Multi-account configuration
     accounts: list[AccountConfig] = []
-
-    # Legacy IMAP configuration (single account, for backwards compatibility)
-    imap_host: str | None = None
-    imap_port: int = 993
-    imap_username: str | None = None
-    imap_password: SecretStr | None = None
-    imap_ssl: bool = True
 
     # Application defaults
     default_lookback_days: int = 7
@@ -110,31 +96,3 @@ class Settings(BaseSettings):
             dotenv_settings,
             file_secret_settings,
         )
-
-    def get_effective_accounts(self) -> list[AccountConfig]:
-        """Get list of configured accounts, including legacy account if set.
-
-        If multi-account configuration is provided, use that.
-        Otherwise, if legacy single-account environment variables are set,
-        create a default account from them.
-
-        Returns:
-            List of AccountConfig objects.
-        """
-        if self.accounts:
-            return self.accounts
-
-        # Fall back to legacy single-account configuration
-        if self.imap_host and self.imap_username:
-            return [
-                AccountConfig(
-                    id="default",
-                    type="imap",
-                    host=self.imap_host,
-                    port=self.imap_port,
-                    username=self.imap_username,
-                    ssl=self.imap_ssl,
-                )
-            ]
-
-        return []
