@@ -11,22 +11,14 @@ from read_no_evil_mcp.exceptions import CredentialNotFoundError
 
 class TestEnvCredentialBackend:
     def test_get_password_from_env(self) -> None:
-        """Test retrieving password from environment variable."""
+        """Test retrieving password from environment variable (case normalized)."""
         backend = EnvCredentialBackend()
 
+        # Lowercase account ID is normalized to uppercase in env var name
         with patch.dict(os.environ, {"RNOE_ACCOUNT_WORK_PASSWORD": "secret123"}):
             password = backend.get_password("work")
 
         assert password.get_secret_value() == "secret123"
-
-    def test_get_password_uppercase_account_id(self) -> None:
-        """Test account ID is normalized to uppercase."""
-        backend = EnvCredentialBackend()
-
-        with patch.dict(os.environ, {"RNOE_ACCOUNT_PERSONAL_PASSWORD": "mysecret"}):
-            password = backend.get_password("personal")
-
-        assert password.get_secret_value() == "mysecret"
 
     def test_get_password_with_hyphens(self) -> None:
         """Test hyphens in account ID are converted to underscores."""
@@ -52,7 +44,8 @@ class TestEnvCredentialBackend:
         """Test mixed case with hyphens is handled correctly."""
         backend = EnvCredentialBackend()
 
-        with patch.dict(os.environ, {"RNOE_ACCOUNT_WORK_EMAIL_2_PASSWORD": "work-secret"}):
-            password = backend.get_password("work-email-2")
+        # "Work-Account" → "WORK_ACCOUNT" (uppercase + hyphen→underscore)
+        with patch.dict(os.environ, {"RNOE_ACCOUNT_WORK_ACCOUNT_PASSWORD": "work-secret"}):
+            password = backend.get_password("Work-Account")
 
         assert password.get_secret_value() == "work-secret"

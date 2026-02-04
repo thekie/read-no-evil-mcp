@@ -194,20 +194,18 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 ### v0.2 (Current)
 - [x] Multi-account support
 - [x] YAML-based configuration
-- [ ] Gmail API connector
-- [ ] Microsoft Graph connector  
-- [ ] Improved obfuscation detection
+- [ ] Rights management (per-account permissions)
+- [ ] Additional actions: delete emails, write/send emails, mark as spam
 - [ ] Configurable sensitivity levels
 
 ### v0.3 (Future)
-- [ ] Write/send emails
-- [ ] Delete emails
-- [ ] Mark as spam
 - [ ] Attachment scanning
 - [ ] Docker image
 
 ### v0.4 (Later)
-- [ ] Rights management (per-folder, per-action permissions)
+- [ ] Gmail API connector
+- [ ] Microsoft Graph connector
+- [ ] Improved obfuscation detection
 
 ## Contributing
 
