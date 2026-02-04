@@ -4,9 +4,10 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic import SecretStr
 
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
-from read_no_evil_mcp.models import IMAPConfig
+from read_no_evil_mcp.models import IMAPConfig, SMTPConfig
 
 
 class TestIMAPConnector:
@@ -224,3 +225,166 @@ class TestIMAPConnector:
         connector = IMAPConnector(config)
         with pytest.raises(RuntimeError, match="Not connected"):
             connector.delete_email("INBOX", 123)
+
+
+class TestIMAPConnectorWithSMTP:
+    """Tests for IMAPConnector SMTP capabilities."""
+
+    @pytest.fixture
+    def imap_config(self) -> IMAPConfig:
+        return IMAPConfig(
+            host="imap.example.com",
+            username="user",
+            password=SecretStr("secret"),
+        )
+
+    @pytest.fixture
+    def smtp_config(self) -> SMTPConfig:
+        return SMTPConfig(
+            host="smtp.example.com",
+            port=587,
+            username="user",
+            password=SecretStr("secret"),
+            ssl=False,
+        )
+
+    def test_can_send_without_smtp(self, imap_config: IMAPConfig) -> None:
+        """Test can_send returns False when SMTP is not configured."""
+        connector = IMAPConnector(imap_config)
+        assert connector.can_send() is False
+
+    def test_can_send_with_smtp(
+        self, imap_config: IMAPConfig, smtp_config: SMTPConfig
+    ) -> None:
+        """Test can_send returns True when SMTP is configured."""
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        assert connector.can_send() is True
+
+    def test_send_without_smtp_raises(self, imap_config: IMAPConfig) -> None:
+        """Test send raises NotImplementedError when SMTP is not configured."""
+        connector = IMAPConnector(imap_config)
+        with pytest.raises(NotImplementedError) as exc_info:
+            connector.send(
+                from_addr="sender@example.com",
+                to=["recipient@example.com"],
+                subject="Test",
+                body="Test body",
+            )
+        assert "does not support sending" in str(exc_info.value)
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
+    def test_connect_with_smtp(
+        self,
+        mock_smtp_class: MagicMock,
+        mock_mailbox_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test connect establishes both IMAP and SMTP connections."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+        mock_smtp = MagicMock()
+        mock_smtp_class.return_value = mock_smtp
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+
+        mock_mailbox_class.assert_called_once()
+        mock_smtp_class.assert_called_once_with("smtp.example.com", 587)
+        mock_smtp.starttls.assert_called_once()
+        mock_smtp.login.assert_called_once()
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
+    def test_disconnect_with_smtp(
+        self,
+        mock_smtp_class: MagicMock,
+        mock_mailbox_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test disconnect closes both IMAP and SMTP connections."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+        mock_smtp = MagicMock()
+        mock_smtp_class.return_value = mock_smtp
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+        connector.disconnect()
+
+        mock_mailbox.logout.assert_called_once()
+        mock_smtp.quit.assert_called_once()
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
+    def test_send_email(
+        self,
+        mock_smtp_class: MagicMock,
+        mock_mailbox_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test sending email via IMAP connector with SMTP."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+        mock_smtp = MagicMock()
+        mock_smtp_class.return_value = mock_smtp
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+
+        result = connector.send(
+            from_addr="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test Subject",
+            body="Test body",
+        )
+
+        assert result is True
+        mock_smtp.sendmail.assert_called_once()
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
+    def test_send_email_with_reply_to(
+        self,
+        mock_smtp_class: MagicMock,
+        mock_mailbox_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test sending email with reply_to parameter."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+        mock_smtp = MagicMock()
+        mock_smtp_class.return_value = mock_smtp
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+
+        result = connector.send(
+            from_addr="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test Subject",
+            body="Test body",
+            reply_to="replies@example.com",
+        )
+
+        assert result is True
+        call_args = mock_smtp.sendmail.call_args
+        msg_str = call_args[0][2]
+        assert "Reply-To: replies@example.com" in msg_str
+
+    def test_send_not_connected_raises(
+        self, imap_config: IMAPConfig, smtp_config: SMTPConfig
+    ) -> None:
+        """Test send raises RuntimeError when not connected."""
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        with pytest.raises(RuntimeError, match="Not connected"):
+            connector.send(
+                from_addr="sender@example.com",
+                to=["recipient@example.com"],
+                subject="Test",
+                body="Test body",
+            )

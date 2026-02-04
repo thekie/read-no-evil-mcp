@@ -12,6 +12,7 @@ def send_email(
     subject: str,
     body: str,
     cc: list[str] | None = None,
+    reply_to: str | None = None,
 ) -> str:
     """Send an email.
 
@@ -21,6 +22,7 @@ def send_email(
         subject: Email subject line.
         body: Email body text (plain text).
         cc: Optional list of CC recipients.
+        reply_to: Optional Reply-To email address.
     """
     try:
         with create_securemailbox(account) as mailbox:
@@ -29,6 +31,7 @@ def send_email(
                 subject=subject,
                 body=body,
                 cc=cc,
+                reply_to=reply_to,
             )
             recipients = ", ".join(to)
             if cc:

@@ -59,6 +59,7 @@ class SMTPConnector:
         subject: str,
         body: str,
         cc: list[str] | None = None,
+        reply_to: str | None = None,
     ) -> bool:
         """Send an email.
 
@@ -68,6 +69,7 @@ class SMTPConnector:
             subject: Email subject line.
             body: Email body text (plain text).
             cc: Optional list of CC recipients.
+            reply_to: Optional Reply-To email address.
 
         Returns:
             True if email was sent successfully.
@@ -86,6 +88,9 @@ class SMTPConnector:
 
         if cc:
             msg["Cc"] = ", ".join(cc)
+
+        if reply_to:
+            msg["Reply-To"] = reply_to
 
         msg.attach(MIMEText(body, "plain"))
 

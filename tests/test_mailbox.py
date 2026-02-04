@@ -7,7 +7,6 @@ import pytest
 
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
 from read_no_evil_mcp.email.connectors.base import BaseConnector
-from read_no_evil_mcp.email.connectors.smtp import SMTPConnector
 from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.mailbox import PromptInjectionError, SecureMailbox
 from read_no_evil_mcp.models import Email, EmailAddress, EmailSummary, Folder, ScanResult
@@ -419,14 +418,13 @@ class TestSecureMailbox:
         mock_protection: MagicMock,
     ) -> None:
         """Test successful email sending."""
-        mock_smtp = MagicMock(spec=SMTPConnector)
-        mock_smtp.send_email.return_value = True
+        mock_connector.can_send.return_value = True
+        mock_connector.send.return_value = True
         permissions = AccountPermissions(send=True)
         mailbox = SecureMailbox(
             mock_connector,
             permissions,
             mock_protection,
-            smtp_connector=mock_smtp,
             from_address="sender@example.com",
         )
 
@@ -437,12 +435,13 @@ class TestSecureMailbox:
         )
 
         assert result is True
-        mock_smtp.send_email.assert_called_once_with(
+        mock_connector.send.assert_called_once_with(
             from_addr="sender@example.com",
             to=["recipient@example.com"],
             subject="Test Subject",
             body="Test body",
             cc=None,
+            reply_to=None,
         )
 
     def test_send_email_with_cc(
@@ -451,14 +450,13 @@ class TestSecureMailbox:
         mock_protection: MagicMock,
     ) -> None:
         """Test email sending with CC recipients."""
-        mock_smtp = MagicMock(spec=SMTPConnector)
-        mock_smtp.send_email.return_value = True
+        mock_connector.can_send.return_value = True
+        mock_connector.send.return_value = True
         permissions = AccountPermissions(send=True)
         mailbox = SecureMailbox(
             mock_connector,
             permissions,
             mock_protection,
-            smtp_connector=mock_smtp,
             from_address="sender@example.com",
         )
 
@@ -470,12 +468,46 @@ class TestSecureMailbox:
         )
 
         assert result is True
-        mock_smtp.send_email.assert_called_once_with(
+        mock_connector.send.assert_called_once_with(
             from_addr="sender@example.com",
             to=["recipient@example.com"],
             subject="Test Subject",
             body="Test body",
             cc=["cc@example.com"],
+            reply_to=None,
+        )
+
+    def test_send_email_with_reply_to(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test email sending with reply_to parameter."""
+        mock_connector.can_send.return_value = True
+        mock_connector.send.return_value = True
+        permissions = AccountPermissions(send=True)
+        mailbox = SecureMailbox(
+            mock_connector,
+            permissions,
+            mock_protection,
+            from_address="sender@example.com",
+        )
+
+        result = mailbox.send_email(
+            to=["recipient@example.com"],
+            subject="Test Subject",
+            body="Test body",
+            reply_to="replies@example.com",
+        )
+
+        assert result is True
+        mock_connector.send.assert_called_once_with(
+            from_addr="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test Subject",
+            body="Test body",
+            cc=None,
+            reply_to="replies@example.com",
         )
 
     def test_send_email_permission_denied(
@@ -484,13 +516,12 @@ class TestSecureMailbox:
         mock_protection: MagicMock,
     ) -> None:
         """Test send_email raises PermissionDeniedError when send is denied."""
-        mock_smtp = MagicMock(spec=SMTPConnector)
+        mock_connector.can_send.return_value = True
         permissions = AccountPermissions(send=False)  # Default is False
         mailbox = SecureMailbox(
             mock_connector,
             permissions,
             mock_protection,
-            smtp_connector=mock_smtp,
             from_address="sender@example.com",
         )
 
@@ -502,20 +533,20 @@ class TestSecureMailbox:
             )
 
         assert "Send access denied" in str(exc_info.value)
-        mock_smtp.send_email.assert_not_called()
+        mock_connector.send.assert_not_called()
 
-    def test_send_email_smtp_not_configured(
+    def test_send_email_sending_not_configured(
         self,
         mock_connector: MagicMock,
         mock_protection: MagicMock,
     ) -> None:
-        """Test send_email raises RuntimeError when SMTP is not configured."""
+        """Test send_email raises RuntimeError when sending is not supported."""
+        mock_connector.can_send.return_value = False
         permissions = AccountPermissions(send=True)
         mailbox = SecureMailbox(
             mock_connector,
             permissions,
             mock_protection,
-            smtp_connector=None,  # No SMTP configured
             from_address="sender@example.com",
         )
 
@@ -526,7 +557,7 @@ class TestSecureMailbox:
                 body="Test body",
             )
 
-        assert "SMTP not configured" in str(exc_info.value)
+        assert "Sending not configured" in str(exc_info.value)
 
     def test_send_email_from_address_not_configured(
         self,
@@ -534,13 +565,12 @@ class TestSecureMailbox:
         mock_protection: MagicMock,
     ) -> None:
         """Test send_email raises RuntimeError when from_address is not configured."""
-        mock_smtp = MagicMock(spec=SMTPConnector)
+        mock_connector.can_send.return_value = True
         permissions = AccountPermissions(send=True)
         mailbox = SecureMailbox(
             mock_connector,
             permissions,
             mock_protection,
-            smtp_connector=mock_smtp,
             from_address=None,  # No from address
         )
 
@@ -552,27 +582,7 @@ class TestSecureMailbox:
             )
 
         assert "From address not configured" in str(exc_info.value)
-        mock_smtp.send_email.assert_not_called()
-
-    def test_context_manager_connects_smtp(
-        self,
-        mock_connector: MagicMock,
-        default_permissions: AccountPermissions,
-        mock_protection: MagicMock,
-    ) -> None:
-        """Test that context manager connects/disconnects SMTP connector."""
-        mock_smtp = MagicMock(spec=SMTPConnector)
-
-        with SecureMailbox(
-            mock_connector,
-            default_permissions,
-            mock_protection,
-            smtp_connector=mock_smtp,
-        ) as mailbox:
-            assert mailbox is not None
-
-        mock_smtp.connect.assert_called_once()
-        mock_smtp.disconnect.assert_called_once()
+        mock_connector.send.assert_not_called()
 
     def test_delete_email_success(
         self,

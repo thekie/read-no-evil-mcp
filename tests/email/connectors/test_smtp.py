@@ -173,3 +173,25 @@ class TestSMTPConnector:
             )
 
         assert "Not connected" in str(exc_info.value)
+
+    def test_send_email_with_reply_to(self, smtp_config: SMTPConfig) -> None:
+        """Test sending email with Reply-To header."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            result = connector.send_email(
+                from_addr="sender@example.com",
+                to=["recipient@example.com"],
+                subject="Test Subject",
+                body="Test body",
+                reply_to="replies@example.com",
+            )
+
+            assert result is True
+            call_args = mock_connection.sendmail.call_args
+            msg_str = call_args[0][2]
+            assert "Reply-To: replies@example.com" in msg_str

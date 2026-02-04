@@ -5,7 +5,6 @@ from types import TracebackType
 
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
 from read_no_evil_mcp.email.connectors.base import BaseConnector
-from read_no_evil_mcp.email.connectors.smtp import SMTPConnector
 from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.models import Email, EmailSummary, Folder, ScanResult
 from read_no_evil_mcp.protection.service import ProtectionService
@@ -38,22 +37,19 @@ class SecureMailbox:
         connector: BaseConnector,
         permissions: AccountPermissions,
         protection: ProtectionService | None = None,
-        smtp_connector: SMTPConnector | None = None,
         from_address: str | None = None,
     ) -> None:
         """Initialize secure mailbox.
 
         Args:
-            connector: Email connector for fetching emails.
+            connector: Email connector for fetching and optionally sending emails.
             permissions: Account permissions to enforce.
             protection: Protection service for scanning. Defaults to standard service.
-            smtp_connector: Optional SMTP connector for sending emails.
             from_address: Sender address for outgoing emails.
         """
         self._connector = connector
         self._permissions = permissions
         self._protection = protection or ProtectionService()
-        self._smtp_connector = smtp_connector
         self._from_address = from_address
 
     def _require_read(self) -> None:
@@ -102,14 +98,10 @@ class SecureMailbox:
     def connect(self) -> None:
         """Connect to the email server."""
         self._connector.connect()
-        if self._smtp_connector:
-            self._smtp_connector.connect()
 
     def disconnect(self) -> None:
         """Disconnect from the email server."""
         self._connector.disconnect()
-        if self._smtp_connector:
-            self._smtp_connector.disconnect()
 
     def __enter__(self) -> "SecureMailbox":
         """Enter context manager, connecting to the server."""
@@ -249,6 +241,7 @@ class SecureMailbox:
         subject: str,
         body: str,
         cc: list[str] | None = None,
+        reply_to: str | None = None,
     ) -> bool:
         """Send an email.
 
@@ -257,28 +250,30 @@ class SecureMailbox:
             subject: Email subject line.
             body: Email body text (plain text).
             cc: Optional list of CC recipients.
+            reply_to: Optional Reply-To email address.
 
         Returns:
             True if email was sent successfully.
 
         Raises:
             PermissionDeniedError: If send access is denied.
-            RuntimeError: If SMTP is not configured.
+            RuntimeError: If sending is not supported by the connector.
         """
         self._require_send()
 
-        if not self._smtp_connector:
-            raise RuntimeError("SMTP not configured for this account")
+        if not self._connector.can_send():
+            raise RuntimeError("Sending not configured for this account")
 
         if not self._from_address:
             raise RuntimeError("From address not configured for this account")
 
-        return self._smtp_connector.send_email(
+        return self._connector.send(
             from_addr=self._from_address,
             to=to,
             subject=subject,
             body=body,
             cc=cc,
+            reply_to=reply_to,
         )
 
     def delete_email(self, folder: str, uid: int) -> bool:

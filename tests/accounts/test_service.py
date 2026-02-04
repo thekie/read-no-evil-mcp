@@ -130,3 +130,95 @@ class TestAccountService:
         assert call_args.args[0] == mock_connector.return_value
         assert call_args.args[1].read is True
         assert call_args.args[1].folders == ["INBOX"]
+
+    @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_creates_smtp_config_when_send_enabled(
+        self,
+        mock_mailbox: MagicMock,
+        mock_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox creates SMTP config when send permission is enabled."""
+        from read_no_evil_mcp.accounts.permissions import AccountPermissions
+
+        accounts = [
+            AccountConfig(
+                id="work",
+                host="mail.work.com",
+                username="work@example.com",
+                smtp_host="smtp.work.com",
+                smtp_port=587,
+                smtp_ssl=False,
+                permissions=AccountPermissions(send=True),
+            ),
+        ]
+        credentials = MockCredentialBackend({"work": "secret123"})
+        service = AccountService(accounts, credentials)
+
+        service.get_mailbox("work")
+
+        # Verify IMAPConnector was called with smtp_config
+        call_args = mock_connector.call_args
+        smtp_config = call_args.kwargs.get("smtp_config")
+        assert smtp_config is not None
+        assert smtp_config.host == "smtp.work.com"
+        assert smtp_config.port == 587
+        assert smtp_config.username == "work@example.com"
+        assert smtp_config.password.get_secret_value() == "secret123"
+        assert smtp_config.ssl is False
+
+    @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_no_smtp_config_when_send_disabled(
+        self,
+        mock_mailbox: MagicMock,
+        mock_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox does not create SMTP config when send is disabled."""
+        from read_no_evil_mcp.accounts.permissions import AccountPermissions
+
+        accounts = [
+            AccountConfig(
+                id="work",
+                host="mail.work.com",
+                username="work@example.com",
+                permissions=AccountPermissions(send=False),
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}))
+
+        service.get_mailbox("work")
+
+        # Verify IMAPConnector was called without smtp_config
+        call_args = mock_connector.call_args
+        smtp_config = call_args.kwargs.get("smtp_config")
+        assert smtp_config is None
+
+    @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_smtp_defaults_to_imap_host(
+        self,
+        mock_mailbox: MagicMock,
+        mock_connector: MagicMock,
+    ) -> None:
+        """Test SMTP host defaults to IMAP host when not specified."""
+        from read_no_evil_mcp.accounts.permissions import AccountPermissions
+
+        accounts = [
+            AccountConfig(
+                id="work",
+                host="mail.work.com",
+                username="work@example.com",
+                smtp_host=None,  # Not specified, should default to IMAP host
+                permissions=AccountPermissions(send=True),
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}))
+
+        service.get_mailbox("work")
+
+        # Verify SMTP config uses IMAP host as fallback
+        call_args = mock_connector.call_args
+        smtp_config = call_args.kwargs.get("smtp_config")
+        assert smtp_config is not None
+        assert smtp_config.host == "mail.work.com"
