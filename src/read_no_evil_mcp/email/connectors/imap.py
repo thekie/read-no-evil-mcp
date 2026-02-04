@@ -161,3 +161,53 @@ class IMAPConnector(BaseConnector):
             )
 
         return None
+
+    def _find_spam_folder(self) -> str | None:
+        """Find the spam/junk folder name.
+
+        Different email providers use different names:
+        - Gmail: [Gmail]/Spam
+        - Others: Spam, Junk
+
+        Returns:
+            The spam folder name if found, None otherwise.
+        """
+        if not self._mailbox:
+            return None
+
+        spam_names = ["Spam", "Junk", "[Gmail]/Spam", "Junk E-mail"]
+        folders = {f.name for f in self._mailbox.folder.list()}
+
+        for name in spam_names:
+            if name in folders:
+                return name
+
+        return None
+
+    def mark_spam(self, folder: str, uid: int) -> bool:
+        """Move an email to the spam/junk folder.
+
+        Args:
+            folder: Folder/mailbox containing the email
+            uid: Unique identifier of the email
+
+        Returns:
+            True if successful, False if email not found or no spam folder exists.
+        """
+        if not self._mailbox:
+            raise RuntimeError("Not connected. Call connect() first.")
+
+        spam_folder = self._find_spam_folder()
+        if not spam_folder:
+            raise RuntimeError("No spam folder found")
+
+        self._mailbox.folder.set(folder)
+
+        # Check if email exists
+        emails = list(self._mailbox.fetch(AND(uid=str(uid))))
+        if not emails:
+            return False
+
+        # Move email to spam folder
+        self._mailbox.move(str(uid), spam_folder)
+        return True

@@ -439,3 +439,87 @@ class TestPromptInjectionError:
 
         assert "Sent/456" in str(error)
         assert "system_tag" in str(error)
+
+
+class TestSecureMailboxMarkSpam:
+    @pytest.fixture
+    def mock_connector(self) -> MagicMock:
+        return MagicMock(spec=BaseConnector)
+
+    @pytest.fixture
+    def mock_protection(self) -> MagicMock:
+        return MagicMock(spec=ProtectionService)
+
+    def test_mark_spam_success(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test mark_spam successfully marks email as spam."""
+        permissions = AccountPermissions(mark_spam=True)
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+        mock_connector.mark_spam.return_value = True
+
+        result = mailbox.mark_spam("INBOX", 123)
+
+        assert result is True
+        mock_connector.mark_spam.assert_called_once_with("INBOX", 123)
+
+    def test_mark_spam_email_not_found(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test mark_spam returns False when email not found."""
+        permissions = AccountPermissions(mark_spam=True)
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+        mock_connector.mark_spam.return_value = False
+
+        result = mailbox.mark_spam("INBOX", 999)
+
+        assert result is False
+        mock_connector.mark_spam.assert_called_once_with("INBOX", 999)
+
+    def test_mark_spam_permission_denied(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test mark_spam raises PermissionDeniedError when not allowed."""
+        permissions = AccountPermissions(mark_spam=False)
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            mailbox.mark_spam("INBOX", 123)
+
+        assert "Mark spam access denied" in str(exc_info.value)
+        mock_connector.mark_spam.assert_not_called()
+
+    def test_mark_spam_folder_denied(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test mark_spam raises PermissionDeniedError when folder not allowed."""
+        permissions = AccountPermissions(mark_spam=True, folders=["INBOX"])
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            mailbox.mark_spam("Drafts", 123)
+
+        assert "folder 'Drafts' denied" in str(exc_info.value)
+        mock_connector.mark_spam.assert_not_called()
+
+    def test_mark_spam_default_permission_denied(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test mark_spam is denied by default (mark_spam=False)."""
+        permissions = AccountPermissions()  # Default: mark_spam=False
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            mailbox.mark_spam("INBOX", 123)
+
+        assert "Mark spam access denied" in str(exc_info.value)

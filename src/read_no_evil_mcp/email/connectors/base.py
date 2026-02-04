@@ -64,6 +64,19 @@ class BaseConnector(ABC):
         """
         ...
 
+    @abstractmethod
+    def mark_spam(self, folder: str, uid: int) -> bool:
+        """Move an email to the spam/junk folder.
+
+        Args:
+            folder: Folder/mailbox containing the email
+            uid: Unique identifier of the email
+
+        Returns:
+            True if successful, False if email not found.
+        """
+        ...
+
     def __enter__(self) -> "BaseConnector":
         """Context manager entry - connect to server."""
         self.connect()

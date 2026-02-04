@@ -70,6 +70,15 @@ class SecureMailbox:
         if self._permissions.folders is not None and folder not in self._permissions.folders:
             raise PermissionDeniedError(f"Access to folder '{folder}' denied")
 
+    def _require_mark_spam(self) -> None:
+        """Check if mark_spam access is allowed.
+
+        Raises:
+            PermissionDeniedError: If mark_spam access is denied.
+        """
+        if not self._permissions.mark_spam:
+            raise PermissionDeniedError("Mark spam access denied for this account")
+
     def _filter_allowed_folders(self, folders: list[Folder]) -> list[Folder]:
         """Filter folders to only include those allowed by permissions.
 
@@ -222,3 +231,21 @@ class SecureMailbox:
             raise PromptInjectionError(scan_result, uid, folder)
 
         return email
+
+    def mark_spam(self, folder: str, uid: int) -> bool:
+        """Mark an email as spam by moving it to the spam folder.
+
+        Args:
+            folder: Folder containing the email
+            uid: Unique identifier of the email
+
+        Returns:
+            True if successful, False if email not found.
+
+        Raises:
+            PermissionDeniedError: If mark_spam access is denied or folder is not allowed.
+        """
+        self._require_mark_spam()
+        self._require_folder(folder)
+
+        return self._connector.mark_spam(folder, uid)

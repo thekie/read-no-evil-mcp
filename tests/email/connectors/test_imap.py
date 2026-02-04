@@ -191,3 +191,131 @@ class TestIMAPConnector:
         connector = IMAPConnector(config)
         with pytest.raises(RuntimeError, match="Not connected"):
             connector.get_email("INBOX", 123)
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_mark_spam_success(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
+        """Test mark_spam moves email to spam folder."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        # Mock folder list to include Spam
+        mock_folder_spam = MagicMock()
+        mock_folder_spam.name = "Spam"
+        mock_folder_inbox = MagicMock()
+        mock_folder_inbox.name = "INBOX"
+        mock_mailbox.folder.list.return_value = [mock_folder_inbox, mock_folder_spam]
+
+        # Mock email exists
+        mock_msg = MagicMock()
+        mock_msg.uid = "123"
+        mock_mailbox.fetch.return_value = [mock_msg]
+
+        connector = IMAPConnector(config)
+        connector.connect()
+        result = connector.mark_spam("INBOX", 123)
+
+        assert result is True
+        mock_mailbox.folder.set.assert_called_with("INBOX")
+        mock_mailbox.move.assert_called_once_with("123", "Spam")
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_mark_spam_gmail_folder(
+        self, mock_mailbox_class: MagicMock, config: IMAPConfig
+    ) -> None:
+        """Test mark_spam detects [Gmail]/Spam folder."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        # Mock folder list with Gmail spam folder
+        mock_folder_gmail_spam = MagicMock()
+        mock_folder_gmail_spam.name = "[Gmail]/Spam"
+        mock_folder_inbox = MagicMock()
+        mock_folder_inbox.name = "INBOX"
+        mock_mailbox.folder.list.return_value = [mock_folder_inbox, mock_folder_gmail_spam]
+
+        # Mock email exists
+        mock_msg = MagicMock()
+        mock_msg.uid = "456"
+        mock_mailbox.fetch.return_value = [mock_msg]
+
+        connector = IMAPConnector(config)
+        connector.connect()
+        result = connector.mark_spam("INBOX", 456)
+
+        assert result is True
+        mock_mailbox.move.assert_called_once_with("456", "[Gmail]/Spam")
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_mark_spam_junk_folder(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
+        """Test mark_spam detects Junk folder."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        # Mock folder list with Junk folder
+        mock_folder_junk = MagicMock()
+        mock_folder_junk.name = "Junk"
+        mock_folder_inbox = MagicMock()
+        mock_folder_inbox.name = "INBOX"
+        mock_mailbox.folder.list.return_value = [mock_folder_inbox, mock_folder_junk]
+
+        # Mock email exists
+        mock_msg = MagicMock()
+        mock_msg.uid = "789"
+        mock_mailbox.fetch.return_value = [mock_msg]
+
+        connector = IMAPConnector(config)
+        connector.connect()
+        result = connector.mark_spam("INBOX", 789)
+
+        assert result is True
+        mock_mailbox.move.assert_called_once_with("789", "Junk")
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_mark_spam_email_not_found(
+        self, mock_mailbox_class: MagicMock, config: IMAPConfig
+    ) -> None:
+        """Test mark_spam returns False when email not found."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        # Mock folder list with Spam
+        mock_folder_spam = MagicMock()
+        mock_folder_spam.name = "Spam"
+        mock_mailbox.folder.list.return_value = [mock_folder_spam]
+
+        # Mock email not found
+        mock_mailbox.fetch.return_value = []
+
+        connector = IMAPConnector(config)
+        connector.connect()
+        result = connector.mark_spam("INBOX", 999)
+
+        assert result is False
+        mock_mailbox.move.assert_not_called()
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_mark_spam_no_spam_folder(
+        self, mock_mailbox_class: MagicMock, config: IMAPConfig
+    ) -> None:
+        """Test mark_spam raises RuntimeError when no spam folder exists."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        # Mock folder list without spam folder
+        mock_folder_inbox = MagicMock()
+        mock_folder_inbox.name = "INBOX"
+        mock_folder_sent = MagicMock()
+        mock_folder_sent.name = "Sent"
+        mock_mailbox.folder.list.return_value = [mock_folder_inbox, mock_folder_sent]
+
+        connector = IMAPConnector(config)
+        connector.connect()
+
+        with pytest.raises(RuntimeError, match="No spam folder found"):
+            connector.mark_spam("INBOX", 123)
+
+    def test_mark_spam_not_connected(self, config: IMAPConfig) -> None:
+        """Test mark_spam raises RuntimeError when not connected."""
+        connector = IMAPConnector(config)
+        with pytest.raises(RuntimeError, match="Not connected"):
+            connector.mark_spam("INBOX", 123)
