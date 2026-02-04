@@ -342,7 +342,7 @@ class TestIMAPConnectorWithSMTP:
         connector = IMAPConnector(imap_config)
         with pytest.raises(NotImplementedError) as exc_info:
             connector.send(
-                from_addr="sender@example.com",
+                from_address="sender@example.com",
                 to=["recipient@example.com"],
                 subject="Test",
                 body="Test body",
@@ -413,7 +413,7 @@ class TestIMAPConnectorWithSMTP:
         connector.connect()
 
         result = connector.send(
-            from_addr="sender@example.com",
+            from_address="sender@example.com",
             to=["recipient@example.com"],
             subject="Test Subject",
             body="Test body",
@@ -441,7 +441,7 @@ class TestIMAPConnectorWithSMTP:
         connector.connect()
 
         result = connector.send(
-            from_addr="sender@example.com",
+            from_address="sender@example.com",
             to=["recipient@example.com"],
             subject="Test Subject",
             body="Test body",
@@ -460,7 +460,7 @@ class TestIMAPConnectorWithSMTP:
         connector = IMAPConnector(imap_config, smtp_config=smtp_config)
         with pytest.raises(RuntimeError, match="Not connected"):
             connector.send(
-                from_addr="sender@example.com",
+                from_address="sender@example.com",
                 to=["recipient@example.com"],
                 subject="Test",
                 body="Test body",

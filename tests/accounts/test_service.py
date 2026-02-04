@@ -254,7 +254,7 @@ class TestAccountService:
         mock_mailbox: MagicMock,
         mock_connector: MagicMock,
     ) -> None:
-        """Test get_mailbox formats from_address with from_name."""
+        """Test get_mailbox passes from_address and from_name separately."""
         accounts = [
             AccountConfig(
                 id="work",
@@ -268,9 +268,10 @@ class TestAccountService:
 
         service.get_mailbox("work")
 
-        # Verify SecureMailbox was called with formatted from_address
+        # Verify SecureMailbox was called with separate from_address and from_name
         call_kwargs = mock_mailbox.call_args.kwargs
-        assert call_kwargs["from_address"] == "Atlas <user@example.com>"
+        assert call_kwargs["from_address"] == "user@example.com"
+        assert call_kwargs["from_name"] == "Atlas"
 
     @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
     @patch("read_no_evil_mcp.accounts.service.SecureMailbox")

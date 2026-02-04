@@ -38,6 +38,7 @@ class SecureMailbox:
         permissions: AccountPermissions,
         protection: ProtectionService | None = None,
         from_address: str | None = None,
+        from_name: str | None = None,
     ) -> None:
         """Initialize secure mailbox.
 
@@ -45,12 +46,14 @@ class SecureMailbox:
             connector: Email connector for fetching and optionally sending emails.
             permissions: Account permissions to enforce.
             protection: Protection service for scanning. Defaults to standard service.
-            from_address: Sender address for outgoing emails.
+            from_address: Sender email address for outgoing emails (e.g., "user@example.com").
+            from_name: Optional display name for sender (e.g., "Atlas").
         """
         self._connector = connector
         self._permissions = permissions
         self._protection = protection or ProtectionService()
         self._from_address = from_address
+        self._from_name = from_name
 
     def _require_read(self) -> None:
         """Check if read access is allowed.
@@ -277,10 +280,11 @@ class SecureMailbox:
             raise RuntimeError("From address not configured for this account")
 
         return self._connector.send(
-            from_addr=self._from_address,
+            from_address=self._from_address,
             to=to,
             subject=subject,
             body=body,
+            from_name=self._from_name,
             cc=cc,
             reply_to=reply_to,
         )

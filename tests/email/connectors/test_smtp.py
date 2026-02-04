@@ -95,7 +95,7 @@ class TestSMTPConnector:
             connector.connect()
 
             result = connector.send_email(
-                from_addr="sender@example.com",
+                from_address="sender@example.com",
                 to=["recipient@example.com"],
                 subject="Test Subject",
                 body="Test body content",
@@ -121,7 +121,7 @@ class TestSMTPConnector:
             connector.connect()
 
             result = connector.send_email(
-                from_addr="sender@example.com",
+                from_address="sender@example.com",
                 to=["recipient@example.com"],
                 subject="Test Subject",
                 body="Test body",
@@ -149,7 +149,7 @@ class TestSMTPConnector:
             connector.connect()
 
             result = connector.send_email(
-                from_addr="sender@example.com",
+                from_address="sender@example.com",
                 to=["r1@example.com", "r2@example.com", "r3@example.com"],
                 subject="Test",
                 body="Test body",
@@ -166,7 +166,7 @@ class TestSMTPConnector:
 
         with pytest.raises(RuntimeError) as exc_info:
             connector.send_email(
-                from_addr="sender@example.com",
+                from_address="sender@example.com",
                 to=["recipient@example.com"],
                 subject="Test",
                 body="Test",
@@ -184,7 +184,7 @@ class TestSMTPConnector:
             connector.connect()
 
             result = connector.send_email(
-                from_addr="sender@example.com",
+                from_address="sender@example.com",
                 to=["recipient@example.com"],
                 subject="Test Subject",
                 body="Test body",
@@ -195,3 +195,28 @@ class TestSMTPConnector:
             call_args = mock_connection.sendmail.call_args
             msg_str = call_args[0][2]
             assert "Reply-To: replies@example.com" in msg_str
+
+    def test_send_email_with_from_name(self, smtp_config: SMTPConfig) -> None:
+        """Test sending email with display name."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            result = connector.send_email(
+                from_address="sender@example.com",
+                to=["recipient@example.com"],
+                subject="Test Subject",
+                body="Test body",
+                from_name="Atlas",
+            )
+
+            assert result is True
+            call_args = mock_connection.sendmail.call_args
+            # Envelope should use plain email address
+            assert call_args[0][0] == "sender@example.com"
+            # Message header should include display name
+            msg_str = call_args[0][2]
+            assert "From: Atlas <sender@example.com>" in msg_str

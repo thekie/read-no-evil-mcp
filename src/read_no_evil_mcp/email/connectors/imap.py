@@ -243,20 +243,22 @@ class IMAPConnector(BaseConnector):
 
     def send(
         self,
-        from_addr: str,
+        from_address: str,
         to: list[str],
         subject: str,
         body: str,
+        from_name: str | None = None,
         cc: list[str] | None = None,
         reply_to: str | None = None,
     ) -> bool:
         """Send an email via SMTP.
 
         Args:
-            from_addr: Sender email address.
+            from_address: Sender email address (e.g., "user@example.com").
             to: List of recipient email addresses.
             subject: Email subject line.
             body: Email body text (plain text).
+            from_name: Optional display name for sender (e.g., "Atlas").
             cc: Optional list of CC recipients.
             reply_to: Optional Reply-To email address.
 
@@ -276,10 +278,11 @@ class IMAPConnector(BaseConnector):
             raise RuntimeError("Not connected. Call connect() first.")
 
         return self._smtp_connector.send_email(
-            from_addr=from_addr,
+            from_address=from_address,
             to=to,
             subject=subject,
             body=body,
+            from_name=from_name,
             cc=cc,
             reply_to=reply_to,
         )

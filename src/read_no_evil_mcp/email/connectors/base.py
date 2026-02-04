@@ -103,10 +103,11 @@ class BaseConnector(ABC):
 
     def send(
         self,
-        from_addr: str,
+        from_address: str,
         to: list[str],
         subject: str,
         body: str,
+        from_name: str | None = None,
         cc: list[str] | None = None,
         reply_to: str | None = None,
     ) -> bool:
@@ -116,10 +117,11 @@ class BaseConnector(ABC):
         should override this method and can_send() to return True.
 
         Args:
-            from_addr: Sender email address.
+            from_address: Sender email address (e.g., "user@example.com").
             to: List of recipient email addresses.
             subject: Email subject line.
             body: Email body text (plain text).
+            from_name: Optional display name for sender (e.g., "Atlas").
             cc: Optional list of CC recipients.
             reply_to: Optional Reply-To email address.
 

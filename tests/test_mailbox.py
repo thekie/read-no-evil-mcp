@@ -436,10 +436,11 @@ class TestSecureMailbox:
 
         assert result is True
         mock_connector.send.assert_called_once_with(
-            from_addr="sender@example.com",
+            from_address="sender@example.com",
             to=["recipient@example.com"],
             subject="Test Subject",
             body="Test body",
+            from_name=None,
             cc=None,
             reply_to=None,
         )
@@ -469,10 +470,11 @@ class TestSecureMailbox:
 
         assert result is True
         mock_connector.send.assert_called_once_with(
-            from_addr="sender@example.com",
+            from_address="sender@example.com",
             to=["recipient@example.com"],
             subject="Test Subject",
             body="Test body",
+            from_name=None,
             cc=["cc@example.com"],
             reply_to=None,
         )
@@ -502,12 +504,47 @@ class TestSecureMailbox:
 
         assert result is True
         mock_connector.send.assert_called_once_with(
-            from_addr="sender@example.com",
+            from_address="sender@example.com",
             to=["recipient@example.com"],
             subject="Test Subject",
             body="Test body",
+            from_name=None,
             cc=None,
             reply_to="replies@example.com",
+        )
+
+    def test_send_email_with_from_name(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test email sending with from_name parameter."""
+        mock_connector.can_send.return_value = True
+        mock_connector.send.return_value = True
+        permissions = AccountPermissions(send=True)
+        mailbox = SecureMailbox(
+            mock_connector,
+            permissions,
+            mock_protection,
+            from_address="sender@example.com",
+            from_name="Atlas",
+        )
+
+        result = mailbox.send_email(
+            to=["recipient@example.com"],
+            subject="Test Subject",
+            body="Test body",
+        )
+
+        assert result is True
+        mock_connector.send.assert_called_once_with(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test Subject",
+            body="Test body",
+            from_name="Atlas",
+            cc=None,
+            reply_to=None,
         )
 
     def test_send_email_permission_denied(

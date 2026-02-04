@@ -3,7 +3,6 @@
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.utils import parseaddr
 
 from read_no_evil_mcp.models import SMTPConfig
 
@@ -55,20 +54,22 @@ class SMTPConnector:
 
     def send_email(
         self,
-        from_addr: str,
+        from_address: str,
         to: list[str],
         subject: str,
         body: str,
+        from_name: str | None = None,
         cc: list[str] | None = None,
         reply_to: str | None = None,
     ) -> bool:
         """Send an email.
 
         Args:
-            from_addr: Sender email address.
+            from_address: Sender email address (e.g., "user@example.com").
             to: List of recipient email addresses.
             subject: Email subject line.
             body: Email body text (plain text).
+            from_name: Optional display name for sender (e.g., "Atlas").
             cc: Optional list of CC recipients.
             reply_to: Optional Reply-To email address.
 
@@ -83,7 +84,11 @@ class SMTPConnector:
             raise RuntimeError("Not connected. Call connect() first.")
 
         msg = MIMEMultipart()
-        msg["From"] = from_addr
+        # Build From header with optional display name
+        if from_name:
+            msg["From"] = f"{from_name} <{from_address}>"
+        else:
+            msg["From"] = from_address
         msg["To"] = ", ".join(to)
         msg["Subject"] = subject
 
@@ -100,7 +105,6 @@ class SMTPConnector:
         if cc:
             recipients.extend(cc)
 
-        # Extract just the email address for SMTP envelope (from_addr may include display name)
-        _, envelope_from = parseaddr(from_addr)
-        self._connection.sendmail(envelope_from, recipients, msg.as_string())
+        # Use from_address directly for SMTP envelope (no parsing needed)
+        self._connection.sendmail(from_address, recipients, msg.as_string())
         return True
