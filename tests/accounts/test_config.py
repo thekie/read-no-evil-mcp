@@ -94,3 +94,46 @@ class TestAccountConfig:
                 port=70000,
                 username="user@example.com",
             )
+
+    def test_from_address_and_from_name(self) -> None:
+        """Test from_address and from_name fields."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+            from_address="user@example.com",
+            from_name="Atlas",
+        )
+        assert config.from_address == "user@example.com"
+        assert config.from_name == "Atlas"
+
+    def test_from_address_without_from_name(self) -> None:
+        """Test from_address without from_name."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+            from_address="user@example.com",
+        )
+        assert config.from_address == "user@example.com"
+        assert config.from_name is None
+
+    def test_from_address_defaults_to_none(self) -> None:
+        """Test that from_address defaults to None."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+        )
+        assert config.from_address is None
+        assert config.from_name is None
+
+    def test_from_address_cannot_be_empty(self) -> None:
+        """Test that from_address cannot be empty string."""
+        with pytest.raises(ValidationError):
+            AccountConfig(
+                id="work",
+                host="mail.example.com",
+                username="user",
+                from_address="",
+            )

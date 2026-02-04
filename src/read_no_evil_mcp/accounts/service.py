@@ -98,8 +98,16 @@ class AccountService:
         password = self._credentials.get_password(account_id)
         connector = self._create_connector(config, password)
 
+        # Build from_address with optional display name
+        from_address: str | None = None
+        if config.from_address:
+            if config.from_name:
+                from_address = f"{config.from_name} <{config.from_address}>"
+            else:
+                from_address = config.from_address
+
         return SecureMailbox(
             connector,
             config.permissions,
-            from_address=config.username,
+            from_address=from_address,
         )

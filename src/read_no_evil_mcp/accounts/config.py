@@ -63,6 +63,15 @@ class IMAPAccountConfig(BaseAccountConfig):
         default=False,
         description="Use SSL instead of STARTTLS for SMTP (default: False)",
     )
+    from_address: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Sender email address for outgoing emails (required for send)",
+    )
+    from_name: str | None = Field(
+        default=None,
+        description="Display name for outgoing emails (e.g., 'Atlas')",
+    )
 
 
 # Future connectors will follow the same pattern as IMAPAccountConfig:
