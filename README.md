@@ -95,9 +95,65 @@ pip install -e ".[dev]"
 
 </details>
 
+## Configuration
+
+### Config File Locations
+
+read-no-evil-mcp looks for configuration in this order:
+
+1. `RNOE_CONFIG_FILE` environment variable (if set)
+2. `./rnoe.yaml` (current directory)
+3. `~/.config/read-no-evil-mcp/config.yaml`
+
+### Multi-Account Setup
+
+Configure one or more email accounts in your config file:
+
+```yaml
+# rnoe.yaml (or ~/.config/read-no-evil-mcp/config.yaml)
+accounts:
+  - id: "work"
+    type: "imap"
+    host: "mail.company.com"
+    port: 993
+    username: "user@company.com"
+    ssl: true
+
+  - id: "personal"
+    type: "imap"
+    host: "imap.gmail.com"
+    username: "me@gmail.com"
+```
+
+### Credentials
+
+Passwords are provided via environment variables for security:
+
+```bash
+# Pattern: RNOE_ACCOUNT_<ID>_PASSWORD (uppercase)
+export RNOE_ACCOUNT_WORK_PASSWORD="your-work-password"
+export RNOE_ACCOUNT_PERSONAL_PASSWORD="your-gmail-app-password"
+```
+
 ## Quick Start
 
-1. **Configure your MCP client** (e.g., Claude Desktop, Cline):
+1. **Create a config file** (`~/.config/read-no-evil-mcp/config.yaml`):
+
+```yaml
+accounts:
+  - id: "gmail"
+    type: "imap"
+    host: "imap.gmail.com"
+    username: "you@gmail.com"
+```
+
+2. **Set your password**:
+
+```bash
+export RNOE_ACCOUNT_GMAIL_PASSWORD="your-app-password"
+```
+
+3. **Configure your MCP client** (e.g., Claude Desktop, Cline):
 
 ```json
 {
@@ -105,16 +161,14 @@ pip install -e ".[dev]"
     "email": {
       "command": "read-no-evil-mcp",
       "env": {
-        "IMAP_HOST": "imap.gmail.com",
-        "IMAP_USERNAME": "you@gmail.com",
-        "IMAP_PASSWORD": "your-app-password"
+        "RNOE_ACCOUNT_GMAIL_PASSWORD": "your-app-password"
       }
     }
   }
 }
 ```
 
-2. **Ask your AI to check your email** — it will only see safe content!
+4. **Ask your AI to check your email** — it will only see safe content!
 
 ## Detection Capabilities
 
@@ -131,28 +185,27 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 
 ## Roadmap
 
-### v0.1 (Current)
+### v0.1 (Previous)
 - [x] IMAP email connector
 - [x] ML-based prompt injection detection
 - [x] MCP server with list/read tools
 - [x] Comprehensive test suite
 
-### v0.2 (Planned)
-- [ ] Gmail API connector
-- [ ] Microsoft Graph connector  
-- [ ] Improved obfuscation detection
+### v0.2 (Current)
+- [x] Multi-account support
+- [x] YAML-based configuration
+- [ ] Rights management (per-account permissions)
+- [ ] Additional actions: delete emails, write/send emails, mark as spam
 - [ ] Configurable sensitivity levels
 
 ### v0.3 (Future)
-- [ ] Write/send emails
-- [ ] Delete emails
-- [ ] Mark as spam
 - [ ] Attachment scanning
 - [ ] Docker image
 
 ### v0.4 (Later)
-- [ ] Rights management (per-folder, per-action permissions)
-- [ ] Multi-account support
+- [ ] Gmail API connector
+- [ ] Microsoft Graph connector
+- [ ] Improved obfuscation detection
 
 ## Contributing
 

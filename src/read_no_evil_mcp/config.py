@@ -1,20 +1,98 @@
 """Configuration settings for read-no-evil-mcp using pydantic-settings."""
 
-from pydantic import SecretStr
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
+from pathlib import Path
+from typing import Any
+
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
+
+from read_no_evil_mcp.accounts.config import AccountConfig
+
+
+class YamlConfigSettingsSource(PydanticBaseSettingsSource):
+    """Settings source that loads configuration from a YAML file.
+
+    Looks for config file in the following order:
+    1. RNOE_CONFIG_FILE environment variable
+    2. ./rnoe.yaml (current directory)
+    3. ~/.config/read-no-evil-mcp/config.yaml
+    """
+
+    def get_field_value(self, field: Any, field_name: str) -> tuple[Any, str, bool]:
+        """Get field value from YAML config."""
+        yaml_data = self._load_yaml_config()
+        field_value = yaml_data.get(field_name)
+        return field_value, field_name, False
+
+    def __call__(self) -> dict[str, Any]:
+        """Return all settings from YAML config."""
+        return self._load_yaml_config()
+
+    def _load_yaml_config(self) -> dict[str, Any]:
+        """Load and cache YAML config file."""
+        if not hasattr(self, "_yaml_data"):
+            self._yaml_data = self._read_yaml_file()
+        return self._yaml_data
+
+    def _read_yaml_file(self) -> dict[str, Any]:
+        """Read YAML config from file."""
+        import yaml
+
+        config_paths = [
+            os.environ.get("RNOE_CONFIG_FILE"),
+            Path.cwd() / "rnoe.yaml",
+            Path.home() / ".config" / "read-no-evil-mcp" / "config.yaml",
+        ]
+
+        for path in config_paths:
+            if path and Path(path).exists():
+                with open(path) as f:
+                    data = yaml.safe_load(f)
+                    return data if data else {}
+
+        return {}
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables with RNOE_ prefix."""
+    """Application settings loaded from environment variables with RNOE_ prefix.
+
+    Multi-account configuration via YAML file:
+        accounts:
+          - id: "work"
+            type: "imap"
+            host: "mail.company.com"
+            username: "user@company.com"
+
+    Account passwords are retrieved via credential backends
+    (e.g., RNOE_ACCOUNT_WORK_PASSWORD environment variable).
+    """
 
     model_config = SettingsConfigDict(env_prefix="RNOE_")
 
-    # IMAP configuration
-    imap_host: str
-    imap_port: int = 993
-    imap_username: str
-    imap_password: SecretStr
-    imap_ssl: bool = True
+    # Multi-account configuration
+    accounts: list[AccountConfig] = []
 
     # Application defaults
     default_lookback_days: int = 7
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Customize settings sources to include YAML config."""
+        return (
+            init_settings,
+            env_settings,
+            YamlConfigSettingsSource(settings_cls),
+            dotenv_settings,
+            file_secret_settings,
+        )
