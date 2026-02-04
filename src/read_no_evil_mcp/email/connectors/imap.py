@@ -161,3 +161,23 @@ class IMAPConnector(BaseConnector):
             )
 
         return None
+
+    def delete_email(self, folder: str, uid: int) -> bool:
+        """Delete an email by UID.
+
+        Args:
+            folder: IMAP folder containing the email
+            uid: Unique identifier of the email
+
+        Returns:
+            True if email was deleted successfully, False otherwise.
+        """
+        if not self._mailbox:
+            raise RuntimeError("Not connected. Call connect() first.")
+
+        self._mailbox.folder.set(folder)
+
+        # Use imap-tools delete method to mark email as deleted
+        self._mailbox.delete(str(uid))
+
+        return True

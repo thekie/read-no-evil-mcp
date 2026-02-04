@@ -64,6 +64,19 @@ class BaseConnector(ABC):
         """
         ...
 
+    @abstractmethod
+    def delete_email(self, folder: str, uid: int) -> bool:
+        """Delete an email by UID.
+
+        Args:
+            folder: Folder/mailbox containing the email
+            uid: Unique identifier of the email
+
+        Returns:
+            True if email was deleted successfully, False otherwise.
+        """
+        ...
+
     def __enter__(self) -> "BaseConnector":
         """Context manager entry - connect to server."""
         self.connect()

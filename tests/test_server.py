@@ -11,4 +11,11 @@ class TestMCPSetup:
     def test_tools_registered(self) -> None:
         """Test that all expected tools are registered."""
         tool_names = set(mcp._tool_manager._tools.keys())
-        assert tool_names == {"list_folders", "list_emails", "get_email", "list_accounts"}
+        assert tool_names == {
+            "delete_email",
+            "get_email",
+            "list_accounts",
+            "list_emails",
+            "list_folders",
+            "send_email",
+        }
