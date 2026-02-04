@@ -73,6 +73,15 @@ class SecureMailbox:
         if self._permissions.folders is not None and folder not in self._permissions.folders:
             raise PermissionDeniedError(f"Access to folder '{folder}' denied")
 
+    def _require_move(self) -> None:
+        """Check if move access is allowed.
+
+        Raises:
+            PermissionDeniedError: If move access is denied.
+        """
+        if not self._permissions.move:
+            raise PermissionDeniedError("Move access denied for this account")
+
     def _filter_allowed_folders(self, folders: list[Folder]) -> list[Folder]:
         """Filter folders to only include those allowed by permissions.
 
@@ -275,6 +284,26 @@ class SecureMailbox:
             cc=cc,
             reply_to=reply_to,
         )
+
+    def move_email(self, folder: str, uid: int, target_folder: str) -> bool:
+        """Move an email to a target folder.
+
+        Args:
+            folder: Folder containing the email
+            uid: Unique identifier of the email
+            target_folder: Destination folder to move the email to
+
+        Returns:
+            True if successful, False if email not found.
+
+        Raises:
+            PermissionDeniedError: If move access is denied or folder is not allowed.
+        """
+        self._require_move()
+        self._require_folder(folder)
+        self._require_folder(target_folder)
+
+        return self._connector.move_email(folder, uid, target_folder)
 
     def delete_email(self, folder: str, uid: int) -> bool:
         """Delete an email by UID.

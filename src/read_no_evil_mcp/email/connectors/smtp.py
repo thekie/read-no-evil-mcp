@@ -3,6 +3,7 @@
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import parseaddr
 
 from read_no_evil_mcp.models import SMTPConfig
 
@@ -99,5 +100,7 @@ class SMTPConnector:
         if cc:
             recipients.extend(cc)
 
-        self._connection.sendmail(from_addr, recipients, msg.as_string())
+        # Extract just the email address for SMTP envelope (from_addr may include display name)
+        _, envelope_from = parseaddr(from_addr)
+        self._connection.sendmail(envelope_from, recipients, msg.as_string())
         return True

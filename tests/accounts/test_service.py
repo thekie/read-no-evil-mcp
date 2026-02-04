@@ -274,23 +274,23 @@ class TestAccountService:
 
     @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
     @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
-    def test_get_mailbox_from_address_none_when_not_configured(
+    def test_get_mailbox_from_address_falls_back_to_username(
         self,
         mock_mailbox: MagicMock,
         mock_connector: MagicMock,
     ) -> None:
-        """Test get_mailbox passes None from_address when not configured."""
+        """Test get_mailbox falls back to username when from_address not configured."""
         accounts = [
             AccountConfig(
                 id="work",
                 host="mail.work.com",
-                username="user",
+                username="user@work.com",
             ),
         ]
         service = AccountService(accounts, MockCredentialBackend({}))
 
         service.get_mailbox("work")
 
-        # Verify SecureMailbox was called with None from_address
+        # Verify SecureMailbox was called with username as from_address
         call_kwargs = mock_mailbox.call_args.kwargs
-        assert call_kwargs["from_address"] is None
+        assert call_kwargs["from_address"] == "user@work.com"

@@ -667,3 +667,117 @@ class TestPromptInjectionError:
 
         assert "Sent/456" in str(error)
         assert "system_tag" in str(error)
+
+
+class TestSecureMailboxMoveEmail:
+    @pytest.fixture
+    def mock_connector(self) -> MagicMock:
+        return MagicMock(spec=BaseConnector)
+
+    @pytest.fixture
+    def mock_protection(self) -> MagicMock:
+        return MagicMock(spec=ProtectionService)
+
+    def test_move_email_success(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test move_email successfully moves email to target folder."""
+        permissions = AccountPermissions(move=True)
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+        mock_connector.move_email.return_value = True
+
+        result = mailbox.move_email("INBOX", 123, "Archive")
+
+        assert result is True
+        mock_connector.move_email.assert_called_once_with("INBOX", 123, "Archive")
+
+    def test_move_email_to_spam(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test move_email can move email to Spam folder."""
+        permissions = AccountPermissions(move=True)
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+        mock_connector.move_email.return_value = True
+
+        result = mailbox.move_email("INBOX", 456, "Spam")
+
+        assert result is True
+        mock_connector.move_email.assert_called_once_with("INBOX", 456, "Spam")
+
+    def test_move_email_not_found(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test move_email returns False when email not found."""
+        permissions = AccountPermissions(move=True)
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+        mock_connector.move_email.return_value = False
+
+        result = mailbox.move_email("INBOX", 999, "Archive")
+
+        assert result is False
+        mock_connector.move_email.assert_called_once_with("INBOX", 999, "Archive")
+
+    def test_move_email_permission_denied(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test move_email raises PermissionDeniedError when not allowed."""
+        permissions = AccountPermissions(move=False)
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            mailbox.move_email("INBOX", 123, "Archive")
+
+        assert "Move access denied" in str(exc_info.value)
+        mock_connector.move_email.assert_not_called()
+
+    def test_move_email_source_folder_denied(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test move_email raises PermissionDeniedError when source folder not allowed."""
+        permissions = AccountPermissions(move=True, folders=["INBOX", "Archive"])
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            mailbox.move_email("Drafts", 123, "Archive")
+
+        assert "folder 'Drafts' denied" in str(exc_info.value)
+        mock_connector.move_email.assert_not_called()
+
+    def test_move_email_target_folder_denied(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test move_email raises PermissionDeniedError when target folder not allowed."""
+        permissions = AccountPermissions(move=True, folders=["INBOX", "Sent"])
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            mailbox.move_email("INBOX", 123, "Archive")
+
+        assert "folder 'Archive' denied" in str(exc_info.value)
+        mock_connector.move_email.assert_not_called()
+
+    def test_move_email_default_permission_denied(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test move_email is denied by default (move=False)."""
+        permissions = AccountPermissions()  # Default: move=False
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            mailbox.move_email("INBOX", 123, "Archive")
+
+        assert "Move access denied" in str(exc_info.value)

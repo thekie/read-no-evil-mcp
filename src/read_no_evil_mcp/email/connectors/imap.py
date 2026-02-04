@@ -188,6 +188,31 @@ class IMAPConnector(BaseConnector):
 
         return None
 
+    def move_email(self, folder: str, uid: int, target_folder: str) -> bool:
+        """Move an email to a target folder.
+
+        Args:
+            folder: Folder/mailbox containing the email
+            uid: Unique identifier of the email
+            target_folder: Destination folder to move the email to
+
+        Returns:
+            True if successful, False if email not found.
+        """
+        if not self._mailbox:
+            raise RuntimeError("Not connected. Call connect() first.")
+
+        self._mailbox.folder.set(folder)
+
+        # Check if email exists
+        emails = list(self._mailbox.fetch(AND(uid=str(uid))))
+        if not emails:
+            return False
+
+        # Move email to target folder
+        self._mailbox.move(str(uid), target_folder)
+        return True
+
     def delete_email(self, folder: str, uid: int) -> bool:
         """Delete an email by UID.
 
