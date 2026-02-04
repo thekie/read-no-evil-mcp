@@ -8,6 +8,11 @@ on:
 jobs:
   update-matrix:
     runs-on: ubuntu-latest
+    # Skip if commit message matches auto-generated pattern to prevent infinite loops.
+    # Note: Checking author.name doesn't work because squash-merge uses the merger's name.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      !startsWith(github.event.head_commit.message, 'docs: Update detection matrix')
     permissions:
       contents: write
       pull-requests: write
