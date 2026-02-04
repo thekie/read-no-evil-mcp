@@ -4,8 +4,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from read_no_evil_mcp.accounts.permissions import PermissionChecker
+from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.models import Folder
 from read_no_evil_mcp.tools.list_folders import list_folders
+
+
+def _mock_permission_checker() -> MagicMock:
+    """Create a mock permission checker that allows all operations."""
+    checker = MagicMock(spec=PermissionChecker)
+    return checker
 
 
 class TestListFolders:
@@ -19,9 +27,15 @@ class TestListFolders:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_folders.create_securemailbox",
-            return_value=mock_service,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_folders.create_securemailbox",
+                return_value=mock_service,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_folders.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
         ):
             result = list_folders.fn(account="work")
 
@@ -35,9 +49,15 @@ class TestListFolders:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_folders.create_securemailbox",
-            return_value=mock_service,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_folders.create_securemailbox",
+                return_value=mock_service,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_folders.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
         ):
             result = list_folders.fn(account="work")
 
@@ -50,9 +70,15 @@ class TestListFolders:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_folders.create_securemailbox",
-            return_value=mock_service,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_folders.create_securemailbox",
+                return_value=mock_service,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_folders.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
         ):
             with pytest.raises(RuntimeError):
                 list_folders.fn(account="work")
@@ -66,10 +92,32 @@ class TestListFolders:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_folders.create_securemailbox",
-            return_value=mock_service,
-        ) as mock_create:
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_folders.create_securemailbox",
+                return_value=mock_service,
+            ) as mock_create,
+            patch(
+                "read_no_evil_mcp.tools.list_folders.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
+        ):
             list_folders.fn(account="personal")
 
         mock_create.assert_called_once_with("personal")
+
+    def test_permission_denied_read(self) -> None:
+        """Test list_folders returns error when read is denied."""
+        mock_checker = MagicMock(spec=PermissionChecker)
+        mock_checker.check_read.side_effect = PermissionDeniedError(
+            "Read access denied for this account"
+        )
+
+        with patch(
+            "read_no_evil_mcp.tools.list_folders.get_permission_checker",
+            return_value=mock_checker,
+        ):
+            result = list_folders.fn(account="restricted")
+
+        assert "Permission denied" in result
+        assert "Read access denied" in result

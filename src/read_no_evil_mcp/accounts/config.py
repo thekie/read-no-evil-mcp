@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from read_no_evil_mcp.accounts.permissions import AccountPermissions
+
 
 class BaseAccountConfig(BaseModel):
     """Base configuration shared by all account types.
@@ -29,6 +31,7 @@ class IMAPAccountConfig(BaseAccountConfig):
         port: Email server port (default: 993 for IMAP SSL).
         username: Account username/email address.
         ssl: Whether to use SSL/TLS (default: True).
+        permissions: Account permissions (default: read-only).
     """
 
     type: Literal["imap"] = Field(
@@ -39,6 +42,10 @@ class IMAPAccountConfig(BaseAccountConfig):
     port: int = Field(default=993, ge=1, le=65535, description="Email server port")
     username: str = Field(..., min_length=1, description="Account username/email")
     ssl: bool = Field(default=True, description="Use SSL/TLS connection")
+    permissions: AccountPermissions = Field(
+        default_factory=AccountPermissions,
+        description="Account permissions (default: read-only)",
+    )
 
 
 # Future connectors will follow the same pattern as IMAPAccountConfig:

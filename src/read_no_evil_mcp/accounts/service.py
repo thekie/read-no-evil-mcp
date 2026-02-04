@@ -2,6 +2,7 @@
 
 from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.accounts.credentials.base import CredentialBackend
+from read_no_evil_mcp.accounts.permissions import PermissionChecker
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
 from read_no_evil_mcp.email.service import EmailService
 from read_no_evil_mcp.exceptions import AccountNotFoundError, UnsupportedConnectorError
@@ -37,6 +38,24 @@ class AccountService:
             List of account identifiers in the order they were configured.
         """
         return list(self._accounts.keys())
+
+    def get_permission_checker(self, account_id: str) -> PermissionChecker:
+        """Get a permission checker for the specified account.
+
+        Args:
+            account_id: The unique identifier of the account.
+
+        Returns:
+            A PermissionChecker instance for the account.
+
+        Raises:
+            AccountNotFoundError: If the account ID is not found.
+        """
+        config = self._accounts.get(account_id)
+        if not config:
+            raise AccountNotFoundError(account_id)
+
+        return PermissionChecker(config.permissions)
 
     def get_mailbox(self, account_id: str) -> SecureMailbox:
         """Create SecureMailbox for the specified account.

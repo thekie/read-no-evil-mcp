@@ -35,3 +35,10 @@ class UnsupportedConnectorError(ConfigError):
     def __init__(self, connector_type: str) -> None:
         self.connector_type = connector_type
         super().__init__(f"Unsupported connector type: {connector_type}")
+
+
+class PermissionDeniedError(ReadNoEvilError):
+    """Raised when an operation is not permitted for an account."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)

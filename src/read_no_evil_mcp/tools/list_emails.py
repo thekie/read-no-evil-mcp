@@ -2,8 +2,9 @@
 
 from datetime import timedelta
 
+from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.tools._app import mcp
-from read_no_evil_mcp.tools._service import create_securemailbox
+from read_no_evil_mcp.tools._service import create_securemailbox, get_permission_checker
 
 
 @mcp.tool
@@ -21,6 +22,13 @@ def list_emails(
         days_back: Number of days to look back (default: 7).
         limit: Maximum number of emails to return.
     """
+    try:
+        checker = get_permission_checker(account)
+        checker.check_read()
+        checker.check_folder(folder)
+    except PermissionDeniedError as e:
+        return f"Permission denied: {e}"
+
     with create_securemailbox(account) as service:
         emails = service.fetch_emails(
             folder,

@@ -3,8 +3,16 @@
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+from read_no_evil_mcp.accounts.permissions import PermissionChecker
+from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.models import EmailAddress, EmailSummary
 from read_no_evil_mcp.tools.list_emails import list_emails
+
+
+def _mock_permission_checker() -> MagicMock:
+    """Create a mock permission checker that allows all operations."""
+    checker = MagicMock(spec=PermissionChecker)
+    return checker
 
 
 class TestListEmails:
@@ -24,9 +32,15 @@ class TestListEmails:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
-            return_value=mock_service,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_service,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
         ):
             result = list_emails.fn(account="work", folder="INBOX", days_back=7)
 
@@ -42,9 +56,15 @@ class TestListEmails:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
-            return_value=mock_service,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_service,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
         ):
             result = list_emails.fn(account="work")
 
@@ -57,9 +77,15 @@ class TestListEmails:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
-            return_value=mock_service,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_service,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
         ):
             list_emails.fn(account="work", folder="INBOX", limit=5)
 
@@ -73,9 +99,15 @@ class TestListEmails:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
-            return_value=mock_service,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_service,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
         ):
             list_emails.fn(account="work")
 
@@ -89,10 +121,48 @@ class TestListEmails:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
-            return_value=mock_service,
-        ) as mock_create:
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_service,
+            ) as mock_create,
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
+        ):
             list_emails.fn(account="personal")
 
         mock_create.assert_called_once_with("personal")
+
+    def test_permission_denied_read(self) -> None:
+        """Test list_emails returns error when read is denied."""
+        mock_checker = MagicMock(spec=PermissionChecker)
+        mock_checker.check_read.side_effect = PermissionDeniedError(
+            "Read access denied for this account"
+        )
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.get_permission_checker",
+            return_value=mock_checker,
+        ):
+            result = list_emails.fn(account="restricted")
+
+        assert "Permission denied" in result
+        assert "Read access denied" in result
+
+    def test_permission_denied_folder(self) -> None:
+        """Test list_emails returns error when folder access is denied."""
+        mock_checker = MagicMock(spec=PermissionChecker)
+        mock_checker.check_folder.side_effect = PermissionDeniedError(
+            "Access to folder 'Drafts' denied"
+        )
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.get_permission_checker",
+            return_value=mock_checker,
+        ):
+            result = list_emails.fn(account="restricted", folder="Drafts")
+
+        assert "Permission denied" in result
+        assert "folder 'Drafts' denied" in result

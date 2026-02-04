@@ -1,9 +1,10 @@
 """Get email MCP tool."""
 
+from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.mailbox import PromptInjectionError
 from read_no_evil_mcp.models import Email
 from read_no_evil_mcp.tools._app import mcp
-from read_no_evil_mcp.tools._service import create_securemailbox
+from read_no_evil_mcp.tools._service import create_securemailbox, get_permission_checker
 
 
 @mcp.tool
@@ -15,6 +16,13 @@ def get_email(account: str, folder: str, uid: int) -> str:
         folder: Folder containing the email.
         uid: Unique identifier of the email.
     """
+    try:
+        checker = get_permission_checker(account)
+        checker.check_read()
+        checker.check_folder(folder)
+    except PermissionDeniedError as e:
+        return f"Permission denied: {e}"
+
     with create_securemailbox(account) as service:
         try:
             email_result: Email | None = service.get_email(folder, uid)

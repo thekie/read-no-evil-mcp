@@ -135,6 +135,44 @@ export RNOE_ACCOUNT_WORK_PASSWORD="your-work-password"
 export RNOE_ACCOUNT_PERSONAL_PASSWORD="your-gmail-app-password"
 ```
 
+### Permissions
+
+Control what actions AI agents can perform on each account. By default, accounts are **read-only** for maximum security.
+
+```yaml
+accounts:
+  - id: "work"
+    type: "imap"
+    host: "mail.company.com"
+    username: "user@company.com"
+    permissions:
+      read: true          # Read emails (default: true)
+      delete: false       # Delete emails (default: false)
+      send: false         # Send emails (default: false)
+      mark_spam: false    # Mark as spam (default: false)
+      folders:            # Restrict to specific folders (default: null = all)
+        - "INBOX"
+        - "Sent"
+
+  - id: "personal"
+    type: "imap"
+    host: "imap.gmail.com"
+    username: "me@gmail.com"
+    # Uses default read-only permissions (no permissions key needed)
+```
+
+**Permission options:**
+
+| Permission | Default | Description |
+|------------|---------|-------------|
+| `read` | `true` | List folders, list emails, read email content |
+| `delete` | `false` | Delete emails |
+| `send` | `false` | Send/compose emails |
+| `mark_spam` | `false` | Mark emails as spam |
+| `folders` | `null` | Restrict access to listed folders only (`null` = all folders) |
+
+**Security best practice:** Start with read-only access and only enable additional permissions as needed.
+
 ## Quick Start
 
 1. **Create a config file** (`~/.config/read-no-evil-mcp/config.yaml`):
@@ -194,7 +232,7 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 ### v0.2 (Current)
 - [x] Multi-account support
 - [x] YAML-based configuration
-- [ ] Rights management (per-account permissions)
+- [x] Rights management (per-account permissions)
 - [ ] Additional actions: delete emails, write/send emails, mark as spam
 - [ ] Configurable sensitivity levels
 

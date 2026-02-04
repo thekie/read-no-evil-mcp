@@ -3,9 +3,17 @@
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+from read_no_evil_mcp.accounts.permissions import PermissionChecker
+from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.mailbox import PromptInjectionError
 from read_no_evil_mcp.models import Email, EmailAddress, ScanResult
 from read_no_evil_mcp.tools.get_email import get_email
+
+
+def _mock_permission_checker() -> MagicMock:
+    """Create a mock permission checker that allows all operations."""
+    checker = MagicMock(spec=PermissionChecker)
+    return checker
 
 
 class TestGetEmail:
@@ -25,9 +33,15 @@ class TestGetEmail:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.get_email.create_securemailbox",
-            return_value=mock_service,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.get_email.create_securemailbox",
+                return_value=mock_service,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.get_email.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
         ):
             result = get_email.fn(account="work", folder="INBOX", uid=123)
 
@@ -43,9 +57,15 @@ class TestGetEmail:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.get_email.create_securemailbox",
-            return_value=mock_service,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.get_email.create_securemailbox",
+                return_value=mock_service,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.get_email.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
         ):
             result = get_email.fn(account="work", folder="INBOX", uid=999)
 
@@ -65,9 +85,15 @@ class TestGetEmail:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.get_email.create_securemailbox",
-            return_value=mock_service,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.get_email.create_securemailbox",
+                return_value=mock_service,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.get_email.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
         ):
             result = get_email.fn(account="work", folder="INBOX", uid=123)
 
@@ -88,9 +114,15 @@ class TestGetEmail:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.get_email.create_securemailbox",
-            return_value=mock_service,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.get_email.create_securemailbox",
+                return_value=mock_service,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.get_email.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
         ):
             result = get_email.fn(account="work", folder="INBOX", uid=123)
 
@@ -115,9 +147,15 @@ class TestGetEmail:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.get_email.create_securemailbox",
-            return_value=mock_service,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.get_email.create_securemailbox",
+                return_value=mock_service,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.get_email.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
         ):
             result = get_email.fn(account="work", folder="Sent", uid=456)
 
@@ -132,10 +170,48 @@ class TestGetEmail:
         mock_service.__enter__ = MagicMock(return_value=mock_service)
         mock_service.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.get_email.create_securemailbox",
-            return_value=mock_service,
-        ) as mock_create:
+        with (
+            patch(
+                "read_no_evil_mcp.tools.get_email.create_securemailbox",
+                return_value=mock_service,
+            ) as mock_create,
+            patch(
+                "read_no_evil_mcp.tools.get_email.get_permission_checker",
+                return_value=_mock_permission_checker(),
+            ),
+        ):
             get_email.fn(account="personal", folder="INBOX", uid=1)
 
         mock_create.assert_called_once_with("personal")
+
+    def test_permission_denied_read(self) -> None:
+        """Test get_email returns error when read is denied."""
+        mock_checker = MagicMock(spec=PermissionChecker)
+        mock_checker.check_read.side_effect = PermissionDeniedError(
+            "Read access denied for this account"
+        )
+
+        with patch(
+            "read_no_evil_mcp.tools.get_email.get_permission_checker",
+            return_value=mock_checker,
+        ):
+            result = get_email.fn(account="restricted", folder="INBOX", uid=1)
+
+        assert "Permission denied" in result
+        assert "Read access denied" in result
+
+    def test_permission_denied_folder(self) -> None:
+        """Test get_email returns error when folder access is denied."""
+        mock_checker = MagicMock(spec=PermissionChecker)
+        mock_checker.check_folder.side_effect = PermissionDeniedError(
+            "Access to folder 'Secret' denied"
+        )
+
+        with patch(
+            "read_no_evil_mcp.tools.get_email.get_permission_checker",
+            return_value=mock_checker,
+        ):
+            result = get_email.fn(account="restricted", folder="Secret", uid=1)
+
+        assert "Permission denied" in result
+        assert "folder 'Secret' denied" in result
