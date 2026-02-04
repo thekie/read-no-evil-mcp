@@ -65,12 +65,13 @@ class BaseConnector(ABC):
         ...
 
     @abstractmethod
-    def mark_spam(self, folder: str, uid: int) -> bool:
-        """Move an email to the spam/junk folder.
+    def move_email(self, folder: str, uid: int, target_folder: str) -> bool:
+        """Move an email to a target folder.
 
         Args:
             folder: Folder/mailbox containing the email
             uid: Unique identifier of the email
+            target_folder: Destination folder to move the email to
 
         Returns:
             True if successful, False if email not found.
