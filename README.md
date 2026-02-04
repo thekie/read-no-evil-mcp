@@ -39,7 +39,8 @@ The AI reads this, follows the hidden instruction, and your data is compromised.
 ## Features
 
 - 🛡️ **Prompt Injection Detection** — ML-powered scanning using [ProtectAI's DeBERTa model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2)
-- 📧 **IMAP Support** — Works with any IMAP-compatible email provider
+- 🔐 **Per-Account Permissions** — Fine-grained access control (read-only by default, restrict folders, control delete/send)
+- 📧 **Multi-Account Support** — Configure multiple IMAP accounts with different permissions each
 - 🔌 **MCP Integration** — Exposes email functionality via [Model Context Protocol](https://modelcontextprotocol.io/)
 - 🏠 **Local Inference** — Model runs on your machine, no data sent to external APIs
 - 🪶 **Lightweight** — CPU-only PyTorch (~200MB) for fast, efficient inference
