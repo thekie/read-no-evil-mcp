@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.tools._app import mcp
-from read_no_evil_mcp.tools._service import create_securemailbox, get_permission_checker
+from read_no_evil_mcp.tools._service import create_securemailbox
 
 
 @mcp.tool
@@ -23,29 +23,25 @@ def list_emails(
         limit: Maximum number of emails to return.
     """
     try:
-        checker = get_permission_checker(account)
-        checker.check_read()
-        checker.check_folder(folder)
-    except PermissionDeniedError as e:
-        return f"Permission denied: {e}"
-
-    with create_securemailbox(account) as service:
-        emails = service.fetch_emails(
-            folder,
-            lookback=timedelta(days=days_back),
-            limit=limit,
-        )
-
-        if not emails:
-            return "No emails found."
-
-        lines = []
-        for email in emails:
-            date_str = email.date.strftime("%Y-%m-%d %H:%M")
-            attachment_marker = " [+]" if email.has_attachments else ""
-            lines.append(
-                f"[{email.uid}] {date_str} | {email.sender.address} | "
-                f"{email.subject}{attachment_marker}"
+        with create_securemailbox(account) as mailbox:
+            emails = mailbox.fetch_emails(
+                folder,
+                lookback=timedelta(days=days_back),
+                limit=limit,
             )
 
-        return "\n".join(lines)
+            if not emails:
+                return "No emails found."
+
+            lines = []
+            for email in emails:
+                date_str = email.date.strftime("%Y-%m-%d %H:%M")
+                attachment_marker = " [+]" if email.has_attachments else ""
+                lines.append(
+                    f"[{email.uid}] {date_str} | {email.sender.address} | "
+                    f"{email.subject}{attachment_marker}"
+                )
+
+            return "\n".join(lines)
+    except PermissionDeniedError as e:
+        return f"Permission denied: {e}"

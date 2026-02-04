@@ -1,9 +1,11 @@
-"""Secure mailbox that wraps EmailService with protection service."""
+"""Secure mailbox with prompt injection protection and permission enforcement."""
 
 from datetime import date, timedelta
 from types import TracebackType
 
-from read_no_evil_mcp.email.service import EmailService
+from read_no_evil_mcp.accounts.permissions import AccountPermissions
+from read_no_evil_mcp.email.connectors.base import BaseConnector
+from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.models import Email, EmailSummary, Folder, ScanResult
 from read_no_evil_mcp.protection.service import ProtectionService
 
@@ -23,33 +25,71 @@ class PromptInjectionError(Exception):
 
 
 class SecureMailbox:
-    """Secure email access with prompt injection protection.
+    """Secure email access with prompt injection protection and permission enforcement.
 
-    Wraps EmailService and scans email content before returning it.
+    Wraps a BaseConnector and scans email content before returning it.
     Blocks emails that contain detected prompt injection attacks.
+    Enforces account permissions on all operations.
     """
 
     def __init__(
         self,
-        email_service: EmailService,
+        connector: BaseConnector,
+        permissions: AccountPermissions,
         protection: ProtectionService | None = None,
     ) -> None:
         """Initialize secure mailbox.
 
         Args:
-            email_service: Email service for fetching emails.
+            connector: Email connector for fetching emails.
+            permissions: Account permissions to enforce.
             protection: Protection service for scanning. Defaults to standard service.
         """
-        self._service = email_service
+        self._connector = connector
+        self._permissions = permissions
         self._protection = protection or ProtectionService()
+
+    def _require_read(self) -> None:
+        """Check if read access is allowed.
+
+        Raises:
+            PermissionDeniedError: If read access is denied.
+        """
+        if not self._permissions.read:
+            raise PermissionDeniedError("Read access denied for this account")
+
+    def _require_folder(self, folder: str) -> None:
+        """Check if access to a specific folder is allowed.
+
+        Args:
+            folder: The folder name to check access for.
+
+        Raises:
+            PermissionDeniedError: If access to the folder is denied.
+        """
+        if self._permissions.folders is not None and folder not in self._permissions.folders:
+            raise PermissionDeniedError(f"Access to folder '{folder}' denied")
+
+    def _filter_allowed_folders(self, folders: list[Folder]) -> list[Folder]:
+        """Filter folders to only include those allowed by permissions.
+
+        Args:
+            folders: List of folders to filter.
+
+        Returns:
+            List of folders that are allowed by permissions.
+        """
+        if self._permissions.folders is None:
+            return folders
+        return [f for f in folders if f.name in self._permissions.folders]
 
     def connect(self) -> None:
         """Connect to the email server."""
-        self._service.connect()
+        self._connector.connect()
 
     def disconnect(self) -> None:
         """Disconnect from the email server."""
-        self._service.disconnect()
+        self._connector.disconnect()
 
     def __enter__(self) -> "SecureMailbox":
         """Enter context manager, connecting to the server."""
@@ -70,8 +110,13 @@ class SecureMailbox:
 
         Returns:
             List of Folder objects.
+
+        Raises:
+            PermissionDeniedError: If read access is denied.
         """
-        return self._service.list_folders()
+        self._require_read()
+        folders = self._connector.list_folders()
+        return self._filter_allowed_folders(folders)
 
     def _scan_summary(self, summary: EmailSummary) -> ScanResult:
         """Scan email summary fields for prompt injection.
@@ -112,8 +157,14 @@ class SecureMailbox:
 
         Returns:
             List of safe EmailSummary objects, newest first.
+
+        Raises:
+            PermissionDeniedError: If read access is denied or folder is not allowed.
         """
-        summaries = self._service.fetch_emails(
+        self._require_read()
+        self._require_folder(folder)
+
+        summaries = self._connector.fetch_emails(
             folder,
             lookback=lookback,
             from_date=from_date,
@@ -141,9 +192,13 @@ class SecureMailbox:
             Full Email object or None if not found.
 
         Raises:
+            PermissionDeniedError: If read access is denied or folder is not allowed.
             PromptInjectionError: If prompt injection is detected.
         """
-        email = self._service.get_email(folder, uid)
+        self._require_read()
+        self._require_folder(folder)
+
+        email = self._connector.get_email(folder, uid)
 
         if email is None:
             return None

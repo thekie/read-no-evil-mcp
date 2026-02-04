@@ -3,7 +3,6 @@
 from functools import lru_cache
 
 from read_no_evil_mcp.accounts.credentials.env import EnvCredentialBackend
-from read_no_evil_mcp.accounts.permissions import PermissionChecker
 from read_no_evil_mcp.accounts.service import AccountService
 from read_no_evil_mcp.config import Settings
 from read_no_evil_mcp.exceptions import ConfigError
@@ -53,19 +52,3 @@ def list_configured_accounts() -> list[str]:
     """
     service = get_account_service()
     return service.list_accounts()
-
-
-def get_permission_checker(account_id: str) -> PermissionChecker:
-    """Get a permission checker for the specified account.
-
-    Args:
-        account_id: The unique identifier of the account.
-
-    Returns:
-        PermissionChecker instance for the account.
-
-    Raises:
-        AccountNotFoundError: If the account ID is not found.
-    """
-    service = get_account_service()
-    return service.get_permission_checker(account_id)

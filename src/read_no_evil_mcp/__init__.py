@@ -3,7 +3,6 @@
 from read_no_evil_mcp.config import Settings
 from read_no_evil_mcp.email.connectors.base import BaseConnector
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
-from read_no_evil_mcp.email.service import EmailService
 from read_no_evil_mcp.mailbox import PromptInjectionError, SecureMailbox
 from read_no_evil_mcp.models import (
     Attachment,
@@ -24,7 +23,6 @@ __all__ = [
     "BaseConnector",
     "Email",
     "EmailAddress",
-    "EmailService",
     "EmailSummary",
     "Folder",
     "HeuristicScanner",
