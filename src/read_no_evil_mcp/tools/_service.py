@@ -19,7 +19,7 @@ def get_account_service() -> AccountService:
     Raises:
         ConfigError: If no accounts are configured.
     """
-    settings = Settings()  # type: ignore[call-arg]
+    settings = Settings()
 
     if not settings.accounts:
         raise ConfigError("No accounts configured. Configure accounts via YAML config file.")

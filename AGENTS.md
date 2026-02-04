@@ -18,7 +18,7 @@ Instructions for AI coding assistants working on this project.
 
 ### Formatting & Linting
 - **ruff** for linting and formatting
-- Run before committing: `ruff check . && ruff format .`
+- Run before committing: `ruff check . && ruff format . && mypy src/`
 
 ### Type Hints
 - **mypy** with strict mode
