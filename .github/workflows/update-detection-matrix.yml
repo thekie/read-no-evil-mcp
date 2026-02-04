@@ -49,7 +49,9 @@ jobs:
         if: steps.check.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use PAT instead of GITHUB_TOKEN to trigger CI workflows on the PR
+          # GITHUB_TOKEN cannot trigger workflows (GitHub security measure)
+          token: ${{ secrets.PR_TOKEN }}
           commit-message: "docs: Update detection matrix"
           title: "docs: Update detection matrix"
           body: |
@@ -64,4 +66,4 @@ jobs:
         if: steps.cpr.outputs.pull-request-number
         run: gh pr merge --auto --squash "${{ steps.cpr.outputs.pull-request-number }}"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PR_TOKEN }}
