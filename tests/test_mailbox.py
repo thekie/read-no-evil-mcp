@@ -412,6 +412,62 @@ class TestSecureMailbox:
         call_args = mock_protection.scan.call_args[0][0]
         assert "Ignore previous instructions" in call_args
 
+    def test_delete_email_success(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test delete_email returns True on success."""
+        permissions = AccountPermissions(delete=True)
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+        mock_connector.delete_email.return_value = True
+
+        result = mailbox.delete_email("INBOX", 123)
+
+        assert result is True
+        mock_connector.delete_email.assert_called_once_with("INBOX", 123)
+
+    def test_delete_email_delete_denied(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test delete_email raises PermissionDeniedError when delete is denied."""
+        permissions = AccountPermissions(delete=False)
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            mailbox.delete_email("INBOX", 123)
+
+        assert "Delete access denied" in str(exc_info.value)
+        mock_connector.delete_email.assert_not_called()
+
+    def test_delete_email_folder_denied(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test delete_email raises PermissionDeniedError when folder is not allowed."""
+        permissions = AccountPermissions(delete=True, folders=["INBOX"])
+        mailbox = SecureMailbox(mock_connector, permissions, mock_protection)
+
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            mailbox.delete_email("Secret", 123)
+
+        assert "folder 'Secret' denied" in str(exc_info.value)
+        mock_connector.delete_email.assert_not_called()
+
+    def test_delete_email_default_permissions_denied(
+        self,
+        mailbox: SecureMailbox,
+        mock_connector: MagicMock,
+    ) -> None:
+        """Test delete_email is denied with default permissions (delete=False)."""
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            mailbox.delete_email("INBOX", 123)
+
+        assert "Delete access denied" in str(exc_info.value)
+
 
 class TestPromptInjectionError:
     def test_error_message(self) -> None:
