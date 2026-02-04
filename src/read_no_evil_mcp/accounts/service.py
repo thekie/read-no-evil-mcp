@@ -3,9 +3,10 @@
 from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.accounts.credentials.base import CredentialBackend
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
+from read_no_evil_mcp.email.connectors.smtp import SMTPConnector
 from read_no_evil_mcp.exceptions import AccountNotFoundError, UnsupportedConnectorError
 from read_no_evil_mcp.mailbox import SecureMailbox
-from read_no_evil_mcp.models import IMAPConfig
+from read_no_evil_mcp.models import IMAPConfig, SMTPConfig
 
 
 class AccountService:
@@ -67,7 +68,24 @@ class AccountService:
                 ssl=config.ssl,
             )
             connector = IMAPConnector(imap_config)
+
+            # Create SMTP connector if send permission is enabled
+            smtp_connector = None
+            if config.permissions.send:
+                smtp_config = SMTPConfig(
+                    host=config.smtp_host or config.host,
+                    port=config.smtp_port,
+                    username=config.username,
+                    password=password,
+                    ssl=config.smtp_ssl,
+                )
+                smtp_connector = SMTPConnector(smtp_config)
         else:
             raise UnsupportedConnectorError(config.type)
 
-        return SecureMailbox(connector, config.permissions)
+        return SecureMailbox(
+            connector,
+            config.permissions,
+            smtp_connector=smtp_connector,
+            from_address=config.username,
+        )
