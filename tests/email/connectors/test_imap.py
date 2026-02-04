@@ -253,9 +253,7 @@ class TestIMAPConnectorWithSMTP:
         connector = IMAPConnector(imap_config)
         assert connector.can_send() is False
 
-    def test_can_send_with_smtp(
-        self, imap_config: IMAPConfig, smtp_config: SMTPConfig
-    ) -> None:
+    def test_can_send_with_smtp(self, imap_config: IMAPConfig, smtp_config: SMTPConfig) -> None:
         """Test can_send returns True when SMTP is configured."""
         connector = IMAPConnector(imap_config, smtp_config=smtp_config)
         assert connector.can_send() is True

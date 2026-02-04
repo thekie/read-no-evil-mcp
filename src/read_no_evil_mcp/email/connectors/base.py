@@ -115,9 +115,7 @@ class BaseConnector(ABC):
         Raises:
             NotImplementedError: If the connector doesn't support sending.
         """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} does not support sending emails"
-        )
+        raise NotImplementedError(f"{self.__class__.__name__} does not support sending emails")
 
     def __enter__(self) -> "BaseConnector":
         """Context manager entry - connect to server."""

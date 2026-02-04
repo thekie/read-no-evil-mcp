@@ -40,9 +40,7 @@ class AccountService:
         """
         return list(self._accounts.keys())
 
-    def _create_connector(
-        self, config: AccountConfig, password: SecretStr
-    ) -> BaseConnector:
+    def _create_connector(self, config: AccountConfig, password: SecretStr) -> BaseConnector:
         """Create a connector based on account configuration.
 
         Args:
