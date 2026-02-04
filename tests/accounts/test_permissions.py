@@ -14,7 +14,7 @@ class TestAccountPermissions:
         assert permissions.read is True
         assert permissions.delete is False
         assert permissions.send is False
-        assert permissions.mark_spam is False
+        assert permissions.move is False
         assert permissions.folders is None
 
     def test_explicit_permissions(self) -> None:
@@ -23,14 +23,14 @@ class TestAccountPermissions:
             read=True,
             delete=True,
             send=True,
-            mark_spam=True,
+            move=True,
             folders=["INBOX", "Sent"],
         )
 
         assert permissions.read is True
         assert permissions.delete is True
         assert permissions.send is True
-        assert permissions.mark_spam is True
+        assert permissions.move is True
         assert permissions.folders == ["INBOX", "Sent"]
 
     def test_read_only_permissions(self) -> None:
@@ -134,23 +134,23 @@ class TestPermissionChecker:
 
         assert "Send access denied" in str(exc_info.value)
 
-    def test_check_mark_spam_allowed(self) -> None:
-        """Test check_mark_spam passes when mark_spam is allowed."""
-        permissions = AccountPermissions(mark_spam=True)
+    def test_check_move_allowed(self) -> None:
+        """Test check_move passes when move is allowed."""
+        permissions = AccountPermissions(move=True)
         checker = PermissionChecker(permissions)
 
         # Should not raise
-        checker.check_mark_spam()
+        checker.check_move()
 
-    def test_check_mark_spam_denied(self) -> None:
-        """Test check_mark_spam raises when mark_spam is denied."""
-        permissions = AccountPermissions(mark_spam=False)
+    def test_check_move_denied(self) -> None:
+        """Test check_move raises when move is denied."""
+        permissions = AccountPermissions(move=False)
         checker = PermissionChecker(permissions)
 
         with pytest.raises(PermissionDeniedError) as exc_info:
-            checker.check_mark_spam()
+            checker.check_move()
 
-        assert "Mark spam access denied" in str(exc_info.value)
+        assert "Move access denied" in str(exc_info.value)
 
     def test_multiple_permission_checks(self) -> None:
         """Test multiple permission checks in sequence."""

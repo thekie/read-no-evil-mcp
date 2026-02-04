@@ -12,14 +12,14 @@ class AccountPermissions(BaseModel):
         read: Whether reading emails is allowed (default: True).
         delete: Whether deleting emails is allowed (default: False).
         send: Whether sending emails is allowed (default: False).
-        mark_spam: Whether marking emails as spam is allowed (default: False).
+        move: Whether moving emails between folders is allowed (default: False).
         folders: List of allowed folders, or None for all folders (default: None).
     """
 
     read: bool = True
     delete: bool = False
     send: bool = False
-    mark_spam: bool = False
+    move: bool = False
     folders: list[str] | None = None
 
 
@@ -77,11 +77,11 @@ class PermissionChecker:
         if not self.permissions.send:
             raise PermissionDeniedError("Send access denied for this account")
 
-    def check_mark_spam(self) -> None:
-        """Check if marking as spam is allowed.
+    def check_move(self) -> None:
+        """Check if moving emails is allowed.
 
         Raises:
-            PermissionDeniedError: If mark spam access is denied.
+            PermissionDeniedError: If move access is denied.
         """
-        if not self.permissions.mark_spam:
-            raise PermissionDeniedError("Mark spam access denied for this account")
+        if not self.permissions.move:
+            raise PermissionDeniedError("Move access denied for this account")
