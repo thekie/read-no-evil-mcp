@@ -7,14 +7,15 @@ from read_no_evil_mcp.tools._service import create_securemailbox
 
 
 @mcp.tool
-def get_email(folder: str, uid: int) -> str:
+def get_email(account: str, folder: str, uid: int) -> str:
     """Get full email content by UID.
 
     Args:
+        account: Account ID to use (e.g., "work", "personal").
         folder: Folder containing the email.
         uid: Unique identifier of the email.
     """
-    with create_securemailbox() as service:
+    with create_securemailbox(account) as service:
         try:
             email_result: Email | None = service.get_email(folder, uid)
         except PromptInjectionError as e:

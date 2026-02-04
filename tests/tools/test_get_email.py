@@ -29,7 +29,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_service,
         ):
-            result = get_email.fn(folder="INBOX", uid=123)
+            result = get_email.fn(account="work", folder="INBOX", uid=123)
 
         assert "Subject: Test Email" in result
         assert "From: Sender <sender@example.com>" in result
@@ -47,7 +47,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_service,
         ):
-            result = get_email.fn(folder="INBOX", uid=999)
+            result = get_email.fn(account="work", folder="INBOX", uid=999)
 
         assert "Email not found" in result
 
@@ -69,7 +69,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_service,
         ):
-            result = get_email.fn(folder="INBOX", uid=123)
+            result = get_email.fn(account="work", folder="INBOX", uid=123)
 
         assert "HTML content - plain text not available" in result
         assert "<p>HTML content</p>" in result
@@ -92,7 +92,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_service,
         ):
-            result = get_email.fn(folder="INBOX", uid=123)
+            result = get_email.fn(account="work", folder="INBOX", uid=123)
 
         assert "BLOCKED" in result
         assert "INBOX/123" in result
@@ -119,8 +119,23 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_service,
         ):
-            result = get_email.fn(folder="Sent", uid=456)
+            result = get_email.fn(account="work", folder="Sent", uid=456)
 
         assert "BLOCKED" in result
         assert "Sent/456" in result
         assert "system_tag" in result
+
+    def test_passes_account_to_create_securemailbox(self) -> None:
+        """Test get_email passes account to create_securemailbox."""
+        mock_service = MagicMock()
+        mock_service.get_email.return_value = None
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
+
+        with patch(
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
+            return_value=mock_service,
+        ) as mock_create:
+            get_email.fn(account="personal", folder="INBOX", uid=1)
+
+        mock_create.assert_called_once_with("personal")

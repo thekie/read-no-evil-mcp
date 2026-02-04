@@ -28,7 +28,7 @@ class TestListEmails:
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
             return_value=mock_service,
         ):
-            result = list_emails.fn(folder="INBOX", days_back=7)
+            result = list_emails.fn(account="work", folder="INBOX", days_back=7)
 
         assert "[1]" in result
         assert "Test Subject" in result
@@ -46,7 +46,7 @@ class TestListEmails:
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
             return_value=mock_service,
         ):
-            result = list_emails.fn()
+            result = list_emails.fn(account="work")
 
         assert "No emails found" in result
 
@@ -61,7 +61,7 @@ class TestListEmails:
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
             return_value=mock_service,
         ):
-            list_emails.fn(folder="INBOX", limit=5)
+            list_emails.fn(account="work", folder="INBOX", limit=5)
 
         call_args = mock_service.fetch_emails.call_args
         assert call_args.kwargs["limit"] == 5
@@ -77,7 +77,22 @@ class TestListEmails:
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
             return_value=mock_service,
         ):
-            list_emails.fn()
+            list_emails.fn(account="work")
 
         call_args = mock_service.fetch_emails.call_args
         assert call_args.args[0] == "INBOX"
+
+    def test_passes_account_to_create_securemailbox(self) -> None:
+        """Test list_emails passes account to create_securemailbox."""
+        mock_service = MagicMock()
+        mock_service.fetch_emails.return_value = []
+        mock_service.__enter__ = MagicMock(return_value=mock_service)
+        mock_service.__exit__ = MagicMock(return_value=None)
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_service,
+        ) as mock_create:
+            list_emails.fn(account="personal")
+
+        mock_create.assert_called_once_with("personal")
