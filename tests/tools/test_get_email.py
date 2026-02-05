@@ -22,6 +22,7 @@ class TestGetEmail:
             to=[EmailAddress(address="to@example.com")],
             body_plain="Hello, World!",
             message_id="<abc@example.com>",
+            is_seen=True,
         )
         mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
         mock_mailbox.__exit__ = MagicMock(return_value=None)
@@ -36,6 +37,30 @@ class TestGetEmail:
         assert "From: Sender <sender@example.com>" in result
         assert "To: to@example.com" in result
         assert "Hello, World!" in result
+        assert "Status: Read" in result
+
+    def test_unread_email_shows_unread_status(self) -> None:
+        """Test get_email shows Unread status for unseen emails."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.get_email.return_value = Email(
+            uid=123,
+            folder="INBOX",
+            subject="Unread Email",
+            sender=EmailAddress(address="sender@example.com"),
+            date=datetime(2026, 2, 3, 12, 0, 0),
+            body_plain="Content",
+            is_seen=False,
+        )
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        with patch(
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = get_email.fn(account="work", folder="INBOX", uid=123)
+
+        assert "Status: Unread" in result
 
     def test_email_not_found(self) -> None:
         """Test get_email with non-existent email."""

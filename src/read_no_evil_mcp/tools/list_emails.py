@@ -37,9 +37,10 @@ def list_emails(
             for email in emails:
                 date_str = email.date.strftime("%Y-%m-%d %H:%M")
                 attachment_marker = " [+]" if email.has_attachments else ""
+                seen_marker = "" if email.is_seen else " [UNREAD]"
                 lines.append(
                     f"[{email.uid}] {date_str} | {email.sender.address} | "
-                    f"{email.subject}{attachment_marker}"
+                    f"{email.subject}{attachment_marker}{seen_marker}"
                 )
 
             return "\n".join(lines)

@@ -20,6 +20,7 @@ class TestListEmails:
                 sender=EmailAddress(address="sender@example.com"),
                 date=datetime(2026, 2, 3, 12, 0, 0),
                 has_attachments=True,
+                is_seen=True,
             ),
         ]
         mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
@@ -35,6 +36,31 @@ class TestListEmails:
         assert "Test Subject" in result
         assert "sender@example.com" in result
         assert "[+]" in result  # attachment marker
+        assert "[UNREAD]" not in result  # seen email should not have UNREAD marker
+
+    def test_unseen_email_shows_unread_marker(self) -> None:
+        """Test list_emails shows [UNREAD] marker for unseen emails."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.fetch_emails.return_value = [
+            EmailSummary(
+                uid=1,
+                folder="INBOX",
+                subject="Unread Email",
+                sender=EmailAddress(address="sender@example.com"),
+                date=datetime(2026, 2, 3, 12, 0, 0),
+                is_seen=False,
+            ),
+        ]
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = list_emails.fn(account="work")
+
+        assert "[UNREAD]" in result
 
     def test_no_emails(self) -> None:
         """Test list_emails with no emails."""

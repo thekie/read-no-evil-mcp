@@ -62,6 +62,7 @@ class EmailSummary(BaseModel):
     sender: EmailAddress
     date: datetime
     has_attachments: bool = False
+    is_seen: bool = False
 
 
 class Email(EmailSummary):

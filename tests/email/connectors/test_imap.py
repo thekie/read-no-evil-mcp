@@ -96,6 +96,7 @@ class TestIMAPConnector:
         mock_msg.from_values = mock_from
         mock_msg.date = datetime(2026, 2, 3, 12, 0, 0)
         mock_msg.attachments = []
+        mock_msg.flags = ("\\Seen",)
         mock_mailbox.fetch.return_value = [mock_msg]
 
         connector = IMAPConnector(config)
@@ -106,6 +107,33 @@ class TestIMAPConnector:
         assert emails[0].uid == 123
         assert emails[0].subject == "Test Subject"
         assert emails[0].sender.address == "sender@example.com"
+        assert emails[0].is_seen is True
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_fetch_emails_unseen(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
+        """Test fetch_emails correctly identifies unseen messages."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        mock_from = MagicMock()
+        mock_from.name = "Sender"
+        mock_from.email = "sender@example.com"
+
+        mock_msg = MagicMock()
+        mock_msg.uid = "123"
+        mock_msg.subject = "Test Subject"
+        mock_msg.from_values = mock_from
+        mock_msg.date = datetime(2026, 2, 3, 12, 0, 0)
+        mock_msg.attachments = []
+        mock_msg.flags = ()  # No flags = unseen
+        mock_mailbox.fetch.return_value = [mock_msg]
+
+        connector = IMAPConnector(config)
+        connector.connect()
+        emails = connector.fetch_emails("INBOX", lookback=timedelta(days=7))
+
+        assert len(emails) == 1
+        assert emails[0].is_seen is False
 
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
     def test_fetch_emails_with_limit(
@@ -126,6 +154,7 @@ class TestIMAPConnector:
             mock_msg.from_values = mock_from
             mock_msg.date = datetime(2026, 2, 3, 12, 0, 0)
             mock_msg.attachments = []
+            mock_msg.flags = ()
             mock_msgs.append(mock_msg)
         mock_mailbox.fetch.return_value = mock_msgs
 
@@ -164,6 +193,7 @@ class TestIMAPConnector:
         mock_msg.html = "<p>HTML body</p>"
         mock_msg.attachments = []
         mock_msg.headers = {"message-id": ["<abc@example.com>"]}
+        mock_msg.flags = ("\\Seen",)
         mock_mailbox.fetch.return_value = [mock_msg]
 
         connector = IMAPConnector(config)
@@ -175,6 +205,38 @@ class TestIMAPConnector:
         assert email.body_plain == "Plain text body"
         assert email.body_html == "<p>HTML body</p>"
         assert len(email.to) == 1
+        assert email.is_seen is True
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_get_email_unseen(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
+        """Test get_email correctly identifies unseen messages."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        mock_from = MagicMock()
+        mock_from.name = "Sender"
+        mock_from.email = "sender@example.com"
+
+        mock_msg = MagicMock()
+        mock_msg.uid = "123"
+        mock_msg.subject = "Test Subject"
+        mock_msg.from_values = mock_from
+        mock_msg.date = datetime(2026, 2, 3, 12, 0, 0)
+        mock_msg.to_values = ()
+        mock_msg.cc_values = ()
+        mock_msg.text = "Plain text body"
+        mock_msg.html = None
+        mock_msg.attachments = []
+        mock_msg.headers = {}
+        mock_msg.flags = ()  # No flags = unseen
+        mock_mailbox.fetch.return_value = [mock_msg]
+
+        connector = IMAPConnector(config)
+        connector.connect()
+        email = connector.get_email("INBOX", 123)
+
+        assert email is not None
+        assert email.is_seen is False
 
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
     def test_get_email_not_found(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
