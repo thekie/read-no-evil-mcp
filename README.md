@@ -262,17 +262,17 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 - [x] MCP server with list/read tools
 - [x] Comprehensive test suite
 
-### v0.2 (Current)
+### v0.2 (Current) ✅
 - [x] Multi-account support
 - [x] YAML-based configuration
 - [x] Rights management (per-account permissions)
 - [x] Delete emails
 - [x] Send emails (SMTP)
 - [x] Move emails between folders
-- [ ] Configurable sensitivity levels
 
 ### v0.3 (Future)
 - [ ] Attachment support for send_email ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72))
+- [ ] Configurable sensitivity levels
 - [ ] Attachment scanning
 - [ ] Docker image
 
