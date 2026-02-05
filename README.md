@@ -150,7 +150,7 @@ accounts:
       read: true          # Read emails (default: true)
       delete: false       # Delete emails (default: false)
       send: false         # Send emails (default: false)
-      mark_spam: false    # Mark as spam (default: false)
+      move: false         # Move emails between folders (default: false)
       folders:            # Restrict to specific folders (default: null = all)
         - "INBOX"
         - "Sent"
@@ -167,12 +167,44 @@ accounts:
 | Permission | Default | Description |
 |------------|---------|-------------|
 | `read` | `true` | List folders, list emails, read email content |
-| `delete` | `false` | Delete emails |
-| `send` | `false` | Send/compose emails |
-| `mark_spam` | `false` | Mark emails as spam |
+| `delete` | `false` | Delete emails permanently |
+| `send` | `false` | Send emails via SMTP |
+| `move` | `false` | Move emails between folders |
 | `folders` | `null` | Restrict access to listed folders only (`null` = all folders) |
 
 **Security best practice:** Start with read-only access and only enable additional permissions as needed.
+
+### Sending Emails (SMTP)
+
+To enable email sending, configure SMTP settings and the `send` permission:
+
+```yaml
+accounts:
+  - id: "work"
+    type: "imap"
+    host: "mail.company.com"
+    username: "user@company.com"
+    
+    # SMTP configuration (required for send permission)
+    smtp_host: "smtp.company.com"  # Defaults to IMAP host if not set
+    smtp_port: 587                  # Default: 587 (STARTTLS)
+    smtp_ssl: false                 # Use SSL instead of STARTTLS (default: false)
+    
+    # Sender identity
+    from_address: "user@company.com"  # Defaults to username if not set
+    from_name: "John Doe"             # Optional display name
+    
+    permissions:
+      send: true
+```
+
+The `send_email` tool supports:
+- Multiple recipients (`to`)
+- CC recipients (`cc`)
+- Reply-To header (`reply_to`)
+- Plain text body
+
+**Note:** Attachments are planned for v0.3 ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72)).
 
 ## Quick Start
 
@@ -230,14 +262,17 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 - [x] MCP server with list/read tools
 - [x] Comprehensive test suite
 
-### v0.2 (Current)
+### v0.2 (Current) ✅
 - [x] Multi-account support
 - [x] YAML-based configuration
 - [x] Rights management (per-account permissions)
-- [ ] Additional actions: delete emails, write/send emails, mark as spam
-- [ ] Configurable sensitivity levels
+- [x] Delete emails
+- [x] Send emails (SMTP)
+- [x] Move emails between folders
 
 ### v0.3 (Future)
+- [ ] Attachment support for send_email ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72))
+- [ ] Configurable sensitivity levels
 - [ ] Attachment scanning
 - [ ] Docker image
 
