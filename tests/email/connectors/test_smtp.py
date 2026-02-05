@@ -6,6 +6,7 @@ import pytest
 from pydantic import SecretStr
 
 from read_no_evil_mcp.email.connectors.smtp import SMTPConnector
+from read_no_evil_mcp.email.models import OutgoingAttachment
 from read_no_evil_mcp.models import SMTPConfig
 
 
@@ -220,3 +221,174 @@ class TestSMTPConnector:
             # Message header should include display name
             msg_str = call_args[0][2]
             assert "From: Atlas <sender@example.com>" in msg_str
+
+    def test_send_email_with_single_attachment(self, smtp_config: SMTPConfig) -> None:
+        """Test sending email with a single attachment."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            attachment = OutgoingAttachment(
+                filename="test.txt",
+                content=b"Hello, attachment!",
+                mime_type="text/plain",
+            )
+
+            result = connector.send_email(
+                from_address="sender@example.com",
+                to=["recipient@example.com"],
+                subject="Test with attachment",
+                body="See attachment",
+                attachments=[attachment],
+            )
+
+            assert result is True
+            call_args = mock_connection.sendmail.call_args
+            msg_str = call_args[0][2]
+            assert "Content-Disposition: attachment" in msg_str
+            assert 'filename="test.txt"' in msg_str
+            assert "Content-Type: text/plain" in msg_str
+
+    def test_send_email_with_multiple_attachments(self, smtp_config: SMTPConfig) -> None:
+        """Test sending email with multiple attachments."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            attachments = [
+                OutgoingAttachment(
+                    filename="doc.pdf",
+                    content=b"%PDF-1.4 fake pdf content",
+                    mime_type="application/pdf",
+                ),
+                OutgoingAttachment(
+                    filename="image.png",
+                    content=b"\x89PNG fake png content",
+                    mime_type="image/png",
+                ),
+            ]
+
+            result = connector.send_email(
+                from_address="sender@example.com",
+                to=["recipient@example.com"],
+                subject="Multiple attachments",
+                body="See attachments",
+                attachments=attachments,
+            )
+
+            assert result is True
+            call_args = mock_connection.sendmail.call_args
+            msg_str = call_args[0][2]
+            assert 'filename="doc.pdf"' in msg_str
+            assert 'filename="image.png"' in msg_str
+            assert "Content-Type: application/pdf" in msg_str
+            assert "Content-Type: image/png" in msg_str
+
+    def test_send_email_with_path_attachment(self, smtp_config: SMTPConfig, tmp_path) -> None:
+        """Test sending email with file path attachment."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            # Create a temp file
+            file_path = tmp_path / "report.csv"
+            file_path.write_bytes(b"name,value\ntest,123")
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            attachment = OutgoingAttachment(
+                filename="report.csv",
+                path=str(file_path),
+                mime_type="text/csv",
+            )
+
+            result = connector.send_email(
+                from_address="sender@example.com",
+                to=["recipient@example.com"],
+                subject="Report attached",
+                body="See report",
+                attachments=[attachment],
+            )
+
+            assert result is True
+            call_args = mock_connection.sendmail.call_args
+            msg_str = call_args[0][2]
+            assert 'filename="report.csv"' in msg_str
+            assert "Content-Type: text/csv" in msg_str
+
+    def test_send_email_with_binary_attachment(self, smtp_config: SMTPConfig) -> None:
+        """Test sending email with binary attachment is base64 encoded."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            # Binary content
+            binary_content = bytes(range(256))
+            attachment = OutgoingAttachment(
+                filename="binary.bin",
+                content=binary_content,
+                mime_type="application/octet-stream",
+            )
+
+            result = connector.send_email(
+                from_address="sender@example.com",
+                to=["recipient@example.com"],
+                subject="Binary file",
+                body="Binary attachment test",
+                attachments=[attachment],
+            )
+
+            assert result is True
+            call_args = mock_connection.sendmail.call_args
+            msg_str = call_args[0][2]
+            # Check for base64 encoding header
+            assert "Content-Transfer-Encoding: base64" in msg_str
+            assert 'filename="binary.bin"' in msg_str
+
+    def test_send_email_empty_attachments_list(self, smtp_config: SMTPConfig) -> None:
+        """Test sending email with empty attachments list works."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            result = connector.send_email(
+                from_address="sender@example.com",
+                to=["recipient@example.com"],
+                subject="No attachments",
+                body="Test body",
+                attachments=[],
+            )
+
+            assert result is True
+
+    def test_send_email_none_attachments(self, smtp_config: SMTPConfig) -> None:
+        """Test sending email with None attachments works (backwards compat)."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            result = connector.send_email(
+                from_address="sender@example.com",
+                to=["recipient@example.com"],
+                subject="No attachments",
+                body="Test body",
+                attachments=None,
+            )
+
+            assert result is True

@@ -16,6 +16,7 @@ from read_no_evil_mcp.email.models import (
     EmailAddress,
     EmailSummary,
     Folder,
+    OutgoingAttachment,
 )
 from read_no_evil_mcp.protection.models import ScanResult
 
@@ -30,6 +31,7 @@ __all__ = [
     "EmailSummary",
     "Folder",
     "IMAPConfig",
+    "OutgoingAttachment",
     "ScanResult",
     "SMTPConfig",
 ]

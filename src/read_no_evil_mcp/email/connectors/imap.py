@@ -14,6 +14,7 @@ from read_no_evil_mcp.email.models import (
     EmailAddress,
     EmailSummary,
     Folder,
+    OutgoingAttachment,
 )
 
 # Default sender for emails without from address
@@ -251,6 +252,7 @@ class IMAPConnector(BaseConnector):
         from_name: str | None = None,
         cc: list[str] | None = None,
         reply_to: str | None = None,
+        attachments: list[OutgoingAttachment] | None = None,
     ) -> bool:
         """Send an email via SMTP.
 
@@ -262,6 +264,7 @@ class IMAPConnector(BaseConnector):
             from_name: Optional display name for sender (e.g., "Atlas").
             cc: Optional list of CC recipients.
             reply_to: Optional Reply-To email address.
+            attachments: Optional list of file attachments.
 
         Returns:
             True if email was sent successfully.
@@ -286,4 +289,5 @@ class IMAPConnector(BaseConnector):
             from_name=from_name,
             cc=cc,
             reply_to=reply_to,
+            attachments=attachments,
         )

@@ -1,9 +1,11 @@
 """Tests for send_email tool."""
 
+import base64
 from unittest.mock import MagicMock, patch
 
+from read_no_evil_mcp.email.models import OutgoingAttachment
 from read_no_evil_mcp.exceptions import PermissionDeniedError
-from read_no_evil_mcp.tools.send_email import send_email
+from read_no_evil_mcp.tools.send_email import _parse_attachments, send_email
 
 
 class TestSendEmail:
@@ -33,6 +35,7 @@ class TestSendEmail:
             body="Test body",
             cc=None,
             reply_to=None,
+            attachments=None,
         )
 
     def test_send_email_with_cc(self) -> None:
@@ -63,6 +66,7 @@ class TestSendEmail:
             body="Test body",
             cc=["cc1@example.com", "cc2@example.com"],
             reply_to=None,
+            attachments=None,
         )
 
     def test_send_email_with_reply_to(self) -> None:
@@ -91,6 +95,7 @@ class TestSendEmail:
             body="Test body",
             cc=None,
             reply_to="replies@example.com",
+            attachments=None,
         )
 
     def test_send_email_multiple_recipients(self) -> None:
@@ -180,3 +185,283 @@ class TestSendEmail:
             )
 
         mock_create.assert_called_once_with("personal")
+
+    def test_send_email_with_attachment(self) -> None:
+        """Test send_email tool with a single attachment."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.send_email.return_value = True
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        content = b"Hello, attachment!"
+        content_b64 = base64.b64encode(content).decode()
+
+        with patch(
+            "read_no_evil_mcp.tools.send_email.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = send_email.fn(
+                account="work",
+                to=["recipient@example.com"],
+                subject="Test with attachment",
+                body="See attachment",
+                attachments=[
+                    {
+                        "filename": "test.txt",
+                        "content": content_b64,
+                        "mime_type": "text/plain",
+                    }
+                ],
+            )
+
+        assert "Email sent successfully" in result
+        assert "1 attachment(s)" in result
+        assert "test.txt" in result
+
+        # Verify attachment was passed to mailbox
+        call_args = mock_mailbox.send_email.call_args
+        attachments = call_args.kwargs.get("attachments")
+        assert attachments is not None
+        assert len(attachments) == 1
+        assert attachments[0].filename == "test.txt"
+        assert attachments[0].get_content() == content
+
+    def test_send_email_with_multiple_attachments(self) -> None:
+        """Test send_email tool with multiple attachments."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.send_email.return_value = True
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        with patch(
+            "read_no_evil_mcp.tools.send_email.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = send_email.fn(
+                account="work",
+                to=["recipient@example.com"],
+                subject="Multiple attachments",
+                body="See attachments",
+                attachments=[
+                    {
+                        "filename": "doc.pdf",
+                        "content": base64.b64encode(b"pdf content").decode(),
+                        "mime_type": "application/pdf",
+                    },
+                    {
+                        "filename": "image.png",
+                        "content": base64.b64encode(b"png content").decode(),
+                        "mime_type": "image/png",
+                    },
+                ],
+            )
+
+        assert "Email sent successfully" in result
+        assert "2 attachment(s)" in result
+        assert "doc.pdf" in result
+        assert "image.png" in result
+
+    def test_send_email_with_path_attachment(self, tmp_path) -> None:
+        """Test send_email tool with file path attachment."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.send_email.return_value = True
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        # Create temp file
+        file_path = tmp_path / "report.csv"
+        file_path.write_bytes(b"name,value\ntest,123")
+
+        with patch(
+            "read_no_evil_mcp.tools.send_email.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = send_email.fn(
+                account="work",
+                to=["recipient@example.com"],
+                subject="Report",
+                body="See report",
+                attachments=[
+                    {
+                        "filename": "report.csv",
+                        "path": str(file_path),
+                        "mime_type": "text/csv",
+                    }
+                ],
+            )
+
+        assert "Email sent successfully" in result
+        assert "report.csv" in result
+
+    def test_send_email_attachment_missing_filename(self) -> None:
+        """Test send_email returns error when attachment is missing filename."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        with patch(
+            "read_no_evil_mcp.tools.send_email.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = send_email.fn(
+                account="work",
+                to=["recipient@example.com"],
+                subject="Test",
+                body="Test body",
+                attachments=[{"content": base64.b64encode(b"data").decode()}],
+            )
+
+        assert "Invalid attachment" in result
+        assert "filename" in result
+
+    def test_send_email_attachment_missing_content_and_path(self) -> None:
+        """Test send_email returns error when attachment has neither content nor path."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        with patch(
+            "read_no_evil_mcp.tools.send_email.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = send_email.fn(
+                account="work",
+                to=["recipient@example.com"],
+                subject="Test",
+                body="Test body",
+                attachments=[{"filename": "test.txt"}],
+            )
+
+        assert "Invalid attachment" in result
+        assert "content" in result or "path" in result
+
+    def test_send_email_with_empty_attachments_list(self) -> None:
+        """Test send_email with empty attachments list."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.send_email.return_value = True
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        with patch(
+            "read_no_evil_mcp.tools.send_email.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = send_email.fn(
+                account="work",
+                to=["recipient@example.com"],
+                subject="Test",
+                body="Test body",
+                attachments=[],
+            )
+
+        assert "Email sent successfully" in result
+        # Should not mention attachments when list is empty
+        assert "attachment" not in result.lower()
+
+    def test_send_email_with_none_attachments(self) -> None:
+        """Test send_email with None attachments (backwards compat)."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.send_email.return_value = True
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        with patch(
+            "read_no_evil_mcp.tools.send_email.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = send_email.fn(
+                account="work",
+                to=["recipient@example.com"],
+                subject="Test",
+                body="Test body",
+                attachments=None,
+            )
+
+        assert "Email sent successfully" in result
+
+
+class TestParseAttachments:
+    """Tests for the _parse_attachments helper function."""
+
+    def test_parse_none_returns_none(self) -> None:
+        """Test that None input returns None."""
+        assert _parse_attachments(None) is None
+
+    def test_parse_empty_list_returns_none(self) -> None:
+        """Test that empty list returns None."""
+        assert _parse_attachments([]) is None
+
+    def test_parse_with_content(self) -> None:
+        """Test parsing attachment with base64 content."""
+        content = b"Hello, World!"
+        content_b64 = base64.b64encode(content).decode()
+
+        result = _parse_attachments(
+            [
+                {
+                    "filename": "test.txt",
+                    "content": content_b64,
+                    "mime_type": "text/plain",
+                }
+            ]
+        )
+
+        assert result is not None
+        assert len(result) == 1
+        assert isinstance(result[0], OutgoingAttachment)
+        assert result[0].filename == "test.txt"
+        assert result[0].mime_type == "text/plain"
+        assert result[0].get_content() == content
+
+    def test_parse_with_path(self) -> None:
+        """Test parsing attachment with file path."""
+        result = _parse_attachments(
+            [
+                {
+                    "filename": "test.txt",
+                    "path": "/path/to/file.txt",
+                }
+            ]
+        )
+
+        assert result is not None
+        assert len(result) == 1
+        assert result[0].filename == "test.txt"
+        assert result[0].path == "/path/to/file.txt"
+        assert result[0].mime_type == "application/octet-stream"  # default
+
+    def test_parse_default_mime_type(self) -> None:
+        """Test that default MIME type is applied."""
+        result = _parse_attachments(
+            [
+                {
+                    "filename": "test.bin",
+                    "content": base64.b64encode(b"data").decode(),
+                }
+            ]
+        )
+
+        assert result is not None
+        assert result[0].mime_type == "application/octet-stream"
+
+    def test_parse_multiple_attachments(self) -> None:
+        """Test parsing multiple attachments."""
+        result = _parse_attachments(
+            [
+                {
+                    "filename": "doc.pdf",
+                    "content": base64.b64encode(b"pdf").decode(),
+                    "mime_type": "application/pdf",
+                },
+                {
+                    "filename": "img.png",
+                    "path": "/path/to/img.png",
+                    "mime_type": "image/png",
+                },
+            ]
+        )
+
+        assert result is not None
+        assert len(result) == 2
+        assert result[0].filename == "doc.pdf"
+        assert result[1].filename == "img.png"

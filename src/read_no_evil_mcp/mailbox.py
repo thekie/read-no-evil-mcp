@@ -6,7 +6,7 @@ from types import TracebackType
 from read_no_evil_mcp.accounts.config import AccessLevel
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
 from read_no_evil_mcp.email.connectors.base import BaseConnector
-from read_no_evil_mcp.email.models import EmailSummary, Folder
+from read_no_evil_mcp.email.models import EmailSummary, Folder, OutgoingAttachment
 from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.filtering.access_rules import (
     AccessRuleMatcher,
@@ -281,6 +281,7 @@ class SecureMailbox:
         body: str,
         cc: list[str] | None = None,
         reply_to: str | None = None,
+        attachments: list[OutgoingAttachment] | None = None,
     ) -> bool:
         """Send an email.
 
@@ -290,6 +291,7 @@ class SecureMailbox:
             body: Email body text (plain text).
             cc: Optional list of CC recipients.
             reply_to: Optional Reply-To email address.
+            attachments: Optional list of file attachments.
 
         Returns:
             True if email was sent successfully.
@@ -314,6 +316,7 @@ class SecureMailbox:
             from_name=self._from_name,
             cc=cc,
             reply_to=reply_to,
+            attachments=attachments,
         )
 
     def move_email(self, folder: str, uid: int, target_folder: str) -> bool:

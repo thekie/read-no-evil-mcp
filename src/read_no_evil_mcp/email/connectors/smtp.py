@@ -1,10 +1,13 @@
 """SMTP connector for sending emails using smtplib."""
 
 import smtplib
+from email import encoders
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from read_no_evil_mcp.email.connectors.config import SMTPConfig
+from read_no_evil_mcp.email.models import OutgoingAttachment
 
 
 class SMTPConnector:
@@ -61,6 +64,7 @@ class SMTPConnector:
         from_name: str | None = None,
         cc: list[str] | None = None,
         reply_to: str | None = None,
+        attachments: list[OutgoingAttachment] | None = None,
     ) -> bool:
         """Send an email.
 
@@ -72,6 +76,7 @@ class SMTPConnector:
             from_name: Optional display name for sender (e.g., "Atlas").
             cc: Optional list of CC recipients.
             reply_to: Optional Reply-To email address.
+            attachments: Optional list of file attachments.
 
         Returns:
             True if email was sent successfully.
@@ -99,6 +104,21 @@ class SMTPConnector:
             msg["Reply-To"] = reply_to
 
         msg.attach(MIMEText(body, "plain"))
+
+        # Add attachments
+        if attachments:
+            for attachment in attachments:
+                content = attachment.get_content()
+                maintype, subtype = attachment.mime_type.split("/", 1)
+                part = MIMEBase(maintype, subtype)
+                part.set_payload(content)
+                encoders.encode_base64(part)
+                part.add_header(
+                    "Content-Disposition",
+                    "attachment",
+                    filename=attachment.filename,
+                )
+                msg.attach(part)
 
         # Build recipient list (to + cc)
         recipients = list(to)
