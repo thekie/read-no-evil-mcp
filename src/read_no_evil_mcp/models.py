@@ -1,20 +1,20 @@
 """Data models for read-no-evil-mcp.
 
 Email-specific models have been moved to email/models.py.
+Connector configs have been moved to email/connectors/config.py.
 This module re-exports them for backwards compatibility.
 """
 
 from pydantic import BaseModel
 
 # Re-export email models for backwards compatibility
+from read_no_evil_mcp.email.connectors.config import IMAPConfig, SMTPConfig
 from read_no_evil_mcp.email.models import (
     Attachment,
     Email,
     EmailAddress,
     EmailSummary,
     Folder,
-    IMAPConfig,
-    SMTPConfig,
 )
 
 __all__ = [

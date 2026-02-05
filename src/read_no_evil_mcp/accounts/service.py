@@ -5,11 +5,11 @@ from pydantic import SecretStr
 from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.accounts.credentials.base import CredentialBackend
 from read_no_evil_mcp.email.connectors.base import BaseConnector
+from read_no_evil_mcp.email.connectors.config import IMAPConfig, SMTPConfig
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
 from read_no_evil_mcp.exceptions import AccountNotFoundError, UnsupportedConnectorError
 from read_no_evil_mcp.filtering.access_rules import AccessRuleMatcher
 from read_no_evil_mcp.mailbox import SecureMailbox
-from read_no_evil_mcp.models import IMAPConfig, SMTPConfig
 
 
 class AccountService:

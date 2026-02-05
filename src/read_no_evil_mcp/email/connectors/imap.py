@@ -6,15 +6,14 @@ from imap_tools import AND, MailBox, MailBoxUnencrypted
 from imap_tools import EmailAddress as IMAPEmailAddress
 
 from read_no_evil_mcp.email.connectors.base import BaseConnector
+from read_no_evil_mcp.email.connectors.config import IMAPConfig, SMTPConfig
 from read_no_evil_mcp.email.connectors.smtp import SMTPConnector
-from read_no_evil_mcp.models import (
+from read_no_evil_mcp.email.models import (
     Attachment,
     Email,
     EmailAddress,
     EmailSummary,
     Folder,
-    IMAPConfig,
-    SMTPConfig,
 )
 
 # Default sender for emails without from address

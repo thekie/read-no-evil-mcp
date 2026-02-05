@@ -1,6 +1,7 @@
 """Email connectors and models for read-no-evil-mcp."""
 
 from read_no_evil_mcp.email.connectors.base import BaseConnector
+from read_no_evil_mcp.email.connectors.config import IMAPConfig, SMTPConfig
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
 from read_no_evil_mcp.email.models import (
     Attachment,
@@ -8,8 +9,6 @@ from read_no_evil_mcp.email.models import (
     EmailAddress,
     EmailSummary,
     Folder,
-    IMAPConfig,
-    SMTPConfig,
 )
 
 __all__ = [

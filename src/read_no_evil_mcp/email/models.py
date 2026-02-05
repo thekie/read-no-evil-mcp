@@ -1,28 +1,8 @@
-"""Email-specific data models."""
+"""Email data models."""
 
 from datetime import datetime
 
-from pydantic import BaseModel, SecretStr
-
-
-class IMAPConfig(BaseModel):
-    """IMAP server configuration."""
-
-    host: str
-    port: int = 993
-    username: str
-    password: SecretStr
-    ssl: bool = True
-
-
-class SMTPConfig(BaseModel):
-    """SMTP server configuration."""
-
-    host: str
-    port: int = 587
-    username: str
-    password: SecretStr
-    ssl: bool = False  # False = use STARTTLS, True = use SSL
+from pydantic import BaseModel
 
 
 class EmailAddress(BaseModel):

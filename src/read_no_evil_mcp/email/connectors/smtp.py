@@ -4,7 +4,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from read_no_evil_mcp.models import SMTPConfig
+from read_no_evil_mcp.email.connectors.config import SMTPConfig
 
 
 class SMTPConnector:
