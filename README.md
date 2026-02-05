@@ -238,6 +238,7 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 - [ ] Configurable sensitivity levels
 
 ### v0.3 (Future)
+- [ ] Attachment support for send_email ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72))
 - [ ] Attachment scanning
 - [ ] Docker image
 
