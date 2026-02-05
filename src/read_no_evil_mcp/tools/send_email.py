@@ -1,7 +1,8 @@
 """Send email MCP tool."""
 
 import base64
-from typing import TypedDict
+
+from pydantic import BaseModel
 
 from read_no_evil_mcp.email.models import OutgoingAttachment
 from read_no_evil_mcp.exceptions import PermissionDeniedError
@@ -9,25 +10,25 @@ from read_no_evil_mcp.tools._app import mcp
 from read_no_evil_mcp.tools._service import create_securemailbox
 
 
-class AttachmentInput(TypedDict, total=False):
+class AttachmentInput(BaseModel):
     """Input format for email attachments.
 
     Either content (base64-encoded) or path must be provided.
     """
 
     filename: str
-    content: str  # base64-encoded bytes
-    mime_type: str
-    path: str
+    content: str | None = None  # base64-encoded bytes
+    mime_type: str = "application/octet-stream"
+    path: str | None = None
 
 
 def _parse_attachments(
-    attachment_inputs: list[AttachmentInput] | None,
+    attachment_inputs: list[AttachmentInput | dict] | None,
 ) -> list[OutgoingAttachment] | None:
     """Convert attachment inputs to OutgoingAttachment objects.
 
     Args:
-        attachment_inputs: List of attachment dictionaries from MCP input.
+        attachment_inputs: List of AttachmentInput objects or dicts from MCP input.
 
     Returns:
         List of OutgoingAttachment objects, or None if no attachments.
@@ -39,27 +40,23 @@ def _parse_attachments(
         return None
 
     attachments: list[OutgoingAttachment] = []
-    for att in attachment_inputs:
-        filename = att.get("filename")
-        if not filename:
-            raise ValueError("Attachment missing required 'filename' field")
+    for item in attachment_inputs:
+        # Convert dict to AttachmentInput if needed
+        att = item if isinstance(item, AttachmentInput) else AttachmentInput(**item)
 
-        content_b64 = att.get("content")
-        path = att.get("path")
-
-        if not content_b64 and not path:
-            raise ValueError(f"Attachment '{filename}' must have either 'content' or 'path'")
+        if not att.content and not att.path:
+            raise ValueError(f"Attachment '{att.filename}' must have either 'content' or 'path'")
 
         content: bytes | None = None
-        if content_b64:
-            content = base64.b64decode(content_b64)
+        if att.content:
+            content = base64.b64decode(att.content)
 
         attachments.append(
             OutgoingAttachment(
-                filename=filename,
+                filename=att.filename,
                 content=content,
-                mime_type=att.get("mime_type", "application/octet-stream"),
-                path=path,
+                mime_type=att.mime_type,
+                path=att.path,
             )
         )
 
