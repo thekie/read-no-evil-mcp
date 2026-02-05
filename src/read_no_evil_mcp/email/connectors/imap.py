@@ -144,6 +144,7 @@ class IMAPConnector(BaseConnector):
                     sender=sender,
                     date=msg.date,
                     has_attachments=len(msg.attachments) > 0,
+                    is_seen="\\Seen" in msg.flags,
                 )
             )
 
@@ -178,6 +179,7 @@ class IMAPConnector(BaseConnector):
                 sender=sender,
                 date=msg.date,
                 has_attachments=len(attachments) > 0,
+                is_seen="\\Seen" in msg.flags,
                 to=_convert_addresses(msg.to_values),
                 cc=_convert_addresses(msg.cc_values),
                 body_plain=msg.text or None,

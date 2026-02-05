@@ -95,6 +95,7 @@ class TestEmailSummary:
         )
         assert summary.uid == 123
         assert summary.has_attachments is False
+        assert summary.is_seen is False
 
     def test_with_attachments(self):
         summary = EmailSummary(
@@ -106,6 +107,27 @@ class TestEmailSummary:
             has_attachments=True,
         )
         assert summary.has_attachments is True
+
+    def test_is_seen_default_false(self):
+        summary = EmailSummary(
+            uid=123,
+            folder="INBOX",
+            subject="Test",
+            sender=EmailAddress(address="sender@example.com"),
+            date=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        assert summary.is_seen is False
+
+    def test_is_seen_explicit_true(self):
+        summary = EmailSummary(
+            uid=123,
+            folder="INBOX",
+            subject="Test",
+            sender=EmailAddress(address="sender@example.com"),
+            date=datetime(2026, 2, 3, 12, 0, 0),
+            is_seen=True,
+        )
+        assert summary.is_seen is True
 
 
 class TestEmail:
@@ -122,6 +144,7 @@ class TestEmail:
         assert email.body_plain == "Hello, World!"
         assert email.body_html is None
         assert email.attachments == []
+        assert email.is_seen is False
 
     def test_full_email(self):
         email = Email(
@@ -141,6 +164,18 @@ class TestEmail:
         assert len(email.cc) == 1
         assert len(email.attachments) == 1
         assert email.message_id == "<abc123@example.com>"
+
+    def test_is_seen_inherited(self):
+        email = Email(
+            uid=123,
+            folder="INBOX",
+            subject="Test",
+            sender=EmailAddress(address="sender@example.com"),
+            date=datetime(2026, 2, 3, 12, 0, 0),
+            is_seen=True,
+            body_plain="Test body",
+        )
+        assert email.is_seen is True
 
 
 class TestScanResult:
