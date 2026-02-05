@@ -6,6 +6,7 @@ from imap_tools import AND, MailBox, MailBoxUnencrypted
 from imap_tools import EmailAddress as IMAPEmailAddress
 
 from read_no_evil_mcp.email.connectors.base import BaseConnector
+from read_no_evil_mcp.email.connectors.smtp import SMTPConnector
 from read_no_evil_mcp.models import (
     Attachment,
     Email,
@@ -13,6 +14,7 @@ from read_no_evil_mcp.models import (
     EmailSummary,
     Folder,
     IMAPConfig,
+    SMTPConfig,
 )
 
 # Default sender for emails without from address
@@ -34,14 +36,29 @@ def _convert_addresses(addrs: tuple[IMAPEmailAddress, ...]) -> list[EmailAddress
 
 
 class IMAPConnector(BaseConnector):
-    """Connector for reading emails via IMAP using imap-tools."""
+    """Connector for reading emails via IMAP using imap-tools.
 
-    def __init__(self, config: IMAPConfig) -> None:
+    Optionally supports sending emails via SMTP when smtp_config is provided.
+    """
+
+    def __init__(
+        self,
+        config: IMAPConfig,
+        smtp_config: SMTPConfig | None = None,
+    ) -> None:
+        """Initialize IMAP connector.
+
+        Args:
+            config: IMAP server configuration.
+            smtp_config: Optional SMTP configuration for sending emails.
+        """
         self.config = config
         self._mailbox: MailBox | MailBoxUnencrypted | None = None
+        self._smtp_config = smtp_config
+        self._smtp_connector: SMTPConnector | None = None
 
     def connect(self) -> None:
-        """Establish connection to IMAP server."""
+        """Establish connection to IMAP server (and SMTP if configured)."""
         if self.config.ssl:
             mailbox: MailBox | MailBoxUnencrypted = MailBox(self.config.host, self.config.port)
         else:
@@ -53,11 +70,20 @@ class IMAPConnector(BaseConnector):
         )
         self._mailbox = mailbox
 
+        # Connect to SMTP if configured
+        if self._smtp_config:
+            self._smtp_connector = SMTPConnector(self._smtp_config)
+            self._smtp_connector.connect()
+
     def disconnect(self) -> None:
-        """Close connection to IMAP server."""
+        """Close connection to IMAP server (and SMTP if connected)."""
         if self._mailbox:
             self._mailbox.logout()
             self._mailbox = None
+
+        if self._smtp_connector:
+            self._smtp_connector.disconnect()
+            self._smtp_connector = None
 
     def list_folders(self) -> list[Folder]:
         """List all folders/mailboxes."""
@@ -206,3 +232,57 @@ class IMAPConnector(BaseConnector):
         self._mailbox.delete(str(uid))
 
         return True
+
+    def can_send(self) -> bool:
+        """Check if this connector supports sending emails.
+
+        Returns:
+            True if SMTP is configured, False otherwise.
+        """
+        return self._smtp_config is not None
+
+    def send(
+        self,
+        from_address: str,
+        to: list[str],
+        subject: str,
+        body: str,
+        from_name: str | None = None,
+        cc: list[str] | None = None,
+        reply_to: str | None = None,
+    ) -> bool:
+        """Send an email via SMTP.
+
+        Args:
+            from_address: Sender email address (e.g., "user@example.com").
+            to: List of recipient email addresses.
+            subject: Email subject line.
+            body: Email body text (plain text).
+            from_name: Optional display name for sender (e.g., "Atlas").
+            cc: Optional list of CC recipients.
+            reply_to: Optional Reply-To email address.
+
+        Returns:
+            True if email was sent successfully.
+
+        Raises:
+            NotImplementedError: If SMTP is not configured.
+            RuntimeError: If not connected.
+        """
+        if not self._smtp_config:
+            raise NotImplementedError(
+                "IMAPConnector does not support sending emails without SMTP configuration"
+            )
+
+        if not self._smtp_connector:
+            raise RuntimeError("Not connected. Call connect() first.")
+
+        return self._smtp_connector.send_email(
+            from_address=from_address,
+            to=to,
+            subject=subject,
+            body=body,
+            from_name=from_name,
+            cc=cc,
+            reply_to=reply_to,
+        )

@@ -18,4 +18,5 @@ class TestMCPSetup:
             "list_emails",
             "list_folders",
             "move_email",
+            "send_email",
         }

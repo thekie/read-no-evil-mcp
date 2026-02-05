@@ -1,11 +1,14 @@
 """Account service for managing multiple email accounts."""
 
+from pydantic import SecretStr
+
 from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.accounts.credentials.base import CredentialBackend
+from read_no_evil_mcp.email.connectors.base import BaseConnector
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
 from read_no_evil_mcp.exceptions import AccountNotFoundError, UnsupportedConnectorError
 from read_no_evil_mcp.mailbox import SecureMailbox
-from read_no_evil_mcp.models import IMAPConfig
+from read_no_evil_mcp.models import IMAPConfig, SMTPConfig
 
 
 class AccountService:
@@ -37,6 +40,43 @@ class AccountService:
         """
         return list(self._accounts.keys())
 
+    def _create_connector(self, config: AccountConfig, password: SecretStr) -> BaseConnector:
+        """Create a connector based on account configuration.
+
+        Args:
+            config: The account configuration.
+            password: The account password.
+
+        Returns:
+            A configured connector instance.
+
+        Raises:
+            UnsupportedConnectorError: If the connector type is not supported.
+        """
+        if config.type == "imap":
+            imap_config = IMAPConfig(
+                host=config.host,
+                port=config.port,
+                username=config.username,
+                password=password,
+                ssl=config.ssl,
+            )
+
+            # Create SMTP config if send permission is enabled
+            smtp_config = None
+            if config.permissions.send:
+                smtp_config = SMTPConfig(
+                    host=config.smtp_host or config.host,
+                    port=config.smtp_port,
+                    username=config.username,
+                    password=password,
+                    ssl=config.smtp_ssl,
+                )
+
+            return IMAPConnector(imap_config, smtp_config=smtp_config)
+
+        raise UnsupportedConnectorError(config.type)
+
     def get_mailbox(self, account_id: str) -> SecureMailbox:
         """Create SecureMailbox for the specified account.
 
@@ -56,18 +96,14 @@ class AccountService:
             raise AccountNotFoundError(account_id)
 
         password = self._credentials.get_password(account_id)
+        connector = self._create_connector(config, password)
 
-        # Create connector based on type
-        if config.type == "imap":
-            imap_config = IMAPConfig(
-                host=config.host,
-                port=config.port,
-                username=config.username,
-                password=password,
-                ssl=config.ssl,
-            )
-            connector = IMAPConnector(imap_config)
-        else:
-            raise UnsupportedConnectorError(config.type)
+        # Use config.from_address, fall back to config.username if not set
+        from_address = config.from_address or config.username
 
-        return SecureMailbox(connector, config.permissions)
+        return SecureMailbox(
+            connector,
+            config.permissions,
+            from_address=from_address,
+            from_name=config.from_name,
+        )

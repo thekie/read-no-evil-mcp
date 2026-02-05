@@ -37,17 +37,23 @@ class SecureMailbox:
         connector: BaseConnector,
         permissions: AccountPermissions,
         protection: ProtectionService | None = None,
+        from_address: str | None = None,
+        from_name: str | None = None,
     ) -> None:
         """Initialize secure mailbox.
 
         Args:
-            connector: Email connector for fetching emails.
+            connector: Email connector for fetching and optionally sending emails.
             permissions: Account permissions to enforce.
             protection: Protection service for scanning. Defaults to standard service.
+            from_address: Sender email address for outgoing emails (e.g., "user@example.com").
+            from_name: Optional display name for sender (e.g., "Atlas").
         """
         self._connector = connector
         self._permissions = permissions
         self._protection = protection or ProtectionService()
+        self._from_address = from_address
+        self._from_name = from_name
 
     def _require_read(self) -> None:
         """Check if read access is allowed.
@@ -91,6 +97,15 @@ class SecureMailbox:
         if self._permissions.folders is None:
             return folders
         return [f for f in folders if f.name in self._permissions.folders]
+
+    def _require_send(self) -> None:
+        """Check if send access is allowed.
+
+        Raises:
+            PermissionDeniedError: If send access is denied.
+        """
+        if not self._permissions.send:
+            raise PermissionDeniedError("Send access denied for this account")
 
     def connect(self) -> None:
         """Connect to the email server."""
@@ -231,6 +246,48 @@ class SecureMailbox:
             raise PromptInjectionError(scan_result, uid, folder)
 
         return email
+
+    def send_email(
+        self,
+        to: list[str],
+        subject: str,
+        body: str,
+        cc: list[str] | None = None,
+        reply_to: str | None = None,
+    ) -> bool:
+        """Send an email.
+
+        Args:
+            to: List of recipient email addresses.
+            subject: Email subject line.
+            body: Email body text (plain text).
+            cc: Optional list of CC recipients.
+            reply_to: Optional Reply-To email address.
+
+        Returns:
+            True if email was sent successfully.
+
+        Raises:
+            PermissionDeniedError: If send access is denied.
+            RuntimeError: If sending is not supported by the connector.
+        """
+        self._require_send()
+
+        if not self._connector.can_send():
+            raise RuntimeError("Sending not configured for this account")
+
+        if not self._from_address:
+            raise RuntimeError("From address not configured for this account")
+
+        return self._connector.send(
+            from_address=self._from_address,
+            to=to,
+            subject=subject,
+            body=body,
+            from_name=self._from_name,
+            cc=cc,
+            reply_to=reply_to,
+        )
 
     def move_email(self, folder: str, uid: int, target_folder: str) -> bool:
         """Move an email to a target folder.

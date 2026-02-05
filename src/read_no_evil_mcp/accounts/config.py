@@ -32,6 +32,9 @@ class IMAPAccountConfig(BaseAccountConfig):
         username: Account username/email address.
         ssl: Whether to use SSL/TLS (default: True).
         permissions: Account permissions (default: read-only).
+        smtp_host: SMTP server hostname (default: same as IMAP host).
+        smtp_port: SMTP server port (default: 587 for STARTTLS).
+        smtp_ssl: Use SSL instead of STARTTLS for SMTP (default: False).
     """
 
     type: Literal["imap"] = Field(
@@ -45,6 +48,29 @@ class IMAPAccountConfig(BaseAccountConfig):
     permissions: AccountPermissions = Field(
         default_factory=AccountPermissions,
         description="Account permissions (default: read-only)",
+    )
+    smtp_host: str | None = Field(
+        default=None,
+        description="SMTP server hostname (defaults to IMAP host)",
+    )
+    smtp_port: int = Field(
+        default=587,
+        ge=1,
+        le=65535,
+        description="SMTP server port (default: 587 for STARTTLS)",
+    )
+    smtp_ssl: bool = Field(
+        default=False,
+        description="Use SSL instead of STARTTLS for SMTP (default: False)",
+    )
+    from_address: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Sender email address for outgoing emails (required for send)",
+    )
+    from_name: str | None = Field(
+        default=None,
+        description="Display name for outgoing emails (e.g., 'Atlas')",
     )
 
 

@@ -15,6 +15,16 @@ class IMAPConfig(BaseModel):
     ssl: bool = True
 
 
+class SMTPConfig(BaseModel):
+    """SMTP server configuration."""
+
+    host: str
+    port: int = 587
+    username: str
+    password: SecretStr
+    ssl: bool = False  # False = use STARTTLS, True = use SSL
+
+
 class EmailAddress(BaseModel):
     """Parsed email address with optional display name."""
 
