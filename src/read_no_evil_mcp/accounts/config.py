@@ -1,9 +1,10 @@
 """Account configuration models with discriminated union for multi-connector support."""
 
+import re
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
 
@@ -41,6 +42,16 @@ class SenderRule(BaseModel):
     pattern: str = Field(..., min_length=1, description="Regex pattern for sender email")
     access: AccessLevel = Field(..., description="Access level when pattern matches")
 
+    @field_validator("pattern")
+    @classmethod
+    def validate_pattern(cls, v: str) -> str:
+        """Validate that the pattern is a valid regex."""
+        try:
+            re.compile(v)
+        except re.error as e:
+            raise ValueError(f"Invalid regex pattern: {e}") from e
+        return v
+
 
 class SubjectRule(BaseModel):
     """Rule for matching email subject lines.
@@ -52,6 +63,16 @@ class SubjectRule(BaseModel):
 
     pattern: str = Field(..., min_length=1, description="Regex pattern for subject line")
     access: AccessLevel = Field(..., description="Access level when pattern matches")
+
+    @field_validator("pattern")
+    @classmethod
+    def validate_pattern(cls, v: str) -> str:
+        """Validate that the pattern is a valid regex."""
+        try:
+            re.compile(v)
+        except re.error as e:
+            raise ValueError(f"Invalid regex pattern: {e}") from e
+        return v
 
 
 class BaseAccountConfig(BaseModel):
@@ -129,11 +150,11 @@ class IMAPAccountConfig(BaseAccountConfig):
         default_factory=list,
         description="Rules for matching email subject lines",
     )
-    list_prompts: dict[str, str | None] = Field(
+    list_prompts: dict[AccessLevel, str | None] = Field(
         default_factory=dict,
         description="Agent prompts shown in list_emails per access level",
     )
-    read_prompts: dict[str, str | None] = Field(
+    read_prompts: dict[AccessLevel, str | None] = Field(
         default_factory=dict,
         description="Agent prompts shown in get_email per access level",
     )

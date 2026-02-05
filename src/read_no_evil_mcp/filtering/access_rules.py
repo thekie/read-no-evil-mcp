@@ -81,24 +81,17 @@ class AccessRuleMatcher:
         """
         matched_levels: list[AccessLevel] = []
 
-        # Match sender rules
+        # Match sender rules (patterns validated at config load time)
         for sender_rule in self._sender_rules:
-            try:
-                pattern = _compile_pattern(sender_rule.pattern)
-                if pattern.search(sender):
-                    matched_levels.append(sender_rule.access)
-            except re.error:
-                # Skip invalid patterns - they should be caught at config validation
-                continue
+            pattern = _compile_pattern(sender_rule.pattern)
+            if pattern.search(sender):
+                matched_levels.append(sender_rule.access)
 
-        # Match subject rules
+        # Match subject rules (patterns validated at config load time)
         for subject_rule in self._subject_rules:
-            try:
-                pattern = _compile_pattern(subject_rule.pattern)
-                if pattern.search(subject):
-                    matched_levels.append(subject_rule.access)
-            except re.error:
-                continue
+            pattern = _compile_pattern(subject_rule.pattern)
+            if pattern.search(subject):
+                matched_levels.append(subject_rule.access)
 
         if not matched_levels:
             return AccessLevel.SHOW
@@ -142,37 +135,35 @@ def get_access_level(
 
 def get_list_prompt(
     level: AccessLevel,
-    custom_prompts: dict[str, str | None] | None = None,
+    custom_prompts: dict[AccessLevel, str | None] | None = None,
 ) -> str | None:
     """Get the prompt to show in list_emails for an access level.
 
     Args:
         level: The access level.
         custom_prompts: Optional custom prompts that override defaults.
-            Keys are access level values (e.g., "trusted", "ask_before_read").
 
     Returns:
         The prompt string, or None if no prompt should be shown.
     """
-    if custom_prompts and level.value in custom_prompts:
-        return custom_prompts[level.value]
+    if custom_prompts and level in custom_prompts:
+        return custom_prompts[level]
     return DEFAULT_LIST_PROMPTS.get(level)
 
 
 def get_read_prompt(
     level: AccessLevel,
-    custom_prompts: dict[str, str | None] | None = None,
+    custom_prompts: dict[AccessLevel, str | None] | None = None,
 ) -> str | None:
     """Get the prompt to show in get_email for an access level.
 
     Args:
         level: The access level.
         custom_prompts: Optional custom prompts that override defaults.
-            Keys are access level values (e.g., "trusted", "ask_before_read").
 
     Returns:
         The prompt string, or None if no prompt should be shown.
     """
-    if custom_prompts and level.value in custom_prompts:
-        return custom_prompts[level.value]
+    if custom_prompts and level in custom_prompts:
+        return custom_prompts[level]
     return DEFAULT_READ_PROMPTS.get(level)

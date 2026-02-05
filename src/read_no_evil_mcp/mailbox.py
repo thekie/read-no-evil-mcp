@@ -3,10 +3,15 @@
 from datetime import date, timedelta
 from types import TracebackType
 
+from read_no_evil_mcp.accounts.config import AccessLevel
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
 from read_no_evil_mcp.email.connectors.base import BaseConnector
 from read_no_evil_mcp.exceptions import PermissionDeniedError
-from read_no_evil_mcp.filtering.access_rules import AccessRuleMatcher
+from read_no_evil_mcp.filtering.access_rules import (
+    AccessRuleMatcher,
+    get_list_prompt,
+    get_read_prompt,
+)
 from read_no_evil_mcp.models import Email, EmailSummary, Folder, ScanResult
 from read_no_evil_mcp.protection.service import ProtectionService
 
@@ -41,6 +46,8 @@ class SecureMailbox:
         from_address: str | None = None,
         from_name: str | None = None,
         access_rules_matcher: AccessRuleMatcher | None = None,
+        list_prompts: dict[AccessLevel, str | None] | None = None,
+        read_prompts: dict[AccessLevel, str | None] | None = None,
     ) -> None:
         """Initialize secure mailbox.
 
@@ -51,6 +58,8 @@ class SecureMailbox:
             from_address: Sender email address for outgoing emails (e.g., "user@example.com").
             from_name: Optional display name for sender (e.g., "Atlas").
             access_rules_matcher: Matcher for sender/subject access rules.
+            list_prompts: Custom prompts for list_emails output per access level.
+            read_prompts: Custom prompts for get_email output per access level.
         """
         self._connector = connector
         self._permissions = permissions
@@ -58,6 +67,46 @@ class SecureMailbox:
         self._from_address = from_address
         self._from_name = from_name
         self._access_rules_matcher = access_rules_matcher or AccessRuleMatcher()
+        self._list_prompts = list_prompts
+        self._read_prompts = read_prompts
+
+    def get_access_level(self, sender: str, subject: str) -> AccessLevel:
+        """Get access level for an email based on sender and subject rules.
+
+        Args:
+            sender: Email sender address.
+            subject: Email subject line.
+
+        Returns:
+            The determined access level for the email.
+        """
+        return self._access_rules_matcher.get_access_level(sender, subject)
+
+    def get_list_prompt(self, sender: str, subject: str) -> str | None:
+        """Get the prompt to show in list_emails for an email.
+
+        Args:
+            sender: Email sender address.
+            subject: Email subject line.
+
+        Returns:
+            The prompt string, or None if no prompt should be shown.
+        """
+        level = self._access_rules_matcher.get_access_level(sender, subject)
+        return get_list_prompt(level, self._list_prompts)
+
+    def get_read_prompt(self, sender: str, subject: str) -> str | None:
+        """Get the prompt to show in get_email for an email.
+
+        Args:
+            sender: Email sender address.
+            subject: Email subject line.
+
+        Returns:
+            The prompt string, or None if no prompt should be shown.
+        """
+        level = self._access_rules_matcher.get_access_level(sender, subject)
+        return get_read_prompt(level, self._read_prompts)
 
     def _require_read(self) -> None:
         """Check if read access is allowed.

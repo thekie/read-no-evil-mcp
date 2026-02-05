@@ -4,12 +4,8 @@ from datetime import timedelta
 
 from read_no_evil_mcp.accounts.config import AccessLevel
 from read_no_evil_mcp.exceptions import PermissionDeniedError
-from read_no_evil_mcp.filtering.access_rules import (
-    AccessRuleMatcher,
-    get_list_prompt,
-)
 from read_no_evil_mcp.tools._app import mcp
-from read_no_evil_mcp.tools._service import create_securemailbox, get_account_config
+from read_no_evil_mcp.tools._service import create_securemailbox
 
 # Mapping of access levels to markers shown in list output
 ACCESS_MARKERS: dict[AccessLevel, str] = {
@@ -35,12 +31,6 @@ def list_emails(
         limit: Maximum number of emails to return.
     """
     try:
-        config = get_account_config(account)
-        access_matcher = AccessRuleMatcher(
-            sender_rules=config.sender_rules,
-            subject_rules=config.subject_rules,
-        )
-
         with create_securemailbox(account) as mailbox:
             emails = mailbox.fetch_emails(
                 folder,
@@ -57,8 +47,8 @@ def list_emails(
                 attachment_marker = " [+]" if email.has_attachments else ""
                 seen_marker = "" if email.is_seen else " [UNREAD]"
 
-                # Get access level and marker
-                access_level = access_matcher.get_access_level(email.sender.address, email.subject)
+                # Get access level and marker via SecureMailbox
+                access_level = mailbox.get_access_level(email.sender.address, email.subject)
                 access_marker = ACCESS_MARKERS.get(access_level, "")
 
                 # Build email line
@@ -69,7 +59,7 @@ def list_emails(
                 lines.append(email_line)
 
                 # Add prompt if configured for this access level
-                prompt = get_list_prompt(access_level, config.list_prompts)
+                prompt = mailbox.get_list_prompt(email.sender.address, email.subject)
                 if prompt:
                     lines.append(f"    -> {prompt}")
 

@@ -2,14 +2,10 @@
 
 from read_no_evil_mcp.accounts.config import AccessLevel
 from read_no_evil_mcp.exceptions import PermissionDeniedError
-from read_no_evil_mcp.filtering.access_rules import (
-    AccessRuleMatcher,
-    get_read_prompt,
-)
 from read_no_evil_mcp.mailbox import PromptInjectionError
 from read_no_evil_mcp.models import Email
 from read_no_evil_mcp.tools._app import mcp
-from read_no_evil_mcp.tools._service import create_securemailbox, get_account_config
+from read_no_evil_mcp.tools._service import create_securemailbox
 
 # Mapping of access levels to display names
 ACCESS_DISPLAY: dict[AccessLevel, str] = {
@@ -28,12 +24,6 @@ def get_email(account: str, folder: str, uid: int) -> str:
         uid: Unique identifier of the email.
     """
     try:
-        config = get_account_config(account)
-        access_matcher = AccessRuleMatcher(
-            sender_rules=config.sender_rules,
-            subject_rules=config.subject_rules,
-        )
-
         with create_securemailbox(account) as mailbox:
             try:
                 email_result: Email | None = mailbox.get_email(folder, uid)
@@ -49,8 +39,8 @@ def get_email(account: str, folder: str, uid: int) -> str:
             if not email_result:
                 return f"Email not found: {folder}/{uid}"
 
-            # Get access level for the email
-            access_level = access_matcher.get_access_level(
+            # Get access level via SecureMailbox
+            access_level = mailbox.get_access_level(
                 email_result.sender.address, email_result.subject
             )
 
@@ -66,7 +56,7 @@ def get_email(account: str, folder: str, uid: int) -> str:
             if access_level in ACCESS_DISPLAY:
                 lines.append(f"Access: {ACCESS_DISPLAY[access_level]}")
                 # Add prompt if configured
-                prompt = get_read_prompt(access_level, config.read_prompts)
+                prompt = mailbox.get_read_prompt(email_result.sender.address, email_result.subject)
                 if prompt:
                     lines.append(f"-> {prompt}")
 

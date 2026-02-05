@@ -139,15 +139,16 @@ class TestAccessRuleMatcher:
         assert matcher.is_hidden("spammer@spam.com", "Buy now!") is True
         assert matcher.is_hidden("friend@example.com", "Hello") is False
 
-    def test_invalid_regex_pattern_skipped(self) -> None:
-        """Test that invalid regex patterns are skipped gracefully."""
-        rules = [
-            SenderRule(pattern=r"[invalid", access=AccessLevel.TRUSTED),  # Invalid regex
-            SenderRule(pattern=r".*@valid\.com", access=AccessLevel.ASK_BEFORE_READ),
-        ]
-        matcher = AccessRuleMatcher(sender_rules=rules)
+    def test_invalid_regex_pattern_rejected_at_config(self) -> None:
+        """Test that invalid regex patterns are rejected at config validation time."""
+        from pydantic import ValidationError
 
-        # Valid rule still works despite invalid one
+        with pytest.raises(ValidationError, match="Invalid regex pattern"):
+            SenderRule(pattern=r"[invalid", access=AccessLevel.TRUSTED)
+
+        # Valid patterns still work
+        valid_rule = SenderRule(pattern=r".*@valid\.com", access=AccessLevel.ASK_BEFORE_READ)
+        matcher = AccessRuleMatcher(sender_rules=[valid_rule])
         level = matcher.get_access_level("user@valid.com", "Test")
         assert level == AccessLevel.ASK_BEFORE_READ
 

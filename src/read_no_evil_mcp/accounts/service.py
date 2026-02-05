@@ -131,4 +131,6 @@ class AccountService:
             from_address=from_address,
             from_name=config.from_name,
             access_rules_matcher=access_rules_matcher,
+            list_prompts=config.list_prompts or None,
+            read_prompts=config.read_prompts or None,
         )
