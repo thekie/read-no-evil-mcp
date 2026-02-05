@@ -1,6 +1,6 @@
 # 🛡️ Detection Matrix
 
-**Last updated:** 2026-02-05 11:12 UTC
+**Last updated:** 2026-02-05 11:27 UTC
 
 ## Summary
 
