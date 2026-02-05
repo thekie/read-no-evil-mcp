@@ -3,7 +3,12 @@
 from read_no_evil_mcp.config import Settings
 from read_no_evil_mcp.email.connectors.base import BaseConnector
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
-from read_no_evil_mcp.mailbox import PromptInjectionError, SecureMailbox
+from read_no_evil_mcp.mailbox import (
+    PromptInjectionError,
+    SecureEmail,
+    SecureEmailSummary,
+    SecureMailbox,
+)
 from read_no_evil_mcp.models import (
     Attachment,
     Email,
@@ -31,6 +36,8 @@ __all__ = [
     "PromptInjectionError",
     "ProtectionService",
     "ScanResult",
+    "SecureEmail",
+    "SecureEmailSummary",
     "SecureMailbox",
     "Settings",
 ]

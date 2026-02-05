@@ -32,24 +32,24 @@ def list_emails(
     """
     try:
         with create_securemailbox(account) as mailbox:
-            emails = mailbox.fetch_emails(
+            secure_emails = mailbox.fetch_emails(
                 folder,
                 lookback=timedelta(days=days_back),
                 limit=limit,
             )
 
-            if not emails:
+            if not secure_emails:
                 return "No emails found."
 
             lines = []
-            for email in emails:
+            for secure_email in secure_emails:
+                email = secure_email.summary
                 date_str = email.date.strftime("%Y-%m-%d %H:%M")
                 attachment_marker = " [+]" if email.has_attachments else ""
                 seen_marker = "" if email.is_seen else " [UNREAD]"
 
-                # Get access level and marker via SecureMailbox
-                access_level = mailbox.get_access_level(email.sender.address, email.subject)
-                access_marker = ACCESS_MARKERS.get(access_level, "")
+                # Get access marker from the enriched model
+                access_marker = ACCESS_MARKERS.get(secure_email.access_level, "")
 
                 # Build email line
                 email_line = (
@@ -58,10 +58,9 @@ def list_emails(
                 )
                 lines.append(email_line)
 
-                # Add prompt if configured for this access level
-                prompt = mailbox.get_list_prompt(email.sender.address, email.subject)
-                if prompt:
-                    lines.append(f"    -> {prompt}")
+                # Add prompt if present in the enriched model
+                if secure_email.prompt:
+                    lines.append(f"    -> {secure_email.prompt}")
 
             return "\n".join(lines)
     except PermissionDeniedError as e:

@@ -5,20 +5,43 @@ from unittest.mock import MagicMock, patch
 
 from read_no_evil_mcp.accounts.config import AccessLevel
 from read_no_evil_mcp.exceptions import PermissionDeniedError
+from read_no_evil_mcp.mailbox import SecureEmailSummary
 from read_no_evil_mcp.models import EmailAddress, EmailSummary
 from read_no_evil_mcp.tools.list_emails import list_emails
 
 
-def _create_mock_mailbox(
-    emails: list[EmailSummary] | None = None,
+def _create_secure_summary(
+    uid: int = 1,
+    subject: str = "Test Subject",
+    sender: str = "sender@example.com",
     access_level: AccessLevel = AccessLevel.SHOW,
-    list_prompt: str | None = None,
+    prompt: str | None = None,
+    has_attachments: bool = False,
+    is_seen: bool = True,
+) -> SecureEmailSummary:
+    """Create a SecureEmailSummary for testing."""
+    summary = EmailSummary(
+        uid=uid,
+        folder="INBOX",
+        subject=subject,
+        sender=EmailAddress(address=sender),
+        date=datetime(2026, 2, 3, 12, 0, 0),
+        has_attachments=has_attachments,
+        is_seen=is_seen,
+    )
+    return SecureEmailSummary(
+        summary=summary,
+        access_level=access_level,
+        prompt=prompt,
+    )
+
+
+def _create_mock_mailbox(
+    secure_emails: list[SecureEmailSummary] | None = None,
 ) -> MagicMock:
     """Create a mock mailbox with standard setup."""
     mock_mailbox = MagicMock()
-    mock_mailbox.fetch_emails.return_value = emails or []
-    mock_mailbox.get_access_level.return_value = access_level
-    mock_mailbox.get_list_prompt.return_value = list_prompt
+    mock_mailbox.fetch_emails.return_value = secure_emails or []
     mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
     mock_mailbox.__exit__ = MagicMock(return_value=None)
     return mock_mailbox
@@ -27,18 +50,10 @@ def _create_mock_mailbox(
 class TestListEmails:
     def test_returns_email_summaries(self) -> None:
         """Test list_emails tool returns email summaries."""
-        emails = [
-            EmailSummary(
-                uid=1,
-                folder="INBOX",
-                subject="Test Subject",
-                sender=EmailAddress(address="sender@example.com"),
-                date=datetime(2026, 2, 3, 12, 0, 0),
-                has_attachments=True,
-                is_seen=True,
-            ),
+        secure_emails = [
+            _create_secure_summary(uid=1, subject="Test Subject", has_attachments=True)
         ]
-        mock_mailbox = _create_mock_mailbox(emails=emails)
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails)
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
@@ -54,17 +69,8 @@ class TestListEmails:
 
     def test_unseen_email_shows_unread_marker(self) -> None:
         """Test list_emails shows [UNREAD] marker for unseen emails."""
-        emails = [
-            EmailSummary(
-                uid=1,
-                folder="INBOX",
-                subject="Unread Email",
-                sender=EmailAddress(address="sender@example.com"),
-                date=datetime(2026, 2, 3, 12, 0, 0),
-                is_seen=False,
-            ),
-        ]
-        mock_mailbox = _create_mock_mailbox(emails=emails)
+        secure_emails = [_create_secure_summary(subject="Unread Email", is_seen=False)]
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails)
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
@@ -76,7 +82,7 @@ class TestListEmails:
 
     def test_no_emails(self) -> None:
         """Test list_emails with no emails."""
-        mock_mailbox = _create_mock_mailbox(emails=[])
+        mock_mailbox = _create_mock_mailbox(secure_emails=[])
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
@@ -88,7 +94,7 @@ class TestListEmails:
 
     def test_respects_limit_parameter(self) -> None:
         """Test list_emails respects limit parameter."""
-        mock_mailbox = _create_mock_mailbox(emails=[])
+        mock_mailbox = _create_mock_mailbox(secure_emails=[])
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
@@ -101,7 +107,7 @@ class TestListEmails:
 
     def test_default_parameters(self) -> None:
         """Test list_emails uses default parameters."""
-        mock_mailbox = _create_mock_mailbox(emails=[])
+        mock_mailbox = _create_mock_mailbox(secure_emails=[])
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
@@ -114,7 +120,7 @@ class TestListEmails:
 
     def test_passes_account_to_create_securemailbox(self) -> None:
         """Test list_emails passes account to create_securemailbox."""
-        mock_mailbox = _create_mock_mailbox(emails=[])
+        mock_mailbox = _create_mock_mailbox(secure_emails=[])
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
@@ -158,21 +164,15 @@ class TestListEmails:
 
     def test_trusted_marker_shown(self) -> None:
         """Test that [TRUSTED] marker is shown for trusted sender."""
-        emails = [
-            EmailSummary(
-                uid=1,
-                folder="INBOX",
+        secure_emails = [
+            _create_secure_summary(
                 subject="Report",
-                sender=EmailAddress(address="boss@mycompany.com"),
-                date=datetime(2026, 2, 3, 12, 0, 0),
-                is_seen=True,
-            ),
+                sender="boss@mycompany.com",
+                access_level=AccessLevel.TRUSTED,
+                prompt="Trusted sender. Read and process directly.",
+            )
         ]
-        mock_mailbox = _create_mock_mailbox(
-            emails=emails,
-            access_level=AccessLevel.TRUSTED,
-            list_prompt="Trusted sender. Read and process directly.",
-        )
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails)
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
@@ -185,21 +185,15 @@ class TestListEmails:
 
     def test_ask_marker_shown(self) -> None:
         """Test that [ASK] marker is shown for ask_before_read sender."""
-        emails = [
-            EmailSummary(
-                uid=1,
-                folder="INBOX",
+        secure_emails = [
+            _create_secure_summary(
                 subject="Invoice",
-                sender=EmailAddress(address="vendor@external.com"),
-                date=datetime(2026, 2, 3, 12, 0, 0),
-                is_seen=True,
-            ),
+                sender="vendor@external.com",
+                access_level=AccessLevel.ASK_BEFORE_READ,
+                prompt="Ask user for permission before reading.",
+            )
         ]
-        mock_mailbox = _create_mock_mailbox(
-            emails=emails,
-            access_level=AccessLevel.ASK_BEFORE_READ,
-            list_prompt="Ask user for permission before reading.",
-        )
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails)
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
@@ -212,21 +206,15 @@ class TestListEmails:
 
     def test_show_level_no_marker(self) -> None:
         """Test that SHOW level has no marker."""
-        emails = [
-            EmailSummary(
-                uid=1,
-                folder="INBOX",
+        secure_emails = [
+            _create_secure_summary(
                 subject="Hello",
-                sender=EmailAddress(address="unknown@example.com"),
-                date=datetime(2026, 2, 3, 12, 0, 0),
-                is_seen=True,
-            ),
+                sender="unknown@example.com",
+                access_level=AccessLevel.SHOW,
+                prompt=None,
+            )
         ]
-        mock_mailbox = _create_mock_mailbox(
-            emails=emails,
-            access_level=AccessLevel.SHOW,
-            list_prompt=None,
-        )
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails)
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
@@ -241,21 +229,15 @@ class TestListEmails:
 
     def test_custom_prompt_shown(self) -> None:
         """Test that custom prompts are shown."""
-        emails = [
-            EmailSummary(
-                uid=1,
-                folder="INBOX",
+        secure_emails = [
+            _create_secure_summary(
                 subject="Report",
-                sender=EmailAddress(address="boss@mycompany.com"),
-                date=datetime(2026, 2, 3, 12, 0, 0),
-                is_seen=True,
-            ),
+                sender="boss@mycompany.com",
+                access_level=AccessLevel.TRUSTED,
+                prompt="Custom trusted message here",
+            )
         ]
-        mock_mailbox = _create_mock_mailbox(
-            emails=emails,
-            access_level=AccessLevel.TRUSTED,
-            list_prompt="Custom trusted message here",
-        )
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails)
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",
@@ -267,21 +249,15 @@ class TestListEmails:
 
     def test_subject_rule_matching(self) -> None:
         """Test subject rule matching for access level."""
-        emails = [
-            EmailSummary(
-                uid=1,
-                folder="INBOX",
+        secure_emails = [
+            _create_secure_summary(
                 subject="[URGENT] Action Required",
-                sender=EmailAddress(address="unknown@example.com"),
-                date=datetime(2026, 2, 3, 12, 0, 0),
-                is_seen=True,
-            ),
+                sender="unknown@example.com",
+                access_level=AccessLevel.ASK_BEFORE_READ,
+                prompt="Ask user for permission before reading.",
+            )
         ]
-        mock_mailbox = _create_mock_mailbox(
-            emails=emails,
-            access_level=AccessLevel.ASK_BEFORE_READ,
-            list_prompt="Ask user for permission before reading.",
-        )
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails)
 
         with patch(
             "read_no_evil_mcp.tools.list_emails.create_securemailbox",

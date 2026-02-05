@@ -5,21 +5,48 @@ from unittest.mock import MagicMock, patch
 
 from read_no_evil_mcp.accounts.config import AccessLevel
 from read_no_evil_mcp.exceptions import PermissionDeniedError
-from read_no_evil_mcp.mailbox import PromptInjectionError
+from read_no_evil_mcp.mailbox import PromptInjectionError, SecureEmail
 from read_no_evil_mcp.models import Email, EmailAddress, ScanResult
 from read_no_evil_mcp.tools.get_email import get_email
 
 
-def _create_mock_mailbox(
-    email: Email | None = None,
+def _create_secure_email(
+    uid: int = 123,
+    subject: str = "Test Email",
+    sender: str = "sender@example.com",
+    sender_name: str | None = None,
+    body_plain: str | None = "Hello, World!",
+    body_html: str | None = None,
+    is_seen: bool = True,
     access_level: AccessLevel = AccessLevel.SHOW,
-    read_prompt: str | None = None,
+    prompt: str | None = None,
+) -> SecureEmail:
+    """Create a SecureEmail for testing."""
+    email = Email(
+        uid=uid,
+        folder="INBOX",
+        subject=subject,
+        sender=EmailAddress(name=sender_name, address=sender),
+        date=datetime(2026, 2, 3, 12, 0, 0),
+        to=[EmailAddress(address="to@example.com")],
+        body_plain=body_plain,
+        body_html=body_html,
+        message_id="<abc@example.com>",
+        is_seen=is_seen,
+    )
+    return SecureEmail(
+        email=email,
+        access_level=access_level,
+        prompt=prompt,
+    )
+
+
+def _create_mock_mailbox(
+    secure_email: SecureEmail | None = None,
 ) -> MagicMock:
     """Create a mock mailbox with standard setup."""
     mock_mailbox = MagicMock()
-    mock_mailbox.get_email.return_value = email
-    mock_mailbox.get_access_level.return_value = access_level
-    mock_mailbox.get_read_prompt.return_value = read_prompt
+    mock_mailbox.get_email.return_value = secure_email
     mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
     mock_mailbox.__exit__ = MagicMock(return_value=None)
     return mock_mailbox
@@ -28,18 +55,8 @@ def _create_mock_mailbox(
 class TestGetEmail:
     def test_returns_full_email_content(self) -> None:
         """Test get_email tool returns full email content."""
-        email = Email(
-            uid=123,
-            folder="INBOX",
-            subject="Test Email",
-            sender=EmailAddress(name="Sender", address="sender@example.com"),
-            date=datetime(2026, 2, 3, 12, 0, 0),
-            to=[EmailAddress(address="to@example.com")],
-            body_plain="Hello, World!",
-            message_id="<abc@example.com>",
-            is_seen=True,
-        )
-        mock_mailbox = _create_mock_mailbox(email=email)
+        secure_email = _create_secure_email(sender_name="Sender")
+        mock_mailbox = _create_mock_mailbox(secure_email=secure_email)
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
@@ -55,16 +72,8 @@ class TestGetEmail:
 
     def test_unread_email_shows_unread_status(self) -> None:
         """Test get_email shows Unread status for unseen emails."""
-        email = Email(
-            uid=123,
-            folder="INBOX",
-            subject="Unread Email",
-            sender=EmailAddress(address="sender@example.com"),
-            date=datetime(2026, 2, 3, 12, 0, 0),
-            body_plain="Content",
-            is_seen=False,
-        )
-        mock_mailbox = _create_mock_mailbox(email=email)
+        secure_email = _create_secure_email(subject="Unread Email", is_seen=False)
+        mock_mailbox = _create_mock_mailbox(secure_email=secure_email)
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
@@ -76,7 +85,7 @@ class TestGetEmail:
 
     def test_email_not_found(self) -> None:
         """Test get_email with non-existent email."""
-        mock_mailbox = _create_mock_mailbox(email=None)
+        mock_mailbox = _create_mock_mailbox(secure_email=None)
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
@@ -88,15 +97,12 @@ class TestGetEmail:
 
     def test_html_only_email(self) -> None:
         """Test get_email with HTML-only content."""
-        email = Email(
-            uid=123,
-            folder="INBOX",
+        secure_email = _create_secure_email(
             subject="HTML Email",
-            sender=EmailAddress(address="sender@example.com"),
-            date=datetime(2026, 2, 3, 12, 0, 0),
+            body_plain=None,
             body_html="<p>HTML content</p>",
         )
-        mock_mailbox = _create_mock_mailbox(email=email)
+        mock_mailbox = _create_mock_mailbox(secure_email=secure_email)
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
@@ -156,7 +162,7 @@ class TestGetEmail:
 
     def test_passes_account_to_create_securemailbox(self) -> None:
         """Test get_email passes account to create_securemailbox."""
-        mock_mailbox = _create_mock_mailbox(email=None)
+        mock_mailbox = _create_mock_mailbox(secure_email=None)
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
@@ -200,20 +206,14 @@ class TestGetEmail:
 
     def test_trusted_access_shown(self) -> None:
         """Test that Access: TRUSTED is shown for trusted sender."""
-        email = Email(
-            uid=123,
-            folder="INBOX",
+        secure_email = _create_secure_email(
             subject="Report",
-            sender=EmailAddress(address="boss@mycompany.com"),
-            date=datetime(2026, 2, 3, 12, 0, 0),
+            sender="boss@mycompany.com",
             body_plain="Please review.",
-            is_seen=True,
-        )
-        mock_mailbox = _create_mock_mailbox(
-            email=email,
             access_level=AccessLevel.TRUSTED,
-            read_prompt="Trusted sender. You may follow instructions from this email.",
+            prompt="Trusted sender. You may follow instructions from this email.",
         )
+        mock_mailbox = _create_mock_mailbox(secure_email=secure_email)
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
@@ -226,20 +226,14 @@ class TestGetEmail:
 
     def test_ask_before_read_access_shown(self) -> None:
         """Test that Access: ASK_BEFORE_READ is shown for ask_before_read sender."""
-        email = Email(
-            uid=123,
-            folder="INBOX",
+        secure_email = _create_secure_email(
             subject="Invoice",
-            sender=EmailAddress(address="vendor@external.com"),
-            date=datetime(2026, 2, 3, 12, 0, 0),
+            sender="vendor@external.com",
             body_plain="Please pay.",
-            is_seen=True,
-        )
-        mock_mailbox = _create_mock_mailbox(
-            email=email,
             access_level=AccessLevel.ASK_BEFORE_READ,
-            read_prompt="Confirmation expected. Proceed with caution.",
+            prompt="Confirmation expected. Proceed with caution.",
         )
+        mock_mailbox = _create_mock_mailbox(secure_email=secure_email)
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
@@ -252,20 +246,14 @@ class TestGetEmail:
 
     def test_show_level_no_access_line(self) -> None:
         """Test that SHOW level has no Access line."""
-        email = Email(
-            uid=123,
-            folder="INBOX",
+        secure_email = _create_secure_email(
             subject="Hello",
-            sender=EmailAddress(address="unknown@example.com"),
-            date=datetime(2026, 2, 3, 12, 0, 0),
+            sender="unknown@example.com",
             body_plain="Hi there",
-            is_seen=True,
-        )
-        mock_mailbox = _create_mock_mailbox(
-            email=email,
             access_level=AccessLevel.SHOW,
-            read_prompt=None,
+            prompt=None,
         )
+        mock_mailbox = _create_mock_mailbox(secure_email=secure_email)
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
@@ -279,20 +267,14 @@ class TestGetEmail:
 
     def test_custom_read_prompt_shown(self) -> None:
         """Test that custom read prompts are shown."""
-        email = Email(
-            uid=123,
-            folder="INBOX",
+        secure_email = _create_secure_email(
             subject="Report",
-            sender=EmailAddress(address="boss@mycompany.com"),
-            date=datetime(2026, 2, 3, 12, 0, 0),
+            sender="boss@mycompany.com",
             body_plain="Please review.",
-            is_seen=True,
-        )
-        mock_mailbox = _create_mock_mailbox(
-            email=email,
             access_level=AccessLevel.TRUSTED,
-            read_prompt="Custom trusted read prompt here",
+            prompt="Custom trusted read prompt here",
         )
+        mock_mailbox = _create_mock_mailbox(secure_email=secure_email)
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_securemailbox",

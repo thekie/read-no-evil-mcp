@@ -107,7 +107,7 @@ class TestSecureMailbox:
         mock_connector: MagicMock,
         mock_protection: MagicMock,
     ) -> None:
-        """Test that safe emails are returned."""
+        """Test that safe emails are returned as SecureEmailSummary."""
         summaries = [
             EmailSummary(
                 uid=1,
@@ -124,9 +124,11 @@ class TestSecureMailbox:
             detected_patterns=[],
         )
 
-        emails = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7), limit=10)
+        secure_emails = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7), limit=10)
 
-        assert emails == summaries
+        assert len(secure_emails) == 1
+        assert secure_emails[0].summary == summaries[0]
+        assert secure_emails[0].access_level == AccessLevel.SHOW
         mock_connector.fetch_emails.assert_called_once_with(
             "INBOX",
             lookback=timedelta(days=7),
@@ -164,10 +166,10 @@ class TestSecureMailbox:
             ScanResult(is_safe=False, score=0.8, detected_patterns=["ignore_instructions"]),
         ]
 
-        emails = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
+        secure_emails = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
 
-        assert len(emails) == 1
-        assert emails[0].uid == 1
+        assert len(secure_emails) == 1
+        assert secure_emails[0].summary.uid == 1
         assert mock_protection.scan.call_count == 2
 
     def test_fetch_emails_scans_sender_name(
@@ -233,6 +235,7 @@ class TestSecureMailbox:
         mock_connector: MagicMock,
         mock_protection: MagicMock,
     ) -> None:
+        """Test that safe email is returned as SecureEmail."""
         email = Email(
             uid=123,
             folder="INBOX",
@@ -250,7 +253,9 @@ class TestSecureMailbox:
 
         result = mailbox.get_email("INBOX", 123)
 
-        assert result == email
+        assert result is not None
+        assert result.email == email
+        assert result.access_level == AccessLevel.SHOW
         mock_connector.get_email.assert_called_once_with("INBOX", 123)
         mock_protection.scan.assert_called_once()
         # Verify all fields are scanned
@@ -873,10 +878,10 @@ class TestSecureMailboxAccessRules:
         )
         mock_connector.fetch_emails.return_value = [visible_email, hidden_email]
 
-        emails = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
+        secure_emails = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
 
-        assert len(emails) == 1
-        assert emails[0].uid == 1
+        assert len(secure_emails) == 1
+        assert secure_emails[0].summary.uid == 1
 
     def test_fetch_emails_filters_hidden_by_subject(
         self,
@@ -911,10 +916,10 @@ class TestSecureMailboxAccessRules:
         )
         mock_connector.fetch_emails.return_value = [visible_email, hidden_email]
 
-        emails = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
+        secure_emails = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
 
-        assert len(emails) == 1
-        assert emails[0].uid == 1
+        assert len(secure_emails) == 1
+        assert secure_emails[0].summary.uid == 1
 
     def test_fetch_emails_trusted_not_filtered(
         self,
@@ -942,10 +947,11 @@ class TestSecureMailboxAccessRules:
         )
         mock_connector.fetch_emails.return_value = [trusted_email]
 
-        emails = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
+        secure_emails = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
 
-        assert len(emails) == 1
-        assert emails[0].uid == 1
+        assert len(secure_emails) == 1
+        assert secure_emails[0].summary.uid == 1
+        assert secure_emails[0].access_level == AccessLevel.TRUSTED
 
     def test_fetch_emails_ask_before_read_not_filtered(
         self,
@@ -975,10 +981,11 @@ class TestSecureMailboxAccessRules:
         )
         mock_connector.fetch_emails.return_value = [ask_email]
 
-        emails = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
+        secure_emails = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
 
-        assert len(emails) == 1
-        assert emails[0].uid == 1
+        assert len(secure_emails) == 1
+        assert secure_emails[0].summary.uid == 1
+        assert secure_emails[0].access_level == AccessLevel.ASK_BEFORE_READ
 
     def test_get_email_returns_none_for_hidden(
         self,
@@ -1043,8 +1050,9 @@ class TestSecureMailboxAccessRules:
         result = mailbox.get_email("INBOX", 123)
 
         assert result is not None
-        assert result.uid == 123
-        assert result.body_plain == "Please pay the invoice."
+        assert result.email.uid == 123
+        assert result.email.body_plain == "Please pay the invoice."
+        assert result.access_level == AccessLevel.ASK_BEFORE_READ
 
     def test_get_email_returns_content_for_trusted(
         self,
@@ -1076,7 +1084,8 @@ class TestSecureMailboxAccessRules:
         result = mailbox.get_email("INBOX", 123)
 
         assert result is not None
-        assert result.uid == 123
+        assert result.email.uid == 123
+        assert result.access_level == AccessLevel.TRUSTED
 
     def test_prompt_injection_still_scanned_for_trusted(
         self,
