@@ -1,6 +1,7 @@
 """Send email MCP tool."""
 
 import base64
+from typing import Any, cast
 
 from pydantic import BaseModel
 
@@ -23,7 +24,7 @@ class AttachmentInput(BaseModel):
 
 
 def _parse_attachments(
-    attachment_inputs: list[AttachmentInput | dict] | None,
+    attachment_inputs: list[AttachmentInput | dict[str, Any]] | None,
 ) -> list[OutgoingAttachment] | None:
     """Convert attachment inputs to OutgoingAttachment objects.
 
@@ -89,7 +90,10 @@ def send_email(
             - path: File path to read from (required if content not provided)
     """
     try:
-        parsed_attachments = _parse_attachments(attachments)
+        # Cast is safe: FastMCP validates JSON input to AttachmentInput models
+        parsed_attachments = _parse_attachments(
+            cast(list[AttachmentInput | dict[str, Any]] | None, attachments)
+        )
 
         with create_securemailbox(account) as mailbox:
             mailbox.send_email(
