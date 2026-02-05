@@ -36,10 +36,10 @@ class TestListEmails:
         assert "Test Subject" in result
         assert "sender@example.com" in result
         assert "[+]" in result  # attachment marker
-        assert "[NEW]" not in result  # seen email should not have NEW marker
+        assert "[UNREAD]" not in result  # seen email should not have UNREAD marker
 
-    def test_unseen_email_shows_new_marker(self) -> None:
-        """Test list_emails shows [NEW] marker for unseen emails."""
+    def test_unseen_email_shows_unread_marker(self) -> None:
+        """Test list_emails shows [UNREAD] marker for unseen emails."""
         mock_mailbox = MagicMock()
         mock_mailbox.fetch_emails.return_value = [
             EmailSummary(
@@ -60,7 +60,7 @@ class TestListEmails:
         ):
             result = list_emails.fn(account="work")
 
-        assert "[NEW]" in result
+        assert "[UNREAD]" in result
 
     def test_no_emails(self) -> None:
         """Test list_emails with no emails."""
