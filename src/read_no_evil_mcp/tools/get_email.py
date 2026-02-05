@@ -37,6 +37,7 @@ def get_email(account: str, folder: str, uid: int) -> str:
                 f"From: {email_result.sender}",
                 f"To: {', '.join(str(addr) for addr in email_result.to)}",
                 f"Date: {email_result.date.strftime('%Y-%m-%d %H:%M:%S')}",
+                f"Status: {'Read' if email_result.is_seen else 'Unread'}",
             ]
 
             if email_result.cc:
