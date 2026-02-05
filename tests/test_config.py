@@ -1,7 +1,10 @@
 """Tests for configuration settings."""
 
 import os
+from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from read_no_evil_mcp.config import Settings
 
@@ -22,9 +25,13 @@ class TestSettings:
 
         assert settings.default_lookback_days == 14
 
-    def test_no_config_empty_accounts(self) -> None:
+    def test_no_config_empty_accounts(self, tmp_path: Path) -> None:
         """Test that settings can be created without any config (accounts will be empty)."""
-        with patch.dict(os.environ, {}, clear=True):
+        # Use a temp home directory to avoid picking up real config files
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("pathlib.Path.home", return_value=tmp_path),
+        ):
             settings = Settings()
 
         assert settings.accounts == []
