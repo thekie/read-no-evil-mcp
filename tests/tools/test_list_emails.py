@@ -3,9 +3,25 @@
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+from read_no_evil_mcp.accounts.config import AccessLevel, AccountConfig, SenderRule, SubjectRule
 from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.models import EmailAddress, EmailSummary
 from read_no_evil_mcp.tools.list_emails import list_emails
+
+
+def _mock_account_config(**kwargs: object) -> AccountConfig:
+    """Create a mock AccountConfig with defaults."""
+    defaults = {
+        "id": "work",
+        "host": "mail.example.com",
+        "username": "user@example.com",
+        "sender_rules": [],
+        "subject_rules": [],
+        "list_prompts": {},
+        "read_prompts": {},
+    }
+    defaults.update(kwargs)
+    return AccountConfig(**defaults)  # type: ignore[arg-type]
 
 
 class TestListEmails:
@@ -26,9 +42,15 @@ class TestListEmails:
         mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
         mock_mailbox.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
-            return_value=mock_mailbox,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_mailbox,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_account_config",
+                return_value=_mock_account_config(),
+            ),
         ):
             result = list_emails.fn(account="work", folder="INBOX", days_back=7)
 
@@ -54,9 +76,15 @@ class TestListEmails:
         mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
         mock_mailbox.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
-            return_value=mock_mailbox,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_mailbox,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_account_config",
+                return_value=_mock_account_config(),
+            ),
         ):
             result = list_emails.fn(account="work")
 
@@ -69,9 +97,15 @@ class TestListEmails:
         mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
         mock_mailbox.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
-            return_value=mock_mailbox,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_mailbox,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_account_config",
+                return_value=_mock_account_config(),
+            ),
         ):
             result = list_emails.fn(account="work")
 
@@ -84,9 +118,15 @@ class TestListEmails:
         mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
         mock_mailbox.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
-            return_value=mock_mailbox,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_mailbox,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_account_config",
+                return_value=_mock_account_config(),
+            ),
         ):
             list_emails.fn(account="work", folder="INBOX", limit=5)
 
@@ -100,9 +140,15 @@ class TestListEmails:
         mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
         mock_mailbox.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
-            return_value=mock_mailbox,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_mailbox,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_account_config",
+                return_value=_mock_account_config(),
+            ),
         ):
             list_emails.fn(account="work")
 
@@ -116,10 +162,16 @@ class TestListEmails:
         mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
         mock_mailbox.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
-            return_value=mock_mailbox,
-        ) as mock_create:
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_mailbox,
+            ) as mock_create,
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_account_config",
+                return_value=_mock_account_config(id="personal"),
+            ),
+        ):
             list_emails.fn(account="personal")
 
         mock_create.assert_called_once_with("personal")
@@ -133,9 +185,15 @@ class TestListEmails:
         mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
         mock_mailbox.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
-            return_value=mock_mailbox,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_mailbox,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_account_config",
+                return_value=_mock_account_config(id="restricted"),
+            ),
         ):
             result = list_emails.fn(account="restricted")
 
@@ -151,11 +209,193 @@ class TestListEmails:
         mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
         mock_mailbox.__exit__ = MagicMock(return_value=None)
 
-        with patch(
-            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
-            return_value=mock_mailbox,
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_mailbox,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_account_config",
+                return_value=_mock_account_config(id="restricted"),
+            ),
         ):
             result = list_emails.fn(account="restricted", folder="Drafts")
 
         assert "Permission denied" in result
         assert "folder 'Drafts' denied" in result
+
+    def test_trusted_marker_shown(self) -> None:
+        """Test that [TRUSTED] marker is shown for trusted sender."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.fetch_emails.return_value = [
+            EmailSummary(
+                uid=1,
+                folder="INBOX",
+                subject="Report",
+                sender=EmailAddress(address="boss@mycompany.com"),
+                date=datetime(2026, 2, 3, 12, 0, 0),
+                is_seen=True,
+            ),
+        ]
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        config = _mock_account_config(
+            sender_rules=[SenderRule(pattern=r".*@mycompany\.com", access=AccessLevel.TRUSTED)]
+        )
+
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_mailbox,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_account_config",
+                return_value=config,
+            ),
+        ):
+            result = list_emails.fn(account="work")
+
+        assert "[TRUSTED]" in result
+        assert "Trusted sender" in result  # Default prompt
+
+    def test_ask_marker_shown(self) -> None:
+        """Test that [ASK] marker is shown for ask_before_read sender."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.fetch_emails.return_value = [
+            EmailSummary(
+                uid=1,
+                folder="INBOX",
+                subject="Invoice",
+                sender=EmailAddress(address="vendor@external.com"),
+                date=datetime(2026, 2, 3, 12, 0, 0),
+                is_seen=True,
+            ),
+        ]
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        config = _mock_account_config(
+            sender_rules=[
+                SenderRule(pattern=r".*@external\.com", access=AccessLevel.ASK_BEFORE_READ)
+            ]
+        )
+
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_mailbox,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_account_config",
+                return_value=config,
+            ),
+        ):
+            result = list_emails.fn(account="work")
+
+        assert "[ASK]" in result
+        assert "permission" in result.lower()  # Default prompt mentions permission
+
+    def test_show_level_no_marker(self) -> None:
+        """Test that SHOW level has no marker."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.fetch_emails.return_value = [
+            EmailSummary(
+                uid=1,
+                folder="INBOX",
+                subject="Hello",
+                sender=EmailAddress(address="unknown@example.com"),
+                date=datetime(2026, 2, 3, 12, 0, 0),
+                is_seen=True,
+            ),
+        ]
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_mailbox,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_account_config",
+                return_value=_mock_account_config(),
+            ),
+        ):
+            result = list_emails.fn(account="work")
+
+        assert "[TRUSTED]" not in result
+        assert "[ASK]" not in result
+        # No prompt line for SHOW level
+        assert "->" not in result
+
+    def test_custom_prompt_shown(self) -> None:
+        """Test that custom prompts are shown."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.fetch_emails.return_value = [
+            EmailSummary(
+                uid=1,
+                folder="INBOX",
+                subject="Report",
+                sender=EmailAddress(address="boss@mycompany.com"),
+                date=datetime(2026, 2, 3, 12, 0, 0),
+                is_seen=True,
+            ),
+        ]
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        config = _mock_account_config(
+            sender_rules=[SenderRule(pattern=r".*@mycompany\.com", access=AccessLevel.TRUSTED)],
+            list_prompts={"trusted": "Custom trusted message here"},
+        )
+
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_mailbox,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_account_config",
+                return_value=config,
+            ),
+        ):
+            result = list_emails.fn(account="work")
+
+        assert "Custom trusted message here" in result
+
+    def test_subject_rule_matching(self) -> None:
+        """Test subject rule matching for access level."""
+        mock_mailbox = MagicMock()
+        mock_mailbox.fetch_emails.return_value = [
+            EmailSummary(
+                uid=1,
+                folder="INBOX",
+                subject="[URGENT] Action Required",
+                sender=EmailAddress(address="unknown@example.com"),
+                date=datetime(2026, 2, 3, 12, 0, 0),
+                is_seen=True,
+            ),
+        ]
+        mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
+        mock_mailbox.__exit__ = MagicMock(return_value=None)
+
+        config = _mock_account_config(
+            subject_rules=[
+                SubjectRule(pattern=r"(?i)\[URGENT\]", access=AccessLevel.ASK_BEFORE_READ)
+            ]
+        )
+
+        with (
+            patch(
+                "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+                return_value=mock_mailbox,
+            ),
+            patch(
+                "read_no_evil_mcp.tools.list_emails.get_account_config",
+                return_value=config,
+            ),
+        ):
+            result = list_emails.fn(account="work")
+
+        assert "[ASK]" in result

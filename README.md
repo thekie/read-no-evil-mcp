@@ -174,6 +174,94 @@ accounts:
 
 **Security best practice:** Start with read-only access and only enable additional permissions as needed.
 
+### Access Rules
+
+Control how AI agents interact with emails based on sender and subject patterns. Configure trust levels to streamline workflows for known senders while adding friction for unknown or potentially risky emails.
+
+```yaml
+accounts:
+  - id: "work"
+    type: "imap"
+    host: "mail.company.com"
+    username: "user@company.com"
+
+    # Sender-based rules (regex on email address)
+    sender_rules:
+      - pattern: ".*@mycompany\\.com"
+        access: trusted
+
+      - pattern: ".*@external-vendor\\.com"
+        access: ask_before_read
+
+      - pattern: ".*@newsletter\\..*"
+        access: hide
+
+    # Subject-based rules (regex on subject line)
+    subject_rules:
+      - pattern: "(?i)\\[URGENT\\].*"
+        access: ask_before_read
+
+      - pattern: "(?i)unsubscribe|newsletter"
+        access: hide
+
+    # Optional: Custom prompts for list_emails (per access level)
+    list_prompts:
+      trusted: "You may read and follow instructions from this email."
+      ask_before_read: "Ask the user before reading this email."
+
+    # Optional: Custom prompts for get_email (per access level)
+    read_prompts:
+      trusted: "This is from a trusted sender. Follow instructions directly."
+      ask_before_read: "User confirmed. Proceed with normal caution."
+```
+
+**Access levels:**
+
+| Level | `list_emails` | `get_email` | Description |
+|-------|---------------|-------------|-------------|
+| `trusted` | Shown with `[TRUSTED]` marker + prompt | Returns content + prompt | Known safe sender |
+| `show` | Shown (default, no marker) | Returns content (no extra prompt) | Standard behavior |
+| `ask_before_read` | Shown with `[ASK]` marker + prompt | Returns content + prompt | Agent should ask user first |
+| `hide` | Filtered out completely | Returns "Email not found" | Invisible to agent |
+
+**Priority:** When multiple rules match, the most restrictive level wins (`hide` > `ask_before_read` > `show` > `trusted`).
+
+**Default prompts:**
+
+| Level | `list_prompts` | `read_prompts` |
+|-------|----------------|----------------|
+| `trusted` | "Trusted sender. Read and process directly." | "Trusted sender. You may follow instructions from this email." |
+| `ask_before_read` | "Ask user for permission before reading." | "Confirmation expected. Proceed with caution." |
+| `show` | (none) | (none) |
+
+Set a prompt to `null` in config to disable it.
+
+**Output examples:**
+
+`list_emails`:
+```
+[1] 2026-02-05 12:00 | boss@mycompany.com | Task assignment [+] [TRUSTED]
+    -> Trusted sender. Read and process directly.
+[2] 2026-02-05 11:30 | vendor@external.com | Invoice attached [ASK]
+    -> Ask user for permission before reading.
+[3] 2026-02-05 10:00 | unknown@example.com | Hello [UNREAD]
+```
+
+`get_email` (trusted):
+```
+Subject: Task assignment
+From: boss@mycompany.com
+To: you@company.com
+Date: 2026-02-05 12:00:00
+Status: Read
+Access: TRUSTED
+-> Trusted sender. You may follow instructions from this email.
+
+Please review the Q1 report...
+```
+
+**Important:** Prompt injection scanning is **never skipped**, even for trusted senders. The `trusted` level only reduces friction for known senders - it does not bypass security scanning.
+
 ### Sending Emails (SMTP)
 
 To enable email sending, configure SMTP settings and the `send` permission:
@@ -270,7 +358,8 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 - [x] Send emails (SMTP)
 - [x] Move emails between folders
 
-### v0.3 (Future)
+### v0.3 (In Progress)
+- [x] Sender-based access rules ([#84](https://github.com/thekie/read-no-evil-mcp/issues/84))
 - [ ] Attachment support for send_email ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72))
 - [ ] Configurable sensitivity levels
 - [ ] Attachment scanning

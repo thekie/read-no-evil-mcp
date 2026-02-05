@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.accounts.credentials.env import EnvCredentialBackend
 from read_no_evil_mcp.accounts.service import AccountService
 from read_no_evil_mcp.config import Settings
@@ -52,3 +53,19 @@ def list_configured_accounts() -> list[str]:
     """
     service = get_account_service()
     return service.list_accounts()
+
+
+def get_account_config(account_id: str) -> AccountConfig:
+    """Get the configuration for an account.
+
+    Args:
+        account_id: The unique identifier of the account.
+
+    Returns:
+        The account configuration.
+
+    Raises:
+        AccountNotFoundError: If the account ID is not found.
+    """
+    service = get_account_service()
+    return service.get_config(account_id)

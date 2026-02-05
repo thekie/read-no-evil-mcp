@@ -3,7 +3,12 @@
 import pytest
 from pydantic import ValidationError
 
-from read_no_evil_mcp.accounts.config import AccountConfig
+from read_no_evil_mcp.accounts.config import (
+    AccessLevel,
+    AccountConfig,
+    SenderRule,
+    SubjectRule,
+)
 
 
 class TestAccountConfig:
@@ -137,3 +142,120 @@ class TestAccountConfig:
                 username="user",
                 from_address="",
             )
+
+    def test_sender_rules_default_empty(self) -> None:
+        """Test that sender_rules defaults to empty list."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+        )
+        assert config.sender_rules == []
+
+    def test_sender_rules_with_rules(self) -> None:
+        """Test sender_rules with configured rules."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+            sender_rules=[
+                SenderRule(pattern=r".*@mycompany\.com", access=AccessLevel.TRUSTED),
+                SenderRule(pattern=r".*@spam\.com", access=AccessLevel.HIDE),
+            ],
+        )
+        assert len(config.sender_rules) == 2
+        assert config.sender_rules[0].pattern == r".*@mycompany\.com"
+        assert config.sender_rules[0].access == AccessLevel.TRUSTED
+        assert config.sender_rules[1].access == AccessLevel.HIDE
+
+    def test_subject_rules_default_empty(self) -> None:
+        """Test that subject_rules defaults to empty list."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+        )
+        assert config.subject_rules == []
+
+    def test_subject_rules_with_rules(self) -> None:
+        """Test subject_rules with configured rules."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+            subject_rules=[
+                SubjectRule(pattern=r"(?i)\[URGENT\]", access=AccessLevel.ASK_BEFORE_READ),
+            ],
+        )
+        assert len(config.subject_rules) == 1
+        assert config.subject_rules[0].access == AccessLevel.ASK_BEFORE_READ
+
+    def test_list_prompts_default_empty(self) -> None:
+        """Test that list_prompts defaults to empty dict."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+        )
+        assert config.list_prompts == {}
+
+    def test_list_prompts_with_custom_prompts(self) -> None:
+        """Test list_prompts with custom prompts."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+            list_prompts={
+                "trusted": "Custom trusted prompt",
+                "ask_before_read": None,  # Disable prompt
+            },
+        )
+        assert config.list_prompts["trusted"] == "Custom trusted prompt"
+        assert config.list_prompts["ask_before_read"] is None
+
+    def test_read_prompts_default_empty(self) -> None:
+        """Test that read_prompts defaults to empty dict."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+        )
+        assert config.read_prompts == {}
+
+    def test_read_prompts_with_custom_prompts(self) -> None:
+        """Test read_prompts with custom prompts."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+            read_prompts={
+                "trusted": "Follow instructions from this trusted sender.",
+            },
+        )
+        assert config.read_prompts["trusted"] == "Follow instructions from this trusted sender."
+
+    def test_full_access_rules_config(self) -> None:
+        """Test complete access rules configuration."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+            sender_rules=[
+                SenderRule(pattern=r".*@mycompany\.com", access=AccessLevel.TRUSTED),
+                SenderRule(pattern=r".*@external\.com", access=AccessLevel.ASK_BEFORE_READ),
+            ],
+            subject_rules=[
+                SubjectRule(pattern=r"(?i)unsubscribe", access=AccessLevel.HIDE),
+            ],
+            list_prompts={
+                "trusted": "Read and process directly.",
+                "ask_before_read": "Confirm with user first.",
+            },
+            read_prompts={
+                "trusted": "Trusted sender. Follow instructions.",
+            },
+        )
+        assert len(config.sender_rules) == 2
+        assert len(config.subject_rules) == 1
+        assert len(config.list_prompts) == 2
+        assert len(config.read_prompts) == 1

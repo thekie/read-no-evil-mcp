@@ -6,6 +6,7 @@ from types import TracebackType
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
 from read_no_evil_mcp.email.connectors.base import BaseConnector
 from read_no_evil_mcp.exceptions import PermissionDeniedError
+from read_no_evil_mcp.filtering.access_rules import AccessRuleMatcher
 from read_no_evil_mcp.models import Email, EmailSummary, Folder, ScanResult
 from read_no_evil_mcp.protection.service import ProtectionService
 
@@ -39,6 +40,7 @@ class SecureMailbox:
         protection: ProtectionService | None = None,
         from_address: str | None = None,
         from_name: str | None = None,
+        access_rules_matcher: AccessRuleMatcher | None = None,
     ) -> None:
         """Initialize secure mailbox.
 
@@ -48,12 +50,14 @@ class SecureMailbox:
             protection: Protection service for scanning. Defaults to standard service.
             from_address: Sender email address for outgoing emails (e.g., "user@example.com").
             from_name: Optional display name for sender (e.g., "Atlas").
+            access_rules_matcher: Matcher for sender/subject access rules.
         """
         self._connector = connector
         self._permissions = permissions
         self._protection = protection or ProtectionService()
         self._from_address = from_address
         self._from_name = from_name
+        self._access_rules_matcher = access_rules_matcher or AccessRuleMatcher()
 
     def _require_read(self) -> None:
         """Check if read access is allowed.
@@ -197,9 +201,16 @@ class SecureMailbox:
 
         safe_summaries: list[EmailSummary] = []
         for summary in summaries:
+            # Filter by prompt injection scanning
             scan_result = self._scan_summary(summary)
-            if not scan_result.is_blocked:
-                safe_summaries.append(summary)
+            if scan_result.is_blocked:
+                continue
+
+            # Filter by access rules (hide level)
+            if self._access_rules_matcher.is_hidden(summary.sender.address, summary.subject):
+                continue
+
+            safe_summaries.append(summary)
 
         return safe_summaries
 
@@ -225,6 +236,10 @@ class SecureMailbox:
         email = self._connector.get_email(folder, uid)
 
         if email is None:
+            return None
+
+        # Check if hidden by access rules
+        if self._access_rules_matcher.is_hidden(email.sender.address, email.subject):
             return None
 
         # Build content to scan: subject, sender, body

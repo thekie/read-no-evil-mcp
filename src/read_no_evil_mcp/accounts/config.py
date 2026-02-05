@@ -1,10 +1,57 @@
 """Account configuration models with discriminated union for multi-connector support."""
 
+from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
+
+
+class AccessLevel(str, Enum):
+    """Access level for email based on sender/subject rules.
+
+    Levels are ordered by restrictiveness: hide > ask_before_read > show > trusted.
+    When multiple rules match, the most restrictive level wins.
+    """
+
+    TRUSTED = "trusted"
+    SHOW = "show"
+    ASK_BEFORE_READ = "ask_before_read"
+    HIDE = "hide"
+
+
+# Restrictiveness order (higher index = more restrictive)
+ACCESS_LEVEL_RESTRICTIVENESS: dict[AccessLevel, int] = {
+    AccessLevel.TRUSTED: 0,
+    AccessLevel.SHOW: 1,
+    AccessLevel.ASK_BEFORE_READ: 2,
+    AccessLevel.HIDE: 3,
+}
+
+
+class SenderRule(BaseModel):
+    """Rule for matching email sender addresses.
+
+    Attributes:
+        pattern: Regex pattern to match against sender email address.
+        access: Access level to assign when pattern matches.
+    """
+
+    pattern: str = Field(..., min_length=1, description="Regex pattern for sender email")
+    access: AccessLevel = Field(..., description="Access level when pattern matches")
+
+
+class SubjectRule(BaseModel):
+    """Rule for matching email subject lines.
+
+    Attributes:
+        pattern: Regex pattern to match against email subject.
+        access: Access level to assign when pattern matches.
+    """
+
+    pattern: str = Field(..., min_length=1, description="Regex pattern for subject line")
+    access: AccessLevel = Field(..., description="Access level when pattern matches")
 
 
 class BaseAccountConfig(BaseModel):
@@ -71,6 +118,24 @@ class IMAPAccountConfig(BaseAccountConfig):
     from_name: str | None = Field(
         default=None,
         description="Display name for outgoing emails (e.g., 'Atlas')",
+    )
+
+    # Access rules
+    sender_rules: list[SenderRule] = Field(
+        default_factory=list,
+        description="Rules for matching sender email addresses",
+    )
+    subject_rules: list[SubjectRule] = Field(
+        default_factory=list,
+        description="Rules for matching email subject lines",
+    )
+    list_prompts: dict[str, str | None] = Field(
+        default_factory=dict,
+        description="Agent prompts shown in list_emails per access level",
+    )
+    read_prompts: dict[str, str | None] = Field(
+        default_factory=dict,
+        description="Agent prompts shown in get_email per access level",
     )
 
 
