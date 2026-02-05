@@ -9,7 +9,7 @@ from typing import Any
 import structlog
 from transformers import Pipeline, pipeline
 
-from read_no_evil_mcp.models import ScanResult
+from read_no_evil_mcp.protection.models import ScanResult
 
 logger = structlog.get_logger()
 

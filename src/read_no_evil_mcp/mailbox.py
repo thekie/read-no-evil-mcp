@@ -1,46 +1,21 @@
 """Secure mailbox with prompt injection protection and permission enforcement."""
 
-from dataclasses import dataclass
 from datetime import date, timedelta
 from types import TracebackType
 
 from read_no_evil_mcp.accounts.config import AccessLevel
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
 from read_no_evil_mcp.email.connectors.base import BaseConnector
+from read_no_evil_mcp.email.models import EmailSummary, Folder
 from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.filtering.access_rules import (
     AccessRuleMatcher,
     get_list_prompt,
     get_read_prompt,
 )
-from read_no_evil_mcp.models import Email, EmailSummary, Folder, ScanResult
+from read_no_evil_mcp.models import SecureEmail, SecureEmailSummary
+from read_no_evil_mcp.protection.models import ScanResult
 from read_no_evil_mcp.protection.service import ProtectionService
-
-
-@dataclass
-class SecureEmailSummary:
-    """Email summary enriched with security context.
-
-    Wraps an EmailSummary with access level and prompt information
-    determined by the account's access rules.
-    """
-
-    summary: EmailSummary
-    access_level: AccessLevel
-    prompt: str | None = None
-
-
-@dataclass
-class SecureEmail:
-    """Full email enriched with security context.
-
-    Wraps an Email with access level and prompt information
-    determined by the account's access rules.
-    """
-
-    email: Email
-    access_level: AccessLevel
-    prompt: str | None = None
 
 
 class PromptInjectionError(Exception):

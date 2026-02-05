@@ -3,8 +3,8 @@
 import re
 from html.parser import HTMLParser
 
-from read_no_evil_mcp.models import ScanResult
 from read_no_evil_mcp.protection.heuristic import HeuristicScanner
+from read_no_evil_mcp.protection.models import ScanResult
 
 
 class _HTMLTextExtractor(HTMLParser):

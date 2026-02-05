@@ -1,13 +1,14 @@
 """Data models for read-no-evil-mcp.
 
-Email-specific models have been moved to email/models.py.
-Connector configs have been moved to email/connectors/config.py.
-This module re-exports them for backwards compatibility.
+This module contains the secure mailbox wrapper models and re-exports
+other models for backwards compatibility.
 """
 
-from pydantic import BaseModel
+from dataclasses import dataclass
 
-# Re-export email models for backwards compatibility
+from read_no_evil_mcp.accounts.config import AccessLevel
+
+# Re-export for backwards compatibility
 from read_no_evil_mcp.email.connectors.config import IMAPConfig, SMTPConfig
 from read_no_evil_mcp.email.models import (
     Attachment,
@@ -16,8 +17,13 @@ from read_no_evil_mcp.email.models import (
     EmailSummary,
     Folder,
 )
+from read_no_evil_mcp.protection.models import ScanResult
 
 __all__ = [
+    # Secure mailbox models (primary)
+    "SecureEmail",
+    "SecureEmailSummary",
+    # Re-exports for backwards compatibility
     "Attachment",
     "Email",
     "EmailAddress",
@@ -29,14 +35,27 @@ __all__ = [
 ]
 
 
-class ScanResult(BaseModel):
-    """Result of scanning content for prompt injection attacks."""
+@dataclass
+class SecureEmailSummary:
+    """Email summary enriched with security context.
 
-    is_safe: bool
-    score: float  # 0.0 = safe, 1.0 = definitely malicious
-    detected_patterns: list[str] = []
+    Wraps an EmailSummary with access level and prompt information
+    determined by the account's access rules.
+    """
 
-    @property
-    def is_blocked(self) -> bool:
-        """Return True if content should be blocked."""
-        return not self.is_safe
+    summary: EmailSummary
+    access_level: AccessLevel
+    prompt: str | None = None
+
+
+@dataclass
+class SecureEmail:
+    """Full email enriched with security context.
+
+    Wraps an Email with access level and prompt information
+    determined by the account's access rules.
+    """
+
+    email: Email
+    access_level: AccessLevel
+    prompt: str | None = None
