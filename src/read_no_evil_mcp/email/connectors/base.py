@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from datetime import date, timedelta
 from types import TracebackType
 
-from read_no_evil_mcp.models import Email, EmailSummary, Folder
+from read_no_evil_mcp.email.models import Email, EmailSummary, Folder
 
 
 class BaseConnector(ABC):

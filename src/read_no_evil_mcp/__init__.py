@@ -12,6 +12,8 @@ from read_no_evil_mcp.models import (
     Folder,
     IMAPConfig,
     ScanResult,
+    SecureEmail,
+    SecureEmailSummary,
 )
 from read_no_evil_mcp.protection.heuristic import HeuristicScanner
 from read_no_evil_mcp.protection.service import ProtectionService
@@ -31,6 +33,8 @@ __all__ = [
     "PromptInjectionError",
     "ProtectionService",
     "ScanResult",
+    "SecureEmail",
+    "SecureEmailSummary",
     "SecureMailbox",
     "Settings",
 ]

@@ -5,10 +5,11 @@ from pydantic import SecretStr
 from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.accounts.credentials.base import CredentialBackend
 from read_no_evil_mcp.email.connectors.base import BaseConnector
+from read_no_evil_mcp.email.connectors.config import IMAPConfig, SMTPConfig
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
 from read_no_evil_mcp.exceptions import AccountNotFoundError, UnsupportedConnectorError
+from read_no_evil_mcp.filtering.access_rules import AccessRuleMatcher
 from read_no_evil_mcp.mailbox import SecureMailbox
-from read_no_evil_mcp.models import IMAPConfig, SMTPConfig
 
 
 class AccountService:
@@ -39,6 +40,23 @@ class AccountService:
             List of account identifiers in the order they were configured.
         """
         return list(self._accounts.keys())
+
+    def get_config(self, account_id: str) -> AccountConfig:
+        """Get the configuration for an account.
+
+        Args:
+            account_id: The unique identifier of the account.
+
+        Returns:
+            The account configuration.
+
+        Raises:
+            AccountNotFoundError: If the account ID is not found.
+        """
+        config = self._accounts.get(account_id)
+        if not config:
+            raise AccountNotFoundError(account_id)
+        return config
 
     def _create_connector(self, config: AccountConfig, password: SecretStr) -> BaseConnector:
         """Create a connector based on account configuration.
@@ -101,9 +119,18 @@ class AccountService:
         # Use config.from_address, fall back to config.username if not set
         from_address = config.from_address or config.username
 
+        # Create access rules matcher if rules are configured
+        access_rules_matcher = AccessRuleMatcher(
+            sender_rules=config.sender_rules,
+            subject_rules=config.subject_rules,
+        )
+
         return SecureMailbox(
             connector,
             config.permissions,
             from_address=from_address,
             from_name=config.from_name,
+            access_rules_matcher=access_rules_matcher,
+            list_prompts=config.list_prompts or None,
+            read_prompts=config.read_prompts or None,
         )
