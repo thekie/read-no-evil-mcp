@@ -294,6 +294,18 @@ The `send_email` tool supports:
 
 **Note:** Attachments are planned for v0.3 ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72)).
 
+## MCP Tools
+
+| Tool | Description | Permission |
+|------|-------------|------------|
+| `list_accounts` | List configured email accounts | — |
+| `list_folders` | List folders/mailboxes | `read` |
+| `list_emails` | List emails in a folder | `read` |
+| `get_email` | Get full email content by UID | `read` |
+| `send_email` | Send an email via SMTP | `send` |
+| `move_email` | Move email to another folder | `move` |
+| `delete_email` | Permanently delete an email | `delete` |
+
 ## Quick Start
 
 1. **Create a config file** (`~/.config/read-no-evil-mcp/config.yaml`):
