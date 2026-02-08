@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel
 
+__all__ = ["AttachmentInput"]
+
 
 class AttachmentInput(BaseModel):
     """Input format for email attachments.

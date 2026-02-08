@@ -1,6 +1,7 @@
 """Send email MCP tool."""
 
 import base64
+from pathlib import Path
 from typing import Any, cast
 
 from read_no_evil_mcp.email.models import OutgoingAttachment
@@ -34,6 +35,10 @@ def _parse_attachments(
 
         if not att.content and not att.path:
             raise ValueError(f"Attachment '{att.filename}' must have either 'content' or 'path'")
+
+        # Validate file path exists early to provide better error messages
+        if att.path and not Path(att.path).exists():
+            raise ValueError(f"Attachment file not found: {att.path}")
 
         content: bytes | None = None
         if att.content:

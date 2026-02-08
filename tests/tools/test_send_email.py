@@ -1,6 +1,7 @@
 """Tests for send_email tool."""
 
 import base64
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from read_no_evil_mcp.email.models import OutgoingAttachment
@@ -413,13 +414,17 @@ class TestParseAttachments:
         assert result[0].mime_type == "text/plain"
         assert result[0].get_content() == content
 
-    def test_parse_with_path(self) -> None:
+    def test_parse_with_path(self, tmp_path: Path) -> None:
         """Test parsing attachment with file path."""
+        # Create a real temp file
+        test_file = tmp_path / "file.txt"
+        test_file.write_bytes(b"test content")
+
         result = _parse_attachments(
             [
                 {
                     "filename": "test.txt",
-                    "path": "/path/to/file.txt",
+                    "path": str(test_file),
                 }
             ]
         )
@@ -427,7 +432,7 @@ class TestParseAttachments:
         assert result is not None
         assert len(result) == 1
         assert result[0].filename == "test.txt"
-        assert result[0].path == "/path/to/file.txt"
+        assert result[0].path == str(test_file)
         assert result[0].mime_type == "application/octet-stream"  # default
 
     def test_parse_default_mime_type(self) -> None:
@@ -444,8 +449,12 @@ class TestParseAttachments:
         assert result is not None
         assert result[0].mime_type == "application/octet-stream"
 
-    def test_parse_multiple_attachments(self) -> None:
+    def test_parse_multiple_attachments(self, tmp_path: Path) -> None:
         """Test parsing multiple attachments."""
+        # Create a real temp file for the path-based attachment
+        img_file = tmp_path / "img.png"
+        img_file.write_bytes(b"png data")
+
         result = _parse_attachments(
             [
                 {
@@ -455,7 +464,7 @@ class TestParseAttachments:
                 },
                 {
                     "filename": "img.png",
-                    "path": "/path/to/img.png",
+                    "path": str(img_file),
                     "mime_type": "image/png",
                 },
             ]
@@ -465,3 +474,17 @@ class TestParseAttachments:
         assert len(result) == 2
         assert result[0].filename == "doc.pdf"
         assert result[1].filename == "img.png"
+
+    def test_parse_with_nonexistent_path_raises_error(self) -> None:
+        """Test that non-existent file path raises ValueError early."""
+        import pytest
+
+        with pytest.raises(ValueError, match="Attachment file not found"):
+            _parse_attachments(
+                [
+                    {
+                        "filename": "missing.txt",
+                        "path": "/nonexistent/path/to/file.txt",
+                    }
+                ]
+            )
