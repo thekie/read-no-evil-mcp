@@ -3,24 +3,11 @@
 import base64
 from typing import Any, cast
 
-from pydantic import BaseModel
-
 from read_no_evil_mcp.email.models import OutgoingAttachment
 from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.tools._app import mcp
 from read_no_evil_mcp.tools._service import create_securemailbox
-
-
-class AttachmentInput(BaseModel):
-    """Input format for email attachments.
-
-    Either content (base64-encoded) or path must be provided.
-    """
-
-    filename: str
-    content: str | None = None  # base64-encoded bytes
-    mime_type: str = "application/octet-stream"
-    path: str | None = None
+from read_no_evil_mcp.tools.models import AttachmentInput
 
 
 def _parse_attachments(
