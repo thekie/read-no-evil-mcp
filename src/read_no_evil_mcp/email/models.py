@@ -33,6 +33,39 @@ class Attachment(BaseModel):
     size: int | None = None
 
 
+class OutgoingAttachment(BaseModel):
+    """Attachment for outgoing emails.
+
+    Supports two modes:
+    - In-memory: Provide content bytes directly
+    - File-based: Provide path to read from (content will be loaded)
+
+    At least one of content or path must be provided.
+    """
+
+    filename: str
+    content: bytes | None = None
+    mime_type: str = "application/octet-stream"
+    path: str | None = None
+
+    def get_content(self) -> bytes:
+        """Get attachment content, loading from path if needed.
+
+        Returns:
+            The attachment content as bytes.
+
+        Raises:
+            ValueError: If neither content nor path is provided.
+            FileNotFoundError: If path is provided but file doesn't exist.
+        """
+        if self.content is not None:
+            return self.content
+        if self.path is not None:
+            with open(self.path, "rb") as f:
+                return f.read()
+        raise ValueError("Either content or path must be provided")
+
+
 class EmailSummary(BaseModel):
     """Lightweight email representation for list views."""
 

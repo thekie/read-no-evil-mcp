@@ -2,6 +2,8 @@
 
 from datetime import datetime
 
+import pytest
+
 from read_no_evil_mcp.models import (
     Attachment,
     Email,
@@ -9,6 +11,7 @@ from read_no_evil_mcp.models import (
     EmailSummary,
     Folder,
     IMAPConfig,
+    OutgoingAttachment,
     ScanResult,
 )
 
@@ -82,6 +85,74 @@ class TestAttachment:
     def test_size_optional(self):
         att = Attachment(filename="file.txt", content_type="text/plain")
         assert att.size is None
+
+
+class TestOutgoingAttachment:
+    def test_with_content(self):
+        """Test attachment with in-memory content."""
+        content = b"Hello, World!"
+        att = OutgoingAttachment(
+            filename="test.txt",
+            content=content,
+            mime_type="text/plain",
+        )
+        assert att.filename == "test.txt"
+        assert att.mime_type == "text/plain"
+        assert att.get_content() == content
+
+    def test_with_path(self, tmp_path):
+        """Test attachment loaded from file path."""
+        file_path = tmp_path / "test.txt"
+        file_path.write_bytes(b"File content")
+
+        att = OutgoingAttachment(
+            filename="test.txt",
+            path=str(file_path),
+        )
+        assert att.get_content() == b"File content"
+
+    def test_default_mime_type(self):
+        """Test default MIME type is application/octet-stream."""
+        att = OutgoingAttachment(filename="test.bin", content=b"data")
+        assert att.mime_type == "application/octet-stream"
+
+    def test_content_takes_precedence_over_path(self, tmp_path):
+        """Test that content is used even if path is also provided."""
+        file_path = tmp_path / "test.txt"
+        file_path.write_bytes(b"File content")
+
+        att = OutgoingAttachment(
+            filename="test.txt",
+            content=b"Memory content",
+            path=str(file_path),
+        )
+        # Should return in-memory content, not file content
+        assert att.get_content() == b"Memory content"
+
+    def test_raises_without_content_or_path(self):
+        """Test that get_content raises ValueError if neither is provided."""
+        att = OutgoingAttachment(filename="test.txt")
+        with pytest.raises(ValueError, match="Either content or path must be provided"):
+            att.get_content()
+
+    def test_raises_for_nonexistent_file(self):
+        """Test that get_content raises FileNotFoundError for missing file."""
+        att = OutgoingAttachment(
+            filename="test.txt",
+            path="/nonexistent/path/file.txt",
+        )
+        with pytest.raises(FileNotFoundError):
+            att.get_content()
+
+    def test_binary_content(self):
+        """Test attachment with binary content."""
+        content = bytes(range(256))
+        att = OutgoingAttachment(
+            filename="binary.bin",
+            content=content,
+            mime_type="application/octet-stream",
+        )
+        assert att.get_content() == content
 
 
 class TestEmailSummary:

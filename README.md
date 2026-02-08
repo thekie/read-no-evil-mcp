@@ -291,8 +291,7 @@ The `send_email` tool supports:
 - CC recipients (`cc`)
 - Reply-To header (`reply_to`)
 - Plain text body
-
-**Note:** Attachments are planned for v0.3 ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72)).
+- File attachments (base64-encoded content or file path)
 
 ## MCP Tools
 
@@ -372,7 +371,7 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 
 ### v0.3 (In Progress)
 - [x] Sender-based access rules ([#84](https://github.com/thekie/read-no-evil-mcp/issues/84))
-- [ ] Attachment support for send_email ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72))
+- [x] Attachment support for send_email ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72))
 - [ ] Configurable sensitivity levels
 - [ ] Attachment scanning
 - [ ] Docker image

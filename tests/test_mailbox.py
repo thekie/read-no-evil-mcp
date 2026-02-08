@@ -450,6 +450,7 @@ class TestSecureMailbox:
             from_name=None,
             cc=None,
             reply_to=None,
+            attachments=None,
         )
 
     def test_send_email_with_cc(
@@ -484,6 +485,7 @@ class TestSecureMailbox:
             from_name=None,
             cc=["cc@example.com"],
             reply_to=None,
+            attachments=None,
         )
 
     def test_send_email_with_reply_to(
@@ -518,6 +520,7 @@ class TestSecureMailbox:
             from_name=None,
             cc=None,
             reply_to="replies@example.com",
+            attachments=None,
         )
 
     def test_send_email_with_from_name(
@@ -552,6 +555,7 @@ class TestSecureMailbox:
             from_name="Atlas",
             cc=None,
             reply_to=None,
+            attachments=None,
         )
 
     def test_send_email_permission_denied(
