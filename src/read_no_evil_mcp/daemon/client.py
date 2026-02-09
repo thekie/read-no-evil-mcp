@@ -31,7 +31,7 @@ class DaemonClient:
         self._socket_path = socket_path or get_socket_path()
         self._timeout = timeout
 
-    def _send_request(self, request: dict) -> dict | None:
+    def _send_request(self, request: dict[str, Any]) -> dict[str, Any] | None:
         """Send a request to the daemon and return the response.
 
         Returns None on any error (connection failed, timeout, etc).
@@ -60,7 +60,8 @@ class DaemonClient:
             if not response_bytes:
                 return None
 
-            return json.loads(response_bytes.decode().strip())
+            result: dict[str, Any] = json.loads(response_bytes.decode().strip())
+            return result
         except Exception as e:
             logger.debug("Daemon request failed", error=str(e))
             return None

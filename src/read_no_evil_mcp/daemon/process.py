@@ -163,7 +163,7 @@ def stop_daemon() -> bool:
     return True
 
 
-def daemon_status() -> dict:
+def daemon_status() -> dict[str, Any]:
     """Get daemon status information.
 
     Returns:
