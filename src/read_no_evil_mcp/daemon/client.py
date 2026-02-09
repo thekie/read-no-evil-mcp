@@ -1,5 +1,7 @@
 """Daemon client for communicating with the scan daemon."""
 
+from typing import Any
+
 import json
 import socket
 from pathlib import Path

@@ -1,5 +1,7 @@
 """Daemon process management (start/stop/status)."""
 
+from typing import Any
+
 import os
 import signal
 import sys
