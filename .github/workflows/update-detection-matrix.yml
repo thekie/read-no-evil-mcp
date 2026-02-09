@@ -52,7 +52,7 @@ jobs:
       - name: Create Pull Request
         id: cpr
         if: steps.check.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           # Use PAT instead of GITHUB_TOKEN to trigger CI workflows on the PR
           # GITHUB_TOKEN cannot trigger workflows (GitHub security measure)
