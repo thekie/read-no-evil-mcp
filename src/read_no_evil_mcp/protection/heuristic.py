@@ -4,7 +4,7 @@ Uses the ProtectAI DeBERTa model with PyTorch for ML-based
 prompt injection detection. Supports daemon mode for fast scanning.
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import structlog
 from transformers import Pipeline, pipeline
@@ -41,7 +41,7 @@ class HeuristicScanner:
         self._threshold = threshold
         self._use_daemon = use_daemon
         self._classifier: Pipeline | None = None  # Lazy load
-        self._daemon_client: DaemonClient | bool | None = None  # Lazy import
+        self._daemon_client: DaemonClient | Literal[False] | None = None  # Lazy import
 
     def _get_daemon_client(self) -> "DaemonClient | None":
         """Lazy import and create daemon client."""
