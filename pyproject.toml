@@ -33,6 +33,7 @@ dependencies = [
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
     "pyyaml>=6.0",
+    "platformdirs>=4.0",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +47,7 @@ dev = [
 
 [project.scripts]
 read-no-evil-mcp = "read_no_evil_mcp.server:main"
+rnoe = "read_no_evil_mcp.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/thekie/read-no-evil-mcp"
