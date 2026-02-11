@@ -1,6 +1,6 @@
 # 🛡️ Detection Matrix
 
-**Last updated:** 2026-02-11 20:57 UTC
+**Last updated:** 2026-02-11 21:08 UTC
 
 ## Summary
 
@@ -19,7 +19,7 @@ See a ❌ that you think should be detected? Here's how to help:
 2. If not, open an issue describing the attack vector
 3. Or submit a PR improving detection!
 
-To add new test cases, add entries to the YAML files in
+Want to add new test cases? Just add entries to the YAML files in
 `tests/integration/prompt_injection/payloads/`
 
 ---
