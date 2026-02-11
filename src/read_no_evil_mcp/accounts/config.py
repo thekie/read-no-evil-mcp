@@ -9,6 +9,53 @@ from pydantic import BaseModel, Field, field_validator
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
 
 
+def _has_nested_quantifiers(pattern: str) -> bool:
+    """Check if a regex pattern contains nested quantifiers (ReDoS risk).
+
+    Walks the parsed regex AST looking for a quantifier (MAX_REPEAT/MIN_REPEAT)
+    whose body contains another quantifier.
+    """
+    # re._parser is the non-deprecated successor to sre_parse (Python 3.11+)
+    _parser = re._parser  # type: ignore[attr-defined]
+
+    try:
+        parsed = _parser.parse(pattern)
+    except re.error:
+        return False
+
+    repeat_opcodes = {_parser.MAX_REPEAT, _parser.MIN_REPEAT}
+
+    def _contains_quantifier(items: _parser.SubPattern) -> bool:  # type: ignore[name-defined]
+        for op, av in items:
+            if op in repeat_opcodes:
+                return True
+            if op == _parser.SUBPATTERN and av[3] is not None:
+                if _contains_quantifier(av[3]):
+                    return True
+            if op == _parser.BRANCH:
+                for branch in av[1]:
+                    if _contains_quantifier(branch):
+                        return True
+        return False
+
+    def _walk(items: _parser.SubPattern) -> bool:  # type: ignore[name-defined]
+        for op, av in items:
+            if op in repeat_opcodes:
+                body = av[2]
+                if _contains_quantifier(body):
+                    return True
+            if op == _parser.SUBPATTERN and av[3] is not None:
+                if _walk(av[3]):
+                    return True
+            if op == _parser.BRANCH:
+                for branch in av[1]:
+                    if _walk(branch):
+                        return True
+        return False
+
+    return _walk(parsed)
+
+
 class AccessLevel(str, Enum):
     """Access level for email based on sender/subject rules.
 
@@ -45,11 +92,21 @@ class SenderRule(BaseModel):
     @field_validator("pattern")
     @classmethod
     def validate_pattern(cls, v: str) -> str:
-        """Validate that the pattern is a valid regex."""
+        """Validate that the pattern is a valid regex without ReDoS risk."""
         try:
             re.compile(v)
         except re.error as e:
             raise ValueError(f"Invalid regex pattern: {e}") from e
+        try:
+            nested = _has_nested_quantifiers(v)
+        except RecursionError:
+            raise ValueError("Regex pattern is too deeply nested.") from None
+        if nested:
+            raise ValueError(
+                "Regex pattern contains nested quantifiers, which risk catastrophic "
+                "backtracking (ReDoS). Simplify the pattern to avoid nesting "
+                "repetition operators."
+            )
         return v
 
 
@@ -67,11 +124,21 @@ class SubjectRule(BaseModel):
     @field_validator("pattern")
     @classmethod
     def validate_pattern(cls, v: str) -> str:
-        """Validate that the pattern is a valid regex."""
+        """Validate that the pattern is a valid regex without ReDoS risk."""
         try:
             re.compile(v)
         except re.error as e:
             raise ValueError(f"Invalid regex pattern: {e}") from e
+        try:
+            nested = _has_nested_quantifiers(v)
+        except RecursionError:
+            raise ValueError("Regex pattern is too deeply nested.") from None
+        if nested:
+            raise ValueError(
+                "Regex pattern contains nested quantifiers, which risk catastrophic "
+                "backtracking (ReDoS). Simplify the pattern to avoid nesting "
+                "repetition operators."
+            )
         return v
 
 
