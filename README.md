@@ -104,7 +104,7 @@ read-no-evil-mcp looks for configuration in this order:
 
 1. `RNOE_CONFIG_FILE` environment variable (if set)
 2. `./rnoe.yaml` (current directory)
-3. `~/.config/read-no-evil-mcp/config.yaml`
+3. `$XDG_CONFIG_HOME/read-no-evil-mcp/config.yaml` (defaults to `~/.config/read-no-evil-mcp/config.yaml`)
 
 ### Multi-Account Setup
 

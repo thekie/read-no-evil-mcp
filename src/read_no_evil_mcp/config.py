@@ -19,7 +19,7 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
     Looks for config file in the following order:
     1. RNOE_CONFIG_FILE environment variable
     2. ./rnoe.yaml (current directory)
-    3. ~/.config/read-no-evil-mcp/config.yaml
+    3. $XDG_CONFIG_HOME/read-no-evil-mcp/config.yaml (defaults to ~/.config)
     """
 
     def get_field_value(self, field: Any, field_name: str) -> tuple[Any, str, bool]:
@@ -42,10 +42,11 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
         """Read YAML config from file."""
         import yaml
 
+        xdg_config = os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
         config_paths = [
             os.environ.get("RNOE_CONFIG_FILE"),
             Path.cwd() / "rnoe.yaml",
-            Path.home() / ".config" / "read-no-evil-mcp" / "config.yaml",
+            Path(xdg_config) / "read-no-evil-mcp" / "config.yaml",
         ]
 
         for path in config_paths:
