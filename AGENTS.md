@@ -68,11 +68,12 @@ Example: `feat: Add Gmail API connector`
 
 ## PR Workflow
 
-1. Create feature branch from `main`
+1. Create feature branch from `development`
 2. Make changes with tests
 3. Ensure CI passes (lint, type check, tests)
-4. Create PR with clear description
+4. Create PR **targeting `development`** (not `main`)
 5. Reference related issues: `Closes #123`
+6. `main` is only updated via release merges from `development`
 
 ## Dependencies
 
