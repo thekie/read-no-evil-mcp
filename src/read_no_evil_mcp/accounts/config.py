@@ -2,11 +2,16 @@
 
 import re
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
+
+# sre_parse was deprecated in 3.11 in favor of re._parser; use whichever is available
+_sre_parser: Any = getattr(re, "_parser", None)
+if _sre_parser is None:
+    import sre_parse as _sre_parser
 
 
 def _has_nested_quantifiers(pattern: str) -> bool:
@@ -15,39 +20,36 @@ def _has_nested_quantifiers(pattern: str) -> bool:
     Walks the parsed regex AST looking for a quantifier (MAX_REPEAT/MIN_REPEAT)
     whose body contains another quantifier.
     """
-    # re._parser is the non-deprecated successor to sre_parse (Python 3.11+)
-    _parser = re._parser  # type: ignore[attr-defined]
-
     try:
-        parsed = _parser.parse(pattern)
+        parsed = _sre_parser.parse(pattern)
     except re.error:
         return False
 
-    repeat_opcodes = {_parser.MAX_REPEAT, _parser.MIN_REPEAT}
+    repeat_opcodes = {_sre_parser.MAX_REPEAT, _sre_parser.MIN_REPEAT}
 
-    def _contains_quantifier(items: _parser.SubPattern) -> bool:  # type: ignore[name-defined]
+    def _contains_quantifier(items: Any) -> bool:
         for op, av in items:
             if op in repeat_opcodes:
                 return True
-            if op == _parser.SUBPATTERN and av[3] is not None:
+            if op == _sre_parser.SUBPATTERN and av[3] is not None:
                 if _contains_quantifier(av[3]):
                     return True
-            if op == _parser.BRANCH:
+            if op == _sre_parser.BRANCH:
                 for branch in av[1]:
                     if _contains_quantifier(branch):
                         return True
         return False
 
-    def _walk(items: _parser.SubPattern) -> bool:  # type: ignore[name-defined]
+    def _walk(items: Any) -> bool:
         for op, av in items:
             if op in repeat_opcodes:
                 body = av[2]
                 if _contains_quantifier(body):
                     return True
-            if op == _parser.SUBPATTERN and av[3] is not None:
+            if op == _sre_parser.SUBPATTERN and av[3] is not None:
                 if _walk(av[3]):
                     return True
-            if op == _parser.BRANCH:
+            if op == _sre_parser.BRANCH:
                 for branch in av[1]:
                     if _walk(branch):
                         return True
