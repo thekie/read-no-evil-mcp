@@ -7,6 +7,7 @@ from read_no_evil_mcp.accounts.credentials.base import CredentialBackend
 from read_no_evil_mcp.email.connectors.base import BaseConnector
 from read_no_evil_mcp.email.connectors.config import IMAPConfig, SMTPConfig
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
+from read_no_evil_mcp.email.models import MAX_ATTACHMENT_SIZE
 from read_no_evil_mcp.exceptions import AccountNotFoundError, UnsupportedConnectorError
 from read_no_evil_mcp.filtering.access_rules import AccessRuleMatcher
 from read_no_evil_mcp.mailbox import SecureMailbox
@@ -23,15 +24,18 @@ class AccountService:
         self,
         accounts: list[AccountConfig],
         credentials: CredentialBackend,
+        max_attachment_size: int = MAX_ATTACHMENT_SIZE,
     ) -> None:
         """Initialize the account service.
 
         Args:
             accounts: List of account configurations.
             credentials: Backend for retrieving account credentials.
+            max_attachment_size: Maximum attachment size in bytes.
         """
         self._accounts = {a.id: a for a in accounts}
         self._credentials = credentials
+        self._max_attachment_size = max_attachment_size
 
     def list_accounts(self) -> list[str]:
         """Return list of configured account IDs.
@@ -133,4 +137,5 @@ class AccountService:
             access_rules_matcher=access_rules_matcher,
             list_prompts=config.list_prompts or None,
             read_prompts=config.read_prompts or None,
+            max_attachment_size=self._max_attachment_size,
         )

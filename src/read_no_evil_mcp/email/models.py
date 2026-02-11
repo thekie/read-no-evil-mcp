@@ -1,8 +1,11 @@
 """Email data models."""
 
 from datetime import datetime
+from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
+
+MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024  # 25 MB
 
 
 class EmailAddress(BaseModel):
@@ -48,22 +51,53 @@ class OutgoingAttachment(BaseModel):
     mime_type: str = "application/octet-stream"
     path: str | None = None
 
-    def get_content(self) -> bytes:
+    @model_validator(mode="after")
+    def _require_content_or_path(self) -> "OutgoingAttachment":
+        if self.content is None and self.path is None:
+            raise ValueError("Either content or path must be provided")
+        return self
+
+    def check_size(self, max_size: int = MAX_ATTACHMENT_SIZE) -> None:
+        """Check attachment size without reading file content.
+
+        Raises:
+            ValueError: If attachment exceeds max_size.
+            FileNotFoundError: If path doesn't exist.
+        """
+        if self.content is not None:
+            size = len(self.content)
+        else:
+            assert self.path is not None
+            size = Path(self.path).stat().st_size
+        if size > max_size:
+            raise ValueError(f"Attachment too large: {size} bytes (max {max_size})")
+
+    def get_content(self, max_size: int = MAX_ATTACHMENT_SIZE) -> bytes:
         """Get attachment content, loading from path if needed.
+
+        Args:
+            max_size: Maximum allowed size in bytes. Defaults to MAX_ATTACHMENT_SIZE.
 
         Returns:
             The attachment content as bytes.
 
         Raises:
-            ValueError: If neither content nor path is provided.
+            ValueError: If attachment exceeds max_size.
             FileNotFoundError: If path is provided but file doesn't exist.
         """
         if self.content is not None:
+            if len(self.content) > max_size:
+                raise ValueError(
+                    f"Attachment too large: {len(self.content)} bytes (max {max_size})"
+                )
             return self.content
-        if self.path is not None:
-            with open(self.path, "rb") as f:
-                return f.read()
-        raise ValueError("Either content or path must be provided")
+        # self.path is guaranteed non-None by the model validator
+        assert self.path is not None
+        size = Path(self.path).stat().st_size
+        if size > max_size:
+            raise ValueError(f"Attachment too large: {size} bytes (max {max_size})")
+        with open(self.path, "rb") as f:
+            return f.read()
 
 
 class EmailSummary(BaseModel):

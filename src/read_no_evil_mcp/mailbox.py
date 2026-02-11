@@ -6,7 +6,12 @@ from types import TracebackType
 from read_no_evil_mcp.accounts.config import AccessLevel
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
 from read_no_evil_mcp.email.connectors.base import BaseConnector
-from read_no_evil_mcp.email.models import EmailSummary, Folder, OutgoingAttachment
+from read_no_evil_mcp.email.models import (
+    MAX_ATTACHMENT_SIZE,
+    EmailSummary,
+    Folder,
+    OutgoingAttachment,
+)
 from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.filtering.access_rules import (
     AccessRuleMatcher,
@@ -49,6 +54,7 @@ class SecureMailbox:
         access_rules_matcher: AccessRuleMatcher | None = None,
         list_prompts: dict[AccessLevel, str | None] | None = None,
         read_prompts: dict[AccessLevel, str | None] | None = None,
+        max_attachment_size: int = MAX_ATTACHMENT_SIZE,
     ) -> None:
         """Initialize secure mailbox.
 
@@ -61,6 +67,7 @@ class SecureMailbox:
             access_rules_matcher: Matcher for sender/subject access rules.
             list_prompts: Custom prompts for list_emails output per access level.
             read_prompts: Custom prompts for get_email output per access level.
+            max_attachment_size: Maximum attachment size in bytes.
         """
         self._connector = connector
         self._permissions = permissions
@@ -70,6 +77,7 @@ class SecureMailbox:
         self._access_rules_matcher = access_rules_matcher or AccessRuleMatcher()
         self._list_prompts = list_prompts
         self._read_prompts = read_prompts
+        self._max_attachment_size = max_attachment_size
 
     def _get_access_level(self, sender: str, subject: str) -> AccessLevel:
         """Get access level for an email based on sender and subject rules."""
@@ -303,6 +311,10 @@ class SecureMailbox:
 
         if not self._from_address:
             raise RuntimeError("From address not configured for this account")
+
+        if attachments:
+            for attachment in attachments:
+                attachment.check_size(max_size=self._max_attachment_size)
 
         return self._connector.send(
             from_address=self._from_address,

@@ -25,7 +25,11 @@ def get_account_service() -> AccountService:
     if not settings.accounts:
         raise ConfigError("No accounts configured. Configure accounts via YAML config file.")
 
-    return AccountService(settings.accounts, EnvCredentialBackend())
+    return AccountService(
+        settings.accounts,
+        EnvCredentialBackend(),
+        max_attachment_size=settings.max_attachment_size,
+    )
 
 
 def create_securemailbox(account_id: str) -> SecureMailbox:

@@ -8,6 +8,7 @@ import pytest
 from read_no_evil_mcp.accounts.config import AccessLevel, SenderRule, SubjectRule
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
 from read_no_evil_mcp.email.connectors.base import BaseConnector
+from read_no_evil_mcp.email.models import MAX_ATTACHMENT_SIZE, OutgoingAttachment
 from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.filtering.access_rules import AccessRuleMatcher
 from read_no_evil_mcp.mailbox import PromptInjectionError, SecureMailbox
@@ -687,6 +688,73 @@ class TestSecureMailbox:
             mailbox.delete_email("INBOX", 123)
 
         assert "Delete access denied" in str(exc_info.value)
+
+    def test_send_email_rejects_oversized_attachment(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test that send_email rejects attachments exceeding max_attachment_size."""
+        mock_connector.can_send.return_value = True
+        permissions = AccountPermissions(send=True)
+        mailbox = SecureMailbox(
+            mock_connector,
+            permissions,
+            mock_protection,
+            from_address="sender@example.com",
+            max_attachment_size=100,
+        )
+
+        attachment = OutgoingAttachment(filename="big.bin", content=b"x" * 101)
+
+        with pytest.raises(ValueError, match="101 bytes.*max 100"):
+            mailbox.send_email(
+                to=["recipient@example.com"],
+                subject="Test",
+                body="Test body",
+                attachments=[attachment],
+            )
+
+        mock_connector.send.assert_not_called()
+
+    def test_send_email_accepts_attachment_within_limit(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test that send_email accepts attachments within max_attachment_size."""
+        mock_connector.can_send.return_value = True
+        mock_connector.send.return_value = True
+        permissions = AccountPermissions(send=True)
+        mailbox = SecureMailbox(
+            mock_connector,
+            permissions,
+            mock_protection,
+            from_address="sender@example.com",
+            max_attachment_size=100,
+        )
+
+        attachment = OutgoingAttachment(filename="small.bin", content=b"x" * 100)
+
+        result = mailbox.send_email(
+            to=["recipient@example.com"],
+            subject="Test",
+            body="Test body",
+            attachments=[attachment],
+        )
+
+        assert result is True
+        mock_connector.send.assert_called_once()
+
+    def test_default_max_attachment_size(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+        default_permissions: AccountPermissions,
+    ) -> None:
+        """Test that MAX_ATTACHMENT_SIZE is used when no custom value is provided."""
+        mailbox = SecureMailbox(mock_connector, default_permissions, mock_protection)
+        assert mailbox._max_attachment_size == MAX_ATTACHMENT_SIZE
 
 
 class TestPromptInjectionError:

@@ -302,6 +302,9 @@ accounts:
 
     permissions:
       send: true
+
+# Optional: maximum attachment size in bytes (default: 25 MB)
+max_attachment_size: 26214400
 ```
 
 The `send_email` tool supports:
