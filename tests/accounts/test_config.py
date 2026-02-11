@@ -8,6 +8,7 @@ from read_no_evil_mcp.accounts.config import (
     AccountConfig,
     SenderRule,
     SubjectRule,
+    _has_nested_quantifiers,
 )
 
 
@@ -259,3 +260,54 @@ class TestAccountConfig:
         assert len(config.subject_rules) == 1
         assert len(config.list_prompts) == 2
         assert len(config.read_prompts) == 1
+
+
+class TestHasNestedQuantifiers:
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            pytest.param(r"(a+)+$", id="classic-redos"),
+            pytest.param(r"(.*)*", id="nested-star"),
+            pytest.param(r"(a|b+)+", id="alternation-nested-quantifier"),
+            pytest.param(r"(a+){2,}", id="quantifier-on-quantifier-braces"),
+            pytest.param(r"((a+)b)+", id="nested-group-with-quantifier"),
+        ],
+    )
+    def test_detects_dangerous_patterns(self, pattern: str) -> None:
+        assert _has_nested_quantifiers(pattern) is True
+
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            pytest.param(r".*@example\.com", id="typical-email-pattern"),
+            pytest.param(r"(?i)\[URGENT\]", id="case-insensitive-literal"),
+            pytest.param(r"a+b+c+", id="sequential-quantifiers"),
+            pytest.param(r"(foo|bar)+", id="alternation-no-nested-quantifier"),
+            pytest.param(r"\d{1,3}\.\d{1,3}", id="bounded-quantifiers"),
+        ],
+    )
+    def test_accepts_safe_patterns(self, pattern: str) -> None:
+        assert _has_nested_quantifiers(pattern) is False
+
+    def test_invalid_regex_returns_false(self) -> None:
+        assert _has_nested_quantifiers(r"[invalid") is False
+
+
+class TestSenderRuleReDoS:
+    def test_rejects_nested_quantifier_pattern(self) -> None:
+        with pytest.raises(ValidationError, match="nested quantifiers"):
+            SenderRule(pattern=r"(a+)+$", access=AccessLevel.TRUSTED)
+
+    def test_accepts_safe_pattern(self) -> None:
+        rule = SenderRule(pattern=r".*@example\.com", access=AccessLevel.TRUSTED)
+        assert rule.pattern == r".*@example\.com"
+
+
+class TestSubjectRuleReDoS:
+    def test_rejects_nested_quantifier_pattern(self) -> None:
+        with pytest.raises(ValidationError, match="nested quantifiers"):
+            SubjectRule(pattern=r"(a+)+$", access=AccessLevel.ASK_BEFORE_READ)
+
+    def test_accepts_safe_pattern(self) -> None:
+        rule = SubjectRule(pattern=r"(?i)\[URGENT\]", access=AccessLevel.ASK_BEFORE_READ)
+        assert rule.pattern == r"(?i)\[URGENT\]"
