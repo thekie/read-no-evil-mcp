@@ -14,11 +14,17 @@ Instructions for AI coding assistants working on this project.
 - **MCP SDK** for Model Context Protocol server
 - **ProtectAI DeBERTa model** for prompt injection detection
 
+## Development Setup
+
+- **uv** for environment and dependency management
+- Install dependencies: `uv sync --extra dev`
+- All commands below should be run via `uv run` (e.g., `uv run pytest`)
+
 ## Code Style
 
 ### Formatting & Linting
 - **ruff** for linting and formatting
-- Run before committing: `ruff check . && ruff format . && mypy src/`
+- Run before committing: `uv run ruff check . && uv run ruff format . && uv run mypy src/`
 
 ### Type Hints
 - **mypy** with strict mode
@@ -34,17 +40,27 @@ Instructions for AI coding assistants working on this project.
 
 ```
 src/read_no_evil_mcp/
-├── __init__.py          # Package exports
-├── models.py            # Pydantic data models
-├── connectors/          # Email provider connectors
-│   └── imap.py
-├── protection/          # Security scanners (ProtectAI DeBERTa model)
-└── server/              # MCP server implementation
+├── server.py              # MCP server entry point
+├── config.py              # App configuration loading
+├── mailbox.py             # SecureMailbox (main orchestrator)
+├── models.py              # Shared Pydantic models
+├── accounts/              # Account management & permissions
+├── email/                 # Email connectors
+│   ├── models.py          # Email data models
+│   └── connectors/        # IMAP (reading) and SMTP (sending)
+├── filtering/             # Sender/subject-based access rules
+├── protection/            # Prompt injection detection (ML + heuristic)
+└── tools/                 # MCP tool implementations
 
-tests/                   # Mirrors src/ structure
-├── test_models.py
-└── connectors/
-    └── test_imap.py
+tests/                     # Mirrors src/ structure
+├── accounts/
+├── email/connectors/
+├── filtering/
+├── protection/
+├── tools/
+└── integration/           # Integration tests (require ML model)
+    └── prompt_injection/
+        └── payloads/      # YAML-defined attack payloads
 ```
 
 ## Testing
@@ -52,7 +68,8 @@ tests/                   # Mirrors src/ structure
 - **pytest** for unit tests
 - Mirror source structure in `tests/`
 - Use mocks for external services (IMAP, etc.)
-- Run: `pytest`
+- Run unit tests: `uv run pytest`
+- Run integration tests (requires ML model): `uv run pytest -m integration`
 
 ## Commit Messages
 

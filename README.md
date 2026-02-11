@@ -45,6 +45,48 @@ The AI reads this, follows the hidden instruction, and your data is compromised.
 - 🏠 **Local Inference** — Model runs on your machine, no data sent to external APIs
 - 🪶 **Lightweight** — CPU-only PyTorch (~200MB) for fast, efficient inference
 
+## Quick Start
+
+1. **Install**:
+
+```bash
+uvx read-no-evil-mcp
+```
+
+2. **Create a config file** (`~/.config/read-no-evil-mcp/config.yaml`):
+
+```yaml
+accounts:
+  - id: "gmail"
+    type: "imap"
+    host: "imap.gmail.com"
+    username: "you@gmail.com"
+```
+
+3. **Set your password**:
+
+```bash
+export RNOE_ACCOUNT_GMAIL_PASSWORD="your-app-password"
+```
+
+4. **Configure your MCP client** (e.g., Claude Desktop, Cline):
+
+```json
+{
+  "mcpServers": {
+    "email": {
+      "command": "uvx",
+      "args": ["read-no-evil-mcp"],
+      "env": {
+        "RNOE_ACCOUNT_GMAIL_PASSWORD": "your-app-password"
+      }
+    }
+  }
+}
+```
+
+5. **Ask your AI to check your email** — it will only see safe content!
+
 ## Installation
 
 ### Using uvx (Recommended)
@@ -52,18 +94,6 @@ The AI reads this, follows the hidden instruction, and your data is compromised.
 ```bash
 # One-liner, auto-installs everything
 uvx read-no-evil-mcp
-```
-
-Or in your MCP client config:
-```json
-{
-  "mcpServers": {
-    "email": {
-      "command": "uvx",
-      "args": ["read-no-evil-mcp"]
-    }
-  }
-}
 ```
 
 ### Using pip
@@ -80,18 +110,6 @@ pip install read-no-evil-mcp
 ```bash
 pip install read-no-evil-mcp
 # PyTorch with CUDA will be installed automatically
-```
-
-</details>
-
-<details>
-<summary>Development setup</summary>
-
-```bash
-git clone https://github.com/thekie/read-no-evil-mcp.git
-cd read-no-evil-mcp
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install -e ".[dev]"
 ```
 
 </details>
@@ -272,16 +290,16 @@ accounts:
     type: "imap"
     host: "mail.company.com"
     username: "user@company.com"
-    
+
     # SMTP configuration (required for send permission)
     smtp_host: "smtp.company.com"  # Defaults to IMAP host if not set
     smtp_port: 587                  # Default: 587 (STARTTLS)
     smtp_ssl: false                 # Use SSL instead of STARTTLS (default: false)
-    
+
     # Sender identity
     from_address: "user@company.com"  # Defaults to username if not set
     from_name: "John Doe"             # Optional display name
-    
+
     permissions:
       send: true
 ```
@@ -305,41 +323,6 @@ The `send_email` tool supports:
 | `move_email` | Move email to another folder | `move` |
 | `delete_email` | Permanently delete an email | `delete` |
 
-## Quick Start
-
-1. **Create a config file** (`~/.config/read-no-evil-mcp/config.yaml`):
-
-```yaml
-accounts:
-  - id: "gmail"
-    type: "imap"
-    host: "imap.gmail.com"
-    username: "you@gmail.com"
-```
-
-2. **Set your password**:
-
-```bash
-export RNOE_ACCOUNT_GMAIL_PASSWORD="your-app-password"
-```
-
-3. **Configure your MCP client** (e.g., Claude Desktop, Cline):
-
-```json
-{
-  "mcpServers": {
-    "email": {
-      "command": "read-no-evil-mcp",
-      "env": {
-        "RNOE_ACCOUNT_GMAIL_PASSWORD": "your-app-password"
-      }
-    }
-  }
-}
-```
-
-4. **Ask your AI to check your email** — it will only see safe content!
-
 ## Detection Capabilities
 
 See **[DETECTION_MATRIX.md](DETECTION_MATRIX.md)** for what's detected and what's not.
@@ -355,13 +338,13 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 
 ## Roadmap
 
-### v0.1 (Previous)
+### v0.1
 - [x] IMAP email connector
 - [x] ML-based prompt injection detection
 - [x] MCP server with list/read tools
 - [x] Comprehensive test suite
 
-### v0.2 (Current) ✅
+### v0.2
 - [x] Multi-account support
 - [x] YAML-based configuration
 - [x] Rights management (per-account permissions)
@@ -369,7 +352,7 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 - [x] Send emails (SMTP)
 - [x] Move emails between folders
 
-### v0.3 (In Progress)
+### v0.3 (Current)
 - [x] Sender-based access rules ([#84](https://github.com/thekie/read-no-evil-mcp/issues/84))
 - [x] Attachment support for send_email ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72))
 - [ ] Configurable sensitivity levels
@@ -383,23 +366,13 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 
 ## Contributing
 
-We welcome contributions! Here's how you can help:
+We welcome contributions! See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full guide (dev setup, testing, PR workflow).
 
-### 🧪 Add Test Cases
-The easiest way to contribute — add new attack payloads to test our detection:
+**Quick ways to help:**
 
-```bash
-# Just edit a YAML file, no Python required!
-tests/integration/prompt_injection/payloads/encoding.yaml
-```
-
-See [payloads/README.md](tests/integration/prompt_injection/payloads/README.md) for the format.
-
-### 🛡️ Improve Detection
-Check [DETECTION_MATRIX.md](DETECTION_MATRIX.md) for techniques we miss (❌), and help us detect them!
-
-### 📧 Add Connectors
-Want Gmail API or Microsoft Graph support? PRs welcome!
+- **Add test cases** — Edit a YAML file, no Python required! See [payloads/README.md](tests/integration/prompt_injection/payloads/README.md)
+- **Improve detection** — Check [DETECTION_MATRIX.md](DETECTION_MATRIX.md) for techniques we miss (❌)
+- **Add connectors** — Gmail API, Microsoft Graph — PRs welcome!
 
 ## Security
 
