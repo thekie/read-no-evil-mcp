@@ -1,5 +1,6 @@
 """SMTP connector for sending emails using smtplib."""
 
+import re
 import smtplib
 from email import encoders
 from email.mime.base import MIMEBase
@@ -8,6 +9,18 @@ from email.mime.text import MIMEText
 
 from read_no_evil_mcp.email.connectors.config import SMTPConfig
 from read_no_evil_mcp.email.models import OutgoingAttachment
+
+_HEADER_INJECTION_RE = re.compile(r"[\r\n\0]")
+
+
+def _validate_header_value(value: str) -> None:
+    """Validate a string is safe from SMTP header injection.
+
+    Raises:
+        ValueError: If the value contains newline, carriage return, or null characters.
+    """
+    if _HEADER_INJECTION_RE.search(value):
+        raise ValueError("Value contains invalid characters (newline, carriage return, or null)")
 
 
 class SMTPConnector:
@@ -87,6 +100,18 @@ class SMTPConnector:
         """
         if not self._connection:
             raise RuntimeError("Not connected. Call connect() first.")
+
+        # Validate all email addresses and header values to prevent SMTP header injection
+        _validate_header_value(from_address)
+        for addr in to:
+            _validate_header_value(addr)
+        if cc:
+            for addr in cc:
+                _validate_header_value(addr)
+        if reply_to:
+            _validate_header_value(reply_to)
+        if from_name:
+            _validate_header_value(from_name)
 
         msg = MIMEMultipart()
         # Build From header with optional display name
