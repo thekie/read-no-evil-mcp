@@ -392,3 +392,159 @@ class TestSMTPConnector:
             )
 
             assert result is True
+
+    def test_header_injection_newline_in_from(self, smtp_config: SMTPConfig) -> None:
+        """Test that newline in from_address raises ValueError."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            with pytest.raises(ValueError):
+                connector.send_email(
+                    from_address="evil@example.com\nBcc: attacker@evil.com",
+                    to=["recipient@example.com"],
+                    subject="Test",
+                    body="Test",
+                )
+
+    def test_header_injection_cr_in_from(self, smtp_config: SMTPConfig) -> None:
+        """Test that carriage return in from_address raises ValueError."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            with pytest.raises(ValueError):
+                connector.send_email(
+                    from_address="evil@example.com\rBcc: attacker@evil.com",
+                    to=["recipient@example.com"],
+                    subject="Test",
+                    body="Test",
+                )
+
+    def test_header_injection_crlf_in_from(self, smtp_config: SMTPConfig) -> None:
+        """Test that CRLF in from_address raises ValueError."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            with pytest.raises(ValueError):
+                connector.send_email(
+                    from_address="evil@example.com\r\nBcc: attacker@evil.com",
+                    to=["recipient@example.com"],
+                    subject="Test",
+                    body="Test",
+                )
+
+    def test_header_injection_newline_in_to(self, smtp_config: SMTPConfig) -> None:
+        """Test that newline in to address raises ValueError."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            with pytest.raises(ValueError):
+                connector.send_email(
+                    from_address="sender@example.com",
+                    to=["evil@example.com\nBcc: attacker@evil.com"],
+                    subject="Test",
+                    body="Test",
+                )
+
+    def test_header_injection_newline_in_cc(self, smtp_config: SMTPConfig) -> None:
+        """Test that newline in cc address raises ValueError."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            with pytest.raises(ValueError):
+                connector.send_email(
+                    from_address="sender@example.com",
+                    to=["recipient@example.com"],
+                    subject="Test",
+                    body="Test",
+                    cc=["evil@example.com\nBcc: attacker@evil.com"],
+                )
+
+    def test_header_injection_newline_in_reply_to(self, smtp_config: SMTPConfig) -> None:
+        """Test that newline in reply_to raises ValueError."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            with pytest.raises(ValueError):
+                connector.send_email(
+                    from_address="sender@example.com",
+                    to=["recipient@example.com"],
+                    subject="Test",
+                    body="Test",
+                    reply_to="evil@example.com\nBcc: attacker@evil.com",
+                )
+
+    def test_header_injection_multiple_to_one_bad(self, smtp_config: SMTPConfig) -> None:
+        """Test that one bad address among multiple to recipients raises ValueError."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            with pytest.raises(ValueError):
+                connector.send_email(
+                    from_address="sender@example.com",
+                    to=["good@example.com", "evil@example.com\nBcc: attacker@evil.com"],
+                    subject="Test",
+                    body="Test",
+                )
+
+    def test_header_injection_null_byte_in_address(self, smtp_config: SMTPConfig) -> None:
+        """Test that null byte in email address raises ValueError."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            with pytest.raises(ValueError):
+                connector.send_email(
+                    from_address="evil@example.com\0Bcc: attacker@evil.com",
+                    to=["recipient@example.com"],
+                    subject="Test",
+                    body="Test",
+                )
+
+    def test_header_injection_newline_in_from_name(self, smtp_config: SMTPConfig) -> None:
+        """Test that newline in from_name raises ValueError."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            with pytest.raises(ValueError):
+                connector.send_email(
+                    from_address="sender@example.com",
+                    to=["recipient@example.com"],
+                    subject="Test",
+                    body="Test",
+                    from_name="Evil\nBcc: attacker@evil.com",
+                )

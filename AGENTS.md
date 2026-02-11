@@ -14,11 +14,17 @@ Instructions for AI coding assistants working on this project.
 - **MCP SDK** for Model Context Protocol server
 - **ProtectAI DeBERTa model** for prompt injection detection
 
+## Development Setup
+
+- **uv** for environment and dependency management
+- Install dependencies: `uv sync --extra dev`
+- All commands below should be run via `uv run` (e.g., `uv run pytest`)
+
 ## Code Style
 
 ### Formatting & Linting
 - **ruff** for linting and formatting
-- Run before committing: `ruff check . && ruff format . && mypy src/`
+- Run before committing: `uv run ruff check . && uv run ruff format . && uv run mypy src/`
 
 ### Type Hints
 - **mypy** with strict mode
@@ -52,7 +58,7 @@ tests/                   # Mirrors src/ structure
 - **pytest** for unit tests
 - Mirror source structure in `tests/`
 - Use mocks for external services (IMAP, etc.)
-- Run: `pytest`
+- Run: `uv run pytest`
 
 ## Commit Messages
 

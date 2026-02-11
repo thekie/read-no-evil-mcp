@@ -90,8 +90,14 @@ pip install read-no-evil-mcp
 ```bash
 git clone https://github.com/thekie/read-no-evil-mcp.git
 cd read-no-evil-mcp
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install -e ".[dev]"
+uv sync --extra dev
+```
+
+Run tests, linting, and type checking:
+```bash
+uv run pytest
+uv run ruff check . && uv run ruff format .
+uv run mypy src/
 ```
 
 </details>
