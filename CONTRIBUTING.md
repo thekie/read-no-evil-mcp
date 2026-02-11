@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in read-no-evil-mcp! This guide covers everything you need to get started.
+Development setup, testing, and PR workflow for read-no-evil-mcp.
 
 ## Development Setup
 

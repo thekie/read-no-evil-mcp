@@ -38,12 +38,12 @@ The AI reads this, follows the hidden instruction, and your data is compromised.
 
 ## Features
 
-- 🛡️ **Prompt Injection Detection** — ML-powered scanning using [ProtectAI's DeBERTa model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2)
-- 🔐 **Per-Account Permissions** — Fine-grained access control (read-only by default, restrict folders, control delete/send)
-- 📧 **Multi-Account Support** — Configure multiple IMAP accounts with different permissions each
-- 🔌 **MCP Integration** — Exposes email functionality via [Model Context Protocol](https://modelcontextprotocol.io/)
-- 🏠 **Local Inference** — Model runs on your machine, no data sent to external APIs
-- 🪶 **Lightweight** — CPU-only PyTorch (~200MB) for fast, efficient inference
+- 🛡️ **Prompt Injection Detection** — Scans emails using [ProtectAI's DeBERTa model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2)
+- 🔐 **Per-Account Permissions** — Read-only by default, restrict folders, control delete/send per account
+- 📧 **Multi-Account Support** — Configure multiple IMAP accounts with different permissions
+- 🔌 **MCP Integration** — Exposes email tools via [Model Context Protocol](https://modelcontextprotocol.io/)
+- 🏠 **Local** — Model runs on your machine, no data sent to external APIs
+- 🪶 **CPU-only PyTorch** (~200MB) — No GPU required
 
 ## Quick Start
 
@@ -85,7 +85,7 @@ export RNOE_ACCOUNT_GMAIL_PASSWORD="your-app-password"
 }
 ```
 
-5. **Ask your AI to check your email** — it will only see safe content!
+5. **Ask your AI to check your email** — injected content is blocked before it reaches the agent.
 
 ## Installation
 
@@ -194,7 +194,7 @@ accounts:
 
 ### Access Rules
 
-Control how AI agents interact with emails based on sender and subject patterns. Configure trust levels to streamline workflows for known senders while adding friction for unknown or potentially risky emails.
+Filter emails by sender and subject patterns. Assign trust levels so known senders pass through directly while unknown senders require confirmation.
 
 ```yaml
 accounts:
@@ -334,7 +334,7 @@ See **[DETECTION_MATRIX.md](DETECTION_MATRIX.md)** for what's detected and what'
 | Hidden text | Zero-width chars, HTML comments | 🔬 Testing |
 | Semantic attacks | Roleplay, fake authority | 🔬 Testing |
 
-We maintain a comprehensive test suite with **80+ attack payloads** across 7 categories.
+The test suite includes **80+ attack payloads** across 7 categories.
 
 ## Roadmap
 
@@ -366,7 +366,7 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 
 ## Contributing
 
-We welcome contributions! See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full guide (dev setup, testing, PR workflow).
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for dev setup, testing, and PR workflow.
 
 **Quick ways to help:**
 

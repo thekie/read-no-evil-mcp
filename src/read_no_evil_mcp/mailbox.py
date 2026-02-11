@@ -33,14 +33,10 @@ class PromptInjectionError(Exception):
 
 
 class SecureMailbox:
-    """Secure email access with prompt injection protection and permission enforcement.
+    """Scans email content for prompt injection before returning it to the agent.
 
-    Wraps a BaseConnector and scans email content before returning it.
-    Blocks emails that contain detected prompt injection attacks.
-    Enforces account permissions on all operations.
-
-    Returns SecureEmail and SecureEmailSummary objects that include
-    access level and prompt information based on account access rules.
+    Blocks emails with detected attacks, enforces per-account permissions,
+    and annotates results with access level and prompt from access rules.
     """
 
     def __init__(

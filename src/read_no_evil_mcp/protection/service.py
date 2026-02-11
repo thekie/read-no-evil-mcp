@@ -38,11 +38,7 @@ def strip_html_tags(html: str) -> str:
 
 
 class ProtectionService:
-    """Orchestrates content scanning for prompt injection attacks.
-
-    Delegates to HeuristicScanner which uses ProtectAI's DeBERTa model
-    for ML-based prompt injection detection.
-    """
+    """Scans content for prompt injection using HeuristicScanner (ProtectAI DeBERTa model)."""
 
     def __init__(self, scanner: HeuristicScanner | None = None) -> None:
         """Initialize the protection service.

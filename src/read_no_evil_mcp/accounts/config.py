@@ -160,20 +160,5 @@ class IMAPAccountConfig(BaseAccountConfig):
     )
 
 
-# Future connectors will follow the same pattern as IMAPAccountConfig:
-# - Inherit from BaseAccountConfig
-# - Add a `type` field with Literal["connector_name"]
-# - Add connector-specific fields
-# Examples: GmailAccountConfig (type="gmail"), MSGraphAccountConfig (type="msgraph")
-
-# Discriminated union - Pydantic picks the right type based on "type" field.
-# When adding new connectors, convert AccountConfig to a discriminated union:
-#
-#     from typing import Annotated, Union
-#     AccountConfig = Annotated[
-#         Union[IMAPAccountConfig, GmailAccountConfig, MSGraphAccountConfig],
-#         Field(discriminator="type"),
-#     ]
-#
-# For now with single type, use simple alias (discriminator activates with Union).
+# When adding new connector types, convert this to a discriminated union on "type".
 AccountConfig = IMAPAccountConfig

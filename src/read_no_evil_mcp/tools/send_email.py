@@ -82,7 +82,6 @@ def send_email(
             - path: File path to read from (required if content not provided)
     """
     try:
-        # Cast is safe: FastMCP validates JSON input to AttachmentInput models
         parsed_attachments = _parse_attachments(
             cast(list[AttachmentInput | dict[str, Any]] | None, attachments)
         )
