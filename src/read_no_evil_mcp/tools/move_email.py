@@ -15,6 +15,13 @@ def move_email(account: str, folder: str, uid: int, target_folder: str) -> str:
         uid: Unique identifier of the email.
         target_folder: Destination folder to move the email to.
     """
+    if uid < 1:
+        return "Invalid parameter: uid must be a positive integer"
+    if not folder or not folder.strip():
+        return "Invalid parameter: folder must not be empty"
+    if not target_folder or not target_folder.strip():
+        return "Invalid parameter: target_folder must not be empty"
+
     try:
         with create_securemailbox(account) as mailbox:
             success = mailbox.move_email(folder, uid, target_folder)

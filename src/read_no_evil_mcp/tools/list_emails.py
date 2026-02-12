@@ -30,6 +30,13 @@ def list_emails(
         days_back: Number of days to look back (default: 7).
         limit: Maximum number of emails to return.
     """
+    if days_back < 1:
+        return "Invalid parameter: days_back must be a positive integer"
+    if not folder or not folder.strip():
+        return "Invalid parameter: folder must not be empty"
+    if limit is not None and limit < 1:
+        return "Invalid parameter: limit must be a positive integer"
+
     try:
         with create_securemailbox(account) as mailbox:
             secure_emails = mailbox.fetch_emails(

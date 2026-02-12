@@ -283,3 +283,25 @@ class TestGetEmail:
             result = get_email.fn(account="work", folder="INBOX", uid=123)
 
         assert "Custom trusted read prompt here" in result
+
+
+class TestGetEmailValidation:
+    def test_uid_zero_rejected(self) -> None:
+        result = get_email.fn(account="work", folder="INBOX", uid=0)
+        assert "Invalid parameter" in result
+        assert "uid" in result
+
+    def test_uid_negative_rejected(self) -> None:
+        result = get_email.fn(account="work", folder="INBOX", uid=-1)
+        assert "Invalid parameter" in result
+        assert "uid" in result
+
+    def test_empty_folder_rejected(self) -> None:
+        result = get_email.fn(account="work", folder="", uid=1)
+        assert "Invalid parameter" in result
+        assert "folder" in result
+
+    def test_whitespace_folder_rejected(self) -> None:
+        result = get_email.fn(account="work", folder="   ", uid=1)
+        assert "Invalid parameter" in result
+        assert "folder" in result
