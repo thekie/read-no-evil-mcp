@@ -4,7 +4,6 @@ from datetime import datetime
 
 import pytest
 
-from read_no_evil_mcp.email.models import MAX_ATTACHMENT_SIZE
 from read_no_evil_mcp.models import (
     Attachment,
     Email,
@@ -154,47 +153,43 @@ class TestOutgoingAttachment:
         )
         assert att.get_content() == content
 
-    def test_file_too_large(self, tmp_path):
-        """Test that get_content raises ValueError for oversized files."""
+    def test_check_size_file_too_large(self, tmp_path):
+        """Test that check_size raises ValueError for oversized files."""
         file_path = tmp_path / "large.bin"
         file_path.write_bytes(b"x" * 101)
 
         att = OutgoingAttachment(filename="large.bin", path=str(file_path))
         with pytest.raises(ValueError, match="101 bytes.*max 100"):
-            att.get_content(max_size=100)
+            att.check_size(max_size=100)
 
-    def test_content_too_large(self):
-        """Test that get_content raises ValueError for oversized in-memory content."""
+    def test_check_size_content_too_large(self):
+        """Test that check_size raises ValueError for oversized in-memory content."""
         att = OutgoingAttachment(filename="large.bin", content=b"x" * 101)
         with pytest.raises(ValueError, match="101 bytes.*max 100"):
-            att.get_content(max_size=100)
+            att.check_size(max_size=100)
 
-    def test_file_at_limit(self, tmp_path):
-        """Test that a file exactly at the size limit is accepted."""
+    def test_check_size_file_at_limit(self, tmp_path):
+        """Test that a file exactly at the size limit passes check_size."""
         file_path = tmp_path / "exact.bin"
         file_path.write_bytes(b"x" * 100)
 
         att = OutgoingAttachment(filename="exact.bin", path=str(file_path))
-        assert att.get_content(max_size=100) == b"x" * 100
+        att.check_size(max_size=100)  # should not raise
 
-    def test_content_at_limit(self):
-        """Test that in-memory content exactly at the size limit is accepted."""
-        content = b"x" * 100
-        att = OutgoingAttachment(filename="exact.bin", content=content)
-        assert att.get_content(max_size=100) == content
+    def test_check_size_content_at_limit(self):
+        """Test that in-memory content exactly at the size limit passes check_size."""
+        att = OutgoingAttachment(filename="exact.bin", content=b"x" * 100)
+        att.check_size(max_size=100)  # should not raise
 
-    def test_custom_max_size(self, tmp_path):
-        """Test that the max_size parameter overrides the default."""
+    def test_check_size_rejects_smaller_limit(self, tmp_path):
+        """Test that check_size rejects content exceeding a custom limit."""
         file_path = tmp_path / "medium.bin"
         file_path.write_bytes(b"x" * 50)
 
         att = OutgoingAttachment(filename="medium.bin", path=str(file_path))
-        # Should pass with default (25 MB)
-        assert att.get_content() == b"x" * 50
-        # Should fail with a custom smaller limit
+        att.check_size(max_size=100)  # should not raise
         with pytest.raises(ValueError, match="50 bytes.*max 10"):
-            att.get_content(max_size=10)
-        assert MAX_ATTACHMENT_SIZE == 25 * 1024 * 1024
+            att.check_size(max_size=10)
 
 
 class TestEmailSummary:

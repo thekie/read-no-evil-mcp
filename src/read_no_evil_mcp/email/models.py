@@ -5,8 +5,6 @@ from pathlib import Path
 
 from pydantic import BaseModel, model_validator
 
-MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024  # 25 MB
-
 
 class EmailAddress(BaseModel):
     """Parsed email address with optional display name."""
@@ -57,7 +55,7 @@ class OutgoingAttachment(BaseModel):
             raise ValueError("Either content or path must be provided")
         return self
 
-    def check_size(self, max_size: int = MAX_ATTACHMENT_SIZE) -> None:
+    def check_size(self, max_size: int) -> None:
         """Check attachment size without reading file content.
 
         Raises:
@@ -72,30 +70,18 @@ class OutgoingAttachment(BaseModel):
         if size > max_size:
             raise ValueError(f"Attachment too large: {size} bytes (max {max_size})")
 
-    def get_content(self, max_size: int = MAX_ATTACHMENT_SIZE) -> bytes:
+    def get_content(self) -> bytes:
         """Get attachment content, loading from path if needed.
-
-        Args:
-            max_size: Maximum allowed size in bytes. Defaults to MAX_ATTACHMENT_SIZE.
 
         Returns:
             The attachment content as bytes.
 
         Raises:
-            ValueError: If attachment exceeds max_size.
             FileNotFoundError: If path is provided but file doesn't exist.
         """
         if self.content is not None:
-            if len(self.content) > max_size:
-                raise ValueError(
-                    f"Attachment too large: {len(self.content)} bytes (max {max_size})"
-                )
             return self.content
-        # self.path is guaranteed non-None by the model validator
         assert self.path is not None
-        size = Path(self.path).stat().st_size
-        if size > max_size:
-            raise ValueError(f"Attachment too large: {size} bytes (max {max_size})")
         with open(self.path, "rb") as f:
             return f.read()
 

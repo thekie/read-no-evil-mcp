@@ -8,7 +8,7 @@ import pytest
 from read_no_evil_mcp.accounts.config import AccessLevel, SenderRule, SubjectRule
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
 from read_no_evil_mcp.email.connectors.base import BaseConnector
-from read_no_evil_mcp.email.models import MAX_ATTACHMENT_SIZE, OutgoingAttachment
+from read_no_evil_mcp.email.models import OutgoingAttachment
 from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.filtering.access_rules import AccessRuleMatcher
 from read_no_evil_mcp.mailbox import PromptInjectionError, SecureMailbox
@@ -752,9 +752,9 @@ class TestSecureMailbox:
         mock_protection: MagicMock,
         default_permissions: AccountPermissions,
     ) -> None:
-        """Test that MAX_ATTACHMENT_SIZE is used when no custom value is provided."""
+        """Test that default max attachment size is 25 MB."""
         mailbox = SecureMailbox(mock_connector, default_permissions, mock_protection)
-        assert mailbox._max_attachment_size == MAX_ATTACHMENT_SIZE
+        assert mailbox._max_attachment_size == 25 * 1024 * 1024
 
 
 class TestPromptInjectionError:

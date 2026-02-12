@@ -7,7 +7,6 @@ from read_no_evil_mcp.accounts.credentials.base import CredentialBackend
 from read_no_evil_mcp.email.connectors.base import BaseConnector
 from read_no_evil_mcp.email.connectors.config import IMAPConfig, SMTPConfig
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
-from read_no_evil_mcp.email.models import MAX_ATTACHMENT_SIZE
 from read_no_evil_mcp.exceptions import AccountNotFoundError, UnsupportedConnectorError
 from read_no_evil_mcp.filtering.access_rules import AccessRuleMatcher
 from read_no_evil_mcp.mailbox import SecureMailbox
@@ -24,7 +23,7 @@ class AccountService:
         self,
         accounts: list[AccountConfig],
         credentials: CredentialBackend,
-        max_attachment_size: int = MAX_ATTACHMENT_SIZE,
+        max_attachment_size: int = 25 * 1024 * 1024,
     ) -> None:
         """Initialize the account service.
 
