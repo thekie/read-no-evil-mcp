@@ -266,3 +266,32 @@ class TestListEmails:
             result = list_emails.fn(account="work")
 
         assert "[ASK]" in result
+
+
+class TestListEmailsValidation:
+    def test_days_back_zero_rejected(self) -> None:
+        result = list_emails.fn(account="work", days_back=0)
+        assert "Invalid parameter" in result
+        assert "days_back" in result
+
+    def test_days_back_negative_rejected(self) -> None:
+        result = list_emails.fn(account="work", days_back=-1)
+        assert "Invalid parameter" in result
+
+    def test_empty_folder_rejected(self) -> None:
+        result = list_emails.fn(account="work", folder="")
+        assert "Invalid parameter" in result
+        assert "folder" in result
+
+    def test_whitespace_folder_rejected(self) -> None:
+        result = list_emails.fn(account="work", folder="  ")
+        assert "Invalid parameter" in result
+
+    def test_limit_zero_rejected(self) -> None:
+        result = list_emails.fn(account="work", limit=0)
+        assert "Invalid parameter" in result
+        assert "limit" in result
+
+    def test_limit_negative_rejected(self) -> None:
+        result = list_emails.fn(account="work", limit=-3)
+        assert "Invalid parameter" in result

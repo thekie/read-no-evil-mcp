@@ -146,3 +146,24 @@ class TestMoveEmail:
 
         assert "Error" in result
         assert "Connection lost" in result
+
+
+class TestMoveEmailValidation:
+    def test_uid_zero_rejected(self) -> None:
+        result = move_email.fn(account="work", folder="INBOX", uid=0, target_folder="Archive")
+        assert "Invalid parameter" in result
+        assert "uid" in result
+
+    def test_empty_folder_rejected(self) -> None:
+        result = move_email.fn(account="work", folder="", uid=1, target_folder="Archive")
+        assert "Invalid parameter" in result
+        assert "folder" in result
+
+    def test_empty_target_folder_rejected(self) -> None:
+        result = move_email.fn(account="work", folder="INBOX", uid=1, target_folder="")
+        assert "Invalid parameter" in result
+        assert "target_folder" in result
+
+    def test_whitespace_target_folder_rejected(self) -> None:
+        result = move_email.fn(account="work", folder="INBOX", uid=1, target_folder="   ")
+        assert "Invalid parameter" in result

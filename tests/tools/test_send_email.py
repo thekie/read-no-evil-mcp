@@ -488,3 +488,59 @@ class TestParseAttachments:
                     }
                 ]
             )
+
+
+class TestAttachmentInputValidation:
+    """Tests for AttachmentInput field validators."""
+
+    def test_filename_with_slash_rejected(self) -> None:
+        import pytest
+
+        from read_no_evil_mcp.tools.models import AttachmentInput
+
+        with pytest.raises(ValueError, match="path separators"):
+            AttachmentInput(filename="../etc/passwd", content=base64.b64encode(b"x").decode())
+
+    def test_filename_with_backslash_rejected(self) -> None:
+        import pytest
+
+        from read_no_evil_mcp.tools.models import AttachmentInput
+
+        with pytest.raises(ValueError, match="path separators"):
+            AttachmentInput(filename="..\\etc\\passwd", content=base64.b64encode(b"x").decode())
+
+    def test_filename_starting_with_dot_rejected(self) -> None:
+        import pytest
+
+        from read_no_evil_mcp.tools.models import AttachmentInput
+
+        with pytest.raises(ValueError, match="must not start with"):
+            AttachmentInput(filename=".hidden", content=base64.b64encode(b"x").decode())
+
+    def test_empty_filename_rejected(self) -> None:
+        import pytest
+
+        from read_no_evil_mcp.tools.models import AttachmentInput
+
+        with pytest.raises(ValueError, match="must not be empty"):
+            AttachmentInput(filename="", content=base64.b64encode(b"x").decode())
+
+    def test_invalid_base64_rejected(self) -> None:
+        import pytest
+
+        from read_no_evil_mcp.tools.models import AttachmentInput
+
+        with pytest.raises(ValueError, match="valid base64"):
+            AttachmentInput(filename="test.txt", content="not-valid-base64!!!")
+
+    def test_valid_base64_accepted(self) -> None:
+        from read_no_evil_mcp.tools.models import AttachmentInput
+
+        att = AttachmentInput(filename="test.txt", content=base64.b64encode(b"hello").decode())
+        assert att.content is not None
+
+    def test_none_content_accepted(self) -> None:
+        from read_no_evil_mcp.tools.models import AttachmentInput
+
+        att = AttachmentInput(filename="test.txt", path="/some/path")
+        assert att.content is None

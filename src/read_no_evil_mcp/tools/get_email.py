@@ -22,6 +22,11 @@ def get_email(account: str, folder: str, uid: int) -> str:
         folder: Folder containing the email.
         uid: Unique identifier of the email.
     """
+    if uid < 1:
+        return "Invalid parameter: uid must be a positive integer"
+    if not folder or not folder.strip():
+        return "Invalid parameter: folder must not be empty"
+
     try:
         with create_securemailbox(account) as mailbox:
             try:
