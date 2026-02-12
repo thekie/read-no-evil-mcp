@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Any, cast
 
 from read_no_evil_mcp.email.models import OutgoingAttachment
-from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.tools._app import mcp
+from read_no_evil_mcp.tools._error_handler import handle_tool_errors
 from read_no_evil_mcp.tools._service import create_securemailbox
 from read_no_evil_mcp.tools.models import AttachmentInput
 
@@ -57,6 +57,7 @@ def _parse_attachments(
 
 
 @mcp.tool
+@handle_tool_errors
 def send_email(
     account: str,
     to: list[str],
@@ -81,34 +82,25 @@ def send_email(
             - mime_type: MIME type (default: application/octet-stream)
             - path: File path to read from (required if content not provided)
     """
-    try:
-        parsed_attachments = _parse_attachments(
-            cast(list[AttachmentInput | dict[str, Any]] | None, attachments)
+    parsed_attachments = _parse_attachments(
+        cast(list[AttachmentInput | dict[str, Any]] | None, attachments)
+    )
+
+    with create_securemailbox(account) as mailbox:
+        mailbox.send_email(
+            to=to,
+            subject=subject,
+            body=body,
+            cc=cc,
+            reply_to=reply_to,
+            attachments=parsed_attachments,
         )
+        recipients = ", ".join(to)
+        if cc:
+            recipients += f" (CC: {', '.join(cc)})"
 
-        with create_securemailbox(account) as mailbox:
-            mailbox.send_email(
-                to=to,
-                subject=subject,
-                body=body,
-                cc=cc,
-                reply_to=reply_to,
-                attachments=parsed_attachments,
-            )
-            recipients = ", ".join(to)
-            if cc:
-                recipients += f" (CC: {', '.join(cc)})"
-
-            msg = f"Email sent successfully to {recipients}"
-            if parsed_attachments:
-                attachment_names = [a.filename for a in parsed_attachments]
-                msg += (
-                    f" with {len(parsed_attachments)} attachment(s): {', '.join(attachment_names)}"
-                )
-            return msg
-    except PermissionDeniedError as e:
-        return f"Permission denied: {e}"
-    except RuntimeError as e:
-        return f"Error: {e}"
-    except ValueError as e:
-        return f"Invalid attachment: {e}"
+        msg = f"Email sent successfully to {recipients}"
+        if parsed_attachments:
+            attachment_names = [a.filename for a in parsed_attachments]
+            msg += f" with {len(parsed_attachments)} attachment(s): {', '.join(attachment_names)}"
+        return msg
