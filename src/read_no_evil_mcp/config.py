@@ -12,6 +12,7 @@ from pydantic_settings import (
 )
 
 from read_no_evil_mcp.accounts.config import AccountConfig
+from read_no_evil_mcp.defaults import DEFAULT_MAX_ATTACHMENT_SIZE
 
 
 class YamlConfigSettingsSource(PydanticBaseSettingsSource):
@@ -80,7 +81,7 @@ class Settings(BaseSettings):
 
     # Application defaults
     default_lookback_days: int = 7
-    max_attachment_size: int = 25 * 1024 * 1024  # 25 MB
+    max_attachment_size: int = DEFAULT_MAX_ATTACHMENT_SIZE
 
     @field_validator("max_attachment_size")
     @classmethod

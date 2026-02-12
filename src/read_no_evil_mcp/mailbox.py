@@ -5,6 +5,7 @@ from types import TracebackType
 
 from read_no_evil_mcp.accounts.config import AccessLevel
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
+from read_no_evil_mcp.defaults import DEFAULT_MAX_ATTACHMENT_SIZE
 from read_no_evil_mcp.email.connectors.base import BaseConnector
 from read_no_evil_mcp.email.models import (
     EmailSummary,
@@ -53,7 +54,7 @@ class SecureMailbox:
         access_rules_matcher: AccessRuleMatcher | None = None,
         list_prompts: dict[AccessLevel, str | None] | None = None,
         read_prompts: dict[AccessLevel, str | None] | None = None,
-        max_attachment_size: int = 25 * 1024 * 1024,
+        max_attachment_size: int = DEFAULT_MAX_ATTACHMENT_SIZE,
     ) -> None:
         """Initialize secure mailbox.
 

@@ -4,6 +4,7 @@ from pydantic import SecretStr
 
 from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.accounts.credentials.base import CredentialBackend
+from read_no_evil_mcp.defaults import DEFAULT_MAX_ATTACHMENT_SIZE
 from read_no_evil_mcp.email.connectors.base import BaseConnector
 from read_no_evil_mcp.email.connectors.config import IMAPConfig, SMTPConfig
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
@@ -23,7 +24,7 @@ class AccountService:
         self,
         accounts: list[AccountConfig],
         credentials: CredentialBackend,
-        max_attachment_size: int = 25 * 1024 * 1024,
+        max_attachment_size: int = DEFAULT_MAX_ATTACHMENT_SIZE,
     ) -> None:
         """Initialize the account service.
 
