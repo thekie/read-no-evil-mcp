@@ -1,11 +1,12 @@
 """Delete email MCP tool."""
 
-from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.tools._app import mcp
+from read_no_evil_mcp.tools._error_handler import handle_tool_errors
 from read_no_evil_mcp.tools._service import create_securemailbox
 
 
 @mcp.tool
+@handle_tool_errors
 def delete_email(account: str, folder: str, uid: int) -> str:
     """Delete an email by UID.
 
@@ -19,11 +20,8 @@ def delete_email(account: str, folder: str, uid: int) -> str:
     if not folder or not folder.strip():
         return "Invalid parameter: folder must not be empty"
 
-    try:
-        with create_securemailbox(account) as mailbox:
-            success = mailbox.delete_email(folder, uid)
-            if success:
-                return f"Successfully deleted email {folder}/{uid}"
-            return f"Failed to delete email {folder}/{uid}"
-    except PermissionDeniedError as e:
-        return f"Permission denied: {e}"
+    with create_securemailbox(account) as mailbox:
+        success = mailbox.delete_email(folder, uid)
+        if success:
+            return f"Successfully deleted email {folder}/{uid}"
+        return f"Failed to delete email {folder}/{uid}"

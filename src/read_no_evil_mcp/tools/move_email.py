@@ -1,11 +1,12 @@
 """Move email MCP tool."""
 
-from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.tools._app import mcp
+from read_no_evil_mcp.tools._error_handler import handle_tool_errors
 from read_no_evil_mcp.tools._service import create_securemailbox
 
 
 @mcp.tool
+@handle_tool_errors
 def move_email(account: str, folder: str, uid: int, target_folder: str) -> str:
     """Move an email to a target folder.
 
@@ -22,15 +23,10 @@ def move_email(account: str, folder: str, uid: int, target_folder: str) -> str:
     if not target_folder or not target_folder.strip():
         return "Invalid parameter: target_folder must not be empty"
 
-    try:
-        with create_securemailbox(account) as mailbox:
-            success = mailbox.move_email(folder, uid, target_folder)
+    with create_securemailbox(account) as mailbox:
+        success = mailbox.move_email(folder, uid, target_folder)
 
-            if success:
-                return f"Email {folder}/{uid} moved to {target_folder}."
-            else:
-                return f"Email not found: {folder}/{uid}"
-    except PermissionDeniedError as e:
-        return f"Permission denied: {e}"
-    except RuntimeError as e:
-        return f"Error: {e}"
+        if success:
+            return f"Email {folder}/{uid} moved to {target_folder}."
+        else:
+            return f"Email not found: {folder}/{uid}"
