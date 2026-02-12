@@ -312,7 +312,7 @@ class TestSendEmail:
                 attachments=[{"content": base64.b64encode(b"data").decode()}],
             )
 
-        assert "Invalid attachment" in result
+        assert "Invalid input" in result
         assert "filename" in result
 
     def test_send_email_attachment_missing_content_and_path(self) -> None:
@@ -333,7 +333,7 @@ class TestSendEmail:
                 attachments=[{"filename": "test.txt"}],
             )
 
-        assert "Invalid attachment" in result
+        assert "Invalid input" in result
         assert "content" in result or "path" in result
 
     def test_send_email_with_empty_attachments_list(self) -> None:

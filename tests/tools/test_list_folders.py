@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.models import Folder
 from read_no_evil_mcp.tools.list_folders import list_folders
@@ -44,8 +42,8 @@ class TestListFolders:
 
         assert "No folders found" in result
 
-    def test_exit_called_on_exception(self) -> None:
-        """Test that __exit__ is called even when exception occurs."""
+    def test_runtime_error_returns_message(self) -> None:
+        """Test that RuntimeError is caught and returned as user-friendly message."""
         mock_mailbox = MagicMock()
         mock_mailbox.list_folders.side_effect = RuntimeError("Connection error")
         mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
@@ -55,9 +53,10 @@ class TestListFolders:
             "read_no_evil_mcp.tools.list_folders.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            with pytest.raises(RuntimeError):
-                list_folders.fn(account="work")
+            result = list_folders.fn(account="work")
 
+        assert "Error" in result
+        assert "Connection error" in result
         mock_mailbox.__exit__.assert_called_once()
 
     def test_passes_account_to_create_securemailbox(self) -> None:
