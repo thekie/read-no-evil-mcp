@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from pydantic import field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -11,6 +12,7 @@ from pydantic_settings import (
 )
 
 from read_no_evil_mcp.accounts.config import AccountConfig
+from read_no_evil_mcp.defaults import DEFAULT_MAX_ATTACHMENT_SIZE
 
 
 class YamlConfigSettingsSource(PydanticBaseSettingsSource):
@@ -79,6 +81,14 @@ class Settings(BaseSettings):
 
     # Application defaults
     default_lookback_days: int = 7
+    max_attachment_size: int = DEFAULT_MAX_ATTACHMENT_SIZE
+
+    @field_validator("max_attachment_size")
+    @classmethod
+    def _validate_max_attachment_size(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("max_attachment_size must be positive")
+        return v
 
     @classmethod
     def settings_customise_sources(
