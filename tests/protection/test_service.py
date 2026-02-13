@@ -6,7 +6,10 @@ import pytest
 
 from read_no_evil_mcp.models import ScanResult
 from read_no_evil_mcp.protection.heuristic import HeuristicScanner
-from read_no_evil_mcp.protection.service import ProtectionService, strip_html_tags
+from read_no_evil_mcp.protection.service import (
+    ProtectionService,
+    strip_html_tags,
+)
 
 
 class TestStripHtmlTags:
@@ -151,3 +154,97 @@ class TestProtectionService:
             body_html="<html><body><p>Hi, let's discuss the project tomorrow at 2pm.</p></body></html>",
         )
         assert result.is_safe
+
+    def test_scan_strips_simple_paragraph_html(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("<p>text</p>")
+        mock_scanner.scan.assert_called_once_with("text")
+
+    def test_scan_strips_div_with_class(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan('<div class="x">content</div>')
+        mock_scanner.scan.assert_called_once_with("content")
+
+    def test_scan_returns_safe_for_empty_html_without_calling_scanner(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        result = service.scan("<br/>")
+        assert result.is_safe
+        mock_scanner.scan.assert_not_called()
+
+    def test_scan_strips_anchor_tag(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan('<a href="http://example.com">link</a>')
+        mock_scanner.scan.assert_called_once_with("link")
+
+    def test_scan_strips_full_html_document(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("<html><body>content</body></html>")
+        mock_scanner.scan.assert_called_once_with("content")
+
+    def test_scan_returns_safe_for_empty_uppercase_img_without_calling_scanner(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        result = service.scan('<IMG SRC="x">')
+        assert result.is_safe
+        mock_scanner.scan.assert_not_called()
+
+    def test_scan_strips_code_generics_as_html(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("List<String>")
+        mock_scanner.scan.assert_called_once_with("List")
+
+    def test_scan_passes_through_math_operators_unchanged(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("x < 5 and y > 3")
+        mock_scanner.scan.assert_called_once_with("x < 5 and y > 3")
+
+    def test_scan_passes_through_numeric_angle_brackets_unchanged(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("<123>")
+        mock_scanner.scan.assert_called_once_with("<123>")
+
+    def test_scan_passes_through_plain_text_unchanged(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("This is plain text")
+        mock_scanner.scan.assert_called_once_with("This is plain text")
+
+    def test_scan_returns_safe_for_empty_string_without_calling_scanner(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        result = service.scan("")
+        assert result.is_safe
+        mock_scanner.scan.assert_not_called()
+
+    def test_scan_passes_through_only_left_bracket_unchanged(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("less than < symbol")
+        mock_scanner.scan.assert_called_once_with("less than < symbol")
+
+    def test_scan_passes_through_only_right_bracket_unchanged(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("greater than > symbol")
+        mock_scanner.scan.assert_called_once_with("greater than > symbol")

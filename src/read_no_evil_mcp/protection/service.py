@@ -37,6 +37,13 @@ def strip_html_tags(html: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+_HTML_TAG_PATTERN = re.compile(r"<[a-zA-Z][^>]*>")
+
+
+def _looks_like_html(content: str) -> bool:
+    return bool(_HTML_TAG_PATTERN.search(content))
+
+
 class ProtectionService:
     """Scans content for prompt injection using HeuristicScanner (ProtectAI DeBERTa model)."""
 
@@ -63,7 +70,7 @@ class ProtectionService:
             return ScanResult(is_safe=True, score=0.0, detected_patterns=[])
 
         # Strip HTML tags if content looks like HTML
-        if "<" in content and ">" in content:
+        if _looks_like_html(content):
             content = strip_html_tags(content)
             if not content:
                 return ScanResult(is_safe=True, score=0.0, detected_patterns=[])
