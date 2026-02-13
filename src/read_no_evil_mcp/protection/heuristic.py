@@ -15,6 +15,15 @@ logger = structlog.get_logger()
 
 # Model for prompt injection detection
 MODEL_ID = "protectai/deberta-v3-base-prompt-injection-v2"
+INJECTION_LABEL = "INJECTION"
+
+
+def _extract_injection_score(results: list[dict[str, Any]]) -> float:
+    """Extract the INJECTION class probability from classifier results."""
+    for entry in results:
+        if entry["label"] == INJECTION_LABEL:
+            return float(entry["score"])
+    return 0.0
 
 
 class HeuristicScanner:
@@ -60,11 +69,9 @@ class HeuristicScanner:
             )
 
         classifier = self._get_classifier()
-        result = classifier(content)[0]
+        results = classifier(content, top_k=None)
 
-        # Model returns label "INJECTION" or "SAFE" with a score
-        is_injection = result["label"] == "INJECTION"
-        score: float = result["score"] if is_injection else 1.0 - result["score"]
+        score = _extract_injection_score(results)
 
         is_safe = score < self._threshold
         detected_patterns: list[str] = []
