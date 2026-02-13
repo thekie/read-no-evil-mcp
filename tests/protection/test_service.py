@@ -8,7 +8,6 @@ from read_no_evil_mcp.models import ScanResult
 from read_no_evil_mcp.protection.heuristic import HeuristicScanner
 from read_no_evil_mcp.protection.service import (
     ProtectionService,
-    _looks_like_html,
     strip_html_tags,
 )
 
@@ -40,62 +39,6 @@ class TestStripHtmlTags:
     def test_html_with_no_text(self) -> None:
         html = "<br/><hr/>"
         assert strip_html_tags(html) == ""
-
-
-class TestLooksLikeHtml:
-    def test_detects_simple_paragraph(self) -> None:
-        assert _looks_like_html("<p>text</p>")
-
-    def test_detects_div_with_class(self) -> None:
-        assert _looks_like_html('<div class="x">content</div>')
-
-    def test_detects_self_closing_br(self) -> None:
-        assert _looks_like_html("<br/>")
-
-    def test_detects_anchor_tag(self) -> None:
-        assert _looks_like_html('<a href="http://example.com">link</a>')
-
-    def test_detects_html_tag(self) -> None:
-        assert _looks_like_html("<html><body>content</body></html>")
-
-    def test_detects_uppercase_img(self) -> None:
-        assert _looks_like_html('<IMG SRC="x">')
-
-    def test_does_not_detect_math_operators(self) -> None:
-        # Math operators have space before/after, no letter after <
-        assert not _looks_like_html("x < 5 and y > 3")
-
-    def test_does_not_detect_numeric_angle_brackets(self) -> None:
-        # Pattern requires letter after <, not digit
-        assert not _looks_like_html("<123>")
-
-    def test_does_not_detect_plain_text(self) -> None:
-        assert not _looks_like_html("This is plain text without any brackets")
-
-    def test_does_not_detect_empty_string(self) -> None:
-        assert not _looks_like_html("")
-
-    def test_does_not_detect_only_left_bracket(self) -> None:
-        assert not _looks_like_html("less than < symbol")
-
-    def test_does_not_detect_only_right_bracket(self) -> None:
-        assert not _looks_like_html("greater than > symbol")
-
-    def test_detects_comparison_without_space_as_tag_pattern(self) -> None:
-        assert _looks_like_html("a<b then c>d in different places")
-
-    def test_detects_json_with_letter_value(self) -> None:
-        assert _looks_like_html('{"key": "<value>"}')
-
-    def test_detects_code_generics(self) -> None:
-        assert _looks_like_html("List<String>")
-
-    def test_detects_comparison_forming_tag_pattern(self) -> None:
-        assert _looks_like_html("compare: <b>5")
-
-    def test_detects_html_in_long_content(self) -> None:
-        long_text = "a" * 5000 + "<p>HTML here</p>"
-        assert _looks_like_html(long_text)
 
 
 class TestProtectionService:
@@ -211,3 +154,97 @@ class TestProtectionService:
             body_html="<html><body><p>Hi, let's discuss the project tomorrow at 2pm.</p></body></html>",
         )
         assert result.is_safe
+
+    def test_scan_strips_simple_paragraph_html(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("<p>text</p>")
+        mock_scanner.scan.assert_called_once_with("text")
+
+    def test_scan_strips_div_with_class(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan('<div class="x">content</div>')
+        mock_scanner.scan.assert_called_once_with("content")
+
+    def test_scan_returns_safe_for_empty_html_without_calling_scanner(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        result = service.scan("<br/>")
+        assert result.is_safe
+        mock_scanner.scan.assert_not_called()
+
+    def test_scan_strips_anchor_tag(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan('<a href="http://example.com">link</a>')
+        mock_scanner.scan.assert_called_once_with("link")
+
+    def test_scan_strips_full_html_document(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("<html><body>content</body></html>")
+        mock_scanner.scan.assert_called_once_with("content")
+
+    def test_scan_returns_safe_for_empty_uppercase_img_without_calling_scanner(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        result = service.scan('<IMG SRC="x">')
+        assert result.is_safe
+        mock_scanner.scan.assert_not_called()
+
+    def test_scan_strips_code_generics_as_html(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("List<String>")
+        mock_scanner.scan.assert_called_once_with("List")
+
+    def test_scan_passes_through_math_operators_unchanged(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("x < 5 and y > 3")
+        mock_scanner.scan.assert_called_once_with("x < 5 and y > 3")
+
+    def test_scan_passes_through_numeric_angle_brackets_unchanged(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("<123>")
+        mock_scanner.scan.assert_called_once_with("<123>")
+
+    def test_scan_passes_through_plain_text_unchanged(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("This is plain text")
+        mock_scanner.scan.assert_called_once_with("This is plain text")
+
+    def test_scan_returns_safe_for_empty_string_without_calling_scanner(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        result = service.scan("")
+        assert result.is_safe
+        mock_scanner.scan.assert_not_called()
+
+    def test_scan_passes_through_only_left_bracket_unchanged(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("less than < symbol")
+        mock_scanner.scan.assert_called_once_with("less than < symbol")
+
+    def test_scan_passes_through_only_right_bracket_unchanged(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+        service.scan("greater than > symbol")
+        mock_scanner.scan.assert_called_once_with("greater than > symbol")
