@@ -6,7 +6,11 @@ import pytest
 
 from read_no_evil_mcp.models import ScanResult
 from read_no_evil_mcp.protection.heuristic import HeuristicScanner
-from read_no_evil_mcp.protection.service import ProtectionService, strip_html_tags
+from read_no_evil_mcp.protection.service import (
+    ProtectionService,
+    _looks_like_html,
+    strip_html_tags,
+)
 
 
 class TestStripHtmlTags:
@@ -36,6 +40,62 @@ class TestStripHtmlTags:
     def test_html_with_no_text(self) -> None:
         html = "<br/><hr/>"
         assert strip_html_tags(html) == ""
+
+
+class TestLooksLikeHtml:
+    def test_detects_simple_paragraph(self) -> None:
+        assert _looks_like_html("<p>text</p>")
+
+    def test_detects_div_with_class(self) -> None:
+        assert _looks_like_html('<div class="x">content</div>')
+
+    def test_detects_self_closing_br(self) -> None:
+        assert _looks_like_html("<br/>")
+
+    def test_detects_anchor_tag(self) -> None:
+        assert _looks_like_html('<a href="http://example.com">link</a>')
+
+    def test_detects_html_tag(self) -> None:
+        assert _looks_like_html("<html><body>content</body></html>")
+
+    def test_detects_uppercase_img(self) -> None:
+        assert _looks_like_html('<IMG SRC="x">')
+
+    def test_does_not_detect_math_operators(self) -> None:
+        # Math operators have space before/after, no letter after <
+        assert not _looks_like_html("x < 5 and y > 3")
+
+    def test_does_not_detect_numeric_angle_brackets(self) -> None:
+        # Pattern requires letter after <, not digit
+        assert not _looks_like_html("<123>")
+
+    def test_does_not_detect_plain_text(self) -> None:
+        assert not _looks_like_html("This is plain text without any brackets")
+
+    def test_does_not_detect_empty_string(self) -> None:
+        assert not _looks_like_html("")
+
+    def test_does_not_detect_only_left_bracket(self) -> None:
+        assert not _looks_like_html("less than < symbol")
+
+    def test_does_not_detect_only_right_bracket(self) -> None:
+        assert not _looks_like_html("greater than > symbol")
+
+    def test_detects_comparison_without_space_as_tag_pattern(self) -> None:
+        assert _looks_like_html("a<b then c>d in different places")
+
+    def test_detects_json_with_letter_value(self) -> None:
+        assert _looks_like_html('{"key": "<value>"}')
+
+    def test_detects_code_generics(self) -> None:
+        assert _looks_like_html("List<String>")
+
+    def test_detects_comparison_forming_tag_pattern(self) -> None:
+        assert _looks_like_html("compare: <b>5")
+
+    def test_detects_html_in_long_content(self) -> None:
+        long_text = "a" * 5000 + "<p>HTML here</p>"
+        assert _looks_like_html(long_text)
 
 
 class TestProtectionService:
