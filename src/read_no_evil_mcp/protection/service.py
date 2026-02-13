@@ -6,6 +6,8 @@ from html.parser import HTMLParser
 from read_no_evil_mcp.protection.heuristic import HeuristicScanner
 from read_no_evil_mcp.protection.models import ScanResult
 
+_HTML_TAG_PATTERN = re.compile(r"<[a-zA-Z][^>]*>")
+
 
 class _HTMLTextExtractor(HTMLParser):
     """Extract plain text from HTML content."""
@@ -63,7 +65,7 @@ class ProtectionService:
             return ScanResult(is_safe=True, score=0.0, detected_patterns=[])
 
         # Strip HTML tags if content looks like HTML
-        if "<" in content and ">" in content:
+        if _HTML_TAG_PATTERN.search(content):
             content = strip_html_tags(content)
             if not content:
                 return ScanResult(is_safe=True, score=0.0, detected_patterns=[])

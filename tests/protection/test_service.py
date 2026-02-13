@@ -38,6 +38,43 @@ class TestStripHtmlTags:
         assert strip_html_tags(html) == ""
 
 
+class TestProtectionServiceHtmlDetection:
+    def test_json_not_stripped(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+
+        json_content = '{"key": "value", "count": 5}'
+        service.scan(json_content)
+        mock_scanner.scan.assert_called_once_with(json_content)
+
+    def test_math_expression_not_stripped(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+
+        math_content = "if x < 10 and y > 5 then z = 0"
+        service.scan(math_content)
+        mock_scanner.scan.assert_called_once_with(math_content)
+
+    def test_code_with_comparison_operators_not_stripped(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+
+        code_content = "if (x < 10 && y > 5) { return true; }"
+        service.scan(code_content)
+        mock_scanner.scan.assert_called_once_with(code_content)
+
+    def test_html_content_still_stripped(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        mock_scanner.scan.return_value = ScanResult(is_safe=True, score=0.0, detected_patterns=[])
+        service = ProtectionService(scanner=mock_scanner)
+
+        service.scan("<p>Hello world</p>")
+        mock_scanner.scan.assert_called_once_with("Hello world")
+
+
 class TestProtectionService:
     @pytest.fixture
     def service(self) -> ProtectionService:
