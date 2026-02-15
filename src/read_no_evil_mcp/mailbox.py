@@ -1,7 +1,9 @@
 """Secure mailbox with prompt injection protection and permission enforcement."""
 
 import logging
+import re
 from datetime import date, timedelta
+from functools import lru_cache
 from types import TracebackType
 
 from read_no_evil_mcp.accounts.config import AccessLevel
@@ -24,6 +26,12 @@ from read_no_evil_mcp.protection.models import ScanResult
 from read_no_evil_mcp.protection.service import ProtectionService
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=256)
+def _compile_recipient_pattern(pattern: str) -> re.Pattern[str]:
+    """Compile and cache a recipient regex pattern (case-insensitive)."""
+    return re.compile(pattern, re.IGNORECASE)
 
 
 class PromptInjectionError(Exception):
@@ -125,6 +133,29 @@ class SecureMailbox:
         if not self._permissions.send:
             logger.info("Send permission denied")
             raise PermissionDeniedError("Send access denied for this account")
+
+    def _require_allowed_recipients(self, to: list[str], cc: list[str] | None) -> None:
+        """Check all recipients against the allowed_recipients patterns.
+
+        Raises PermissionDeniedError if any recipient doesn't match at least one
+        allowed pattern.  Skips validation when allowed_recipients is None.
+        """
+        rules = self._permissions.allowed_recipients
+        if rules is None:
+            return
+
+        all_recipients = list(to)
+        if cc:
+            all_recipients.extend(cc)
+
+        for recipient in all_recipients:
+            if not any(
+                _compile_recipient_pattern(rule.pattern).search(recipient) for rule in rules
+            ):
+                logger.info("Recipient denied by allowlist (recipient=%s)", recipient)
+                raise PermissionDeniedError(
+                    f"Recipient '{recipient}' is not in the allowed recipients list"
+                )
 
     def connect(self) -> None:
         """Connect to the email server."""
@@ -364,6 +395,7 @@ class SecureMailbox:
             RuntimeError: If sending is not supported by the connector.
         """
         self._require_send()
+        self._require_allowed_recipients(to, cc)
 
         if not self._connector.can_send():
             raise RuntimeError("Sending not configured for this account")
