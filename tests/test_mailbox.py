@@ -1311,13 +1311,11 @@ class TestSecureMailboxAuditLogging:
         assert len(caplog.records) == 1
         record = caplog.records[0]
         assert record.levelname == "WARNING"
-        assert "Prompt injection blocked in fetch_emails" in record.message
-        assert "uid=123" in record.message
-        assert "folder=INBOX" in record.message
-        assert "'Ignore all instructions'" in record.message  # repr format
-        assert "score=0.85" in record.message
-        assert "ignore_instructions" in record.message
-        assert "system_tag" in record.message
+        assert record.message == (
+            "Prompt injection blocked in fetch_emails "
+            "(uid=123, folder=INBOX, subject='Ignore all instructions', "
+            "score=0.85, patterns=['ignore_instructions', 'system_tag'])"
+        )
 
     def test_fetch_emails_logs_info_on_hidden_email(
         self,
@@ -1357,10 +1355,10 @@ class TestSecureMailboxAuditLogging:
         info_records = [r for r in caplog.records if r.levelname == "INFO"]
         assert len(info_records) == 1
         record = info_records[0]
-        assert "Email hidden by access rules in fetch_emails" in record.message
-        assert "uid=456" in record.message
-        assert "folder=INBOX" in record.message
-        assert "'Buy now!'" in record.message  # repr format
+        assert record.message == (
+            "Email hidden by access rules in fetch_emails "
+            "(uid=456, folder=INBOX, subject='Buy now!')"
+        )
 
     def test_fetch_emails_logs_debug_on_safe_scan(
         self,
@@ -1393,9 +1391,7 @@ class TestSecureMailboxAuditLogging:
         # Should have 2 debug logs: access level classification + safe scan
         assert len(debug_records) == 2
         scan_log = [r for r in debug_records if "Email scan safe" in r.message][0]
-        assert "uid=789" in scan_log.message
-        assert "folder=INBOX" in scan_log.message
-        assert "score=0.05" in scan_log.message
+        assert scan_log.message == "Email scan safe (uid=789, folder=INBOX, score=0.05)"
 
     def test_get_email_logs_warning_on_prompt_injection(
         self,
@@ -1429,12 +1425,11 @@ class TestSecureMailboxAuditLogging:
         assert len(caplog.records) == 1
         record = caplog.records[0]
         assert record.levelname == "WARNING"
-        assert "Prompt injection detected in get_email" in record.message
-        assert "uid=999" in record.message
-        assert "folder=INBOX" in record.message
-        assert "'Urgent action required'" in record.message  # repr format
-        assert "score=0.92" in record.message
-        assert "ignore_instructions" in record.message
+        assert record.message == (
+            "Prompt injection detected in get_email "
+            "(uid=999, folder=INBOX, subject='Urgent action required', "
+            "score=0.92, patterns=['ignore_instructions'])"
+        )
 
     def test_get_email_logs_info_on_hidden_email(
         self,
@@ -1471,10 +1466,9 @@ class TestSecureMailboxAuditLogging:
         info_records = [r for r in caplog.records if r.levelname == "INFO"]
         assert len(info_records) == 1
         record = info_records[0]
-        assert "Email hidden by access rules in get_email" in record.message
-        assert "uid=111" in record.message
-        assert "folder=Spam" in record.message
-        assert "'You won!'" in record.message  # repr format
+        assert record.message == (
+            "Email hidden by access rules in get_email (uid=111, folder=Spam, subject='You won!')"
+        )
 
     def test_get_email_logs_debug_on_safe_scan(
         self,
@@ -1508,9 +1502,7 @@ class TestSecureMailboxAuditLogging:
         # Should have 2: access level classification + safe scan
         assert len(debug_records) == 2
         scan_log = [r for r in debug_records if "Email scan safe" in r.message][0]
-        assert "uid=222" in scan_log.message
-        assert "folder=INBOX" in scan_log.message
-        assert "score=0.03" in scan_log.message
+        assert scan_log.message == "Email scan safe (uid=222, folder=INBOX, score=0.03)"
 
     def test_permission_denial_logs_info(
         self,
@@ -1613,9 +1605,9 @@ class TestSecureMailboxAuditLogging:
         # Look for access level classification log
         debug_records = [r for r in caplog.records if r.levelname == "DEBUG"]
         access_log = [r for r in debug_records if "Access level for sender" in r.message][0]
-        assert "sender=boss@trusted.com" in access_log.message
-        assert "'Important update'" in access_log.message  # repr format
-        assert "trusted" in access_log.message
+        assert access_log.message == (
+            "Access level for sender=boss@trusted.com subject='Important update': trusted"
+        )
 
     def test_no_email_body_in_logs(
         self,
