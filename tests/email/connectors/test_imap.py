@@ -1,5 +1,6 @@
 """Tests for IMAP connector."""
 
+import logging
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
@@ -254,6 +255,116 @@ class TestIMAPConnector:
         connector = IMAPConnector(config)
         with pytest.raises(RuntimeError, match="Not connected"):
             connector.get_email("INBOX", 123)
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_fetch_emails_skips_none_uid(
+        self, mock_mailbox_class: MagicMock, config: IMAPConfig, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test fetch_emails skips messages with None uid and returns only valid ones."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        mock_from = MagicMock()
+        mock_from.name = "Sender"
+        mock_from.email = "sender@example.com"
+
+        valid_msg = MagicMock()
+        valid_msg.uid = "456"
+        valid_msg.subject = "Valid Email"
+        valid_msg.from_values = mock_from
+        valid_msg.date = datetime(2026, 2, 3, 12, 0, 0)
+        valid_msg.attachments = []
+        valid_msg.flags = ()
+
+        none_uid_msg = MagicMock()
+        none_uid_msg.uid = None
+        none_uid_msg.subject = "Ghost Email"
+        none_uid_msg.from_values = mock_from
+        none_uid_msg.date = datetime(2026, 2, 3, 12, 0, 0)
+        none_uid_msg.attachments = []
+        none_uid_msg.flags = ()
+
+        mock_mailbox.fetch.return_value = [none_uid_msg, valid_msg]
+
+        connector = IMAPConnector(config)
+        connector.connect()
+        with caplog.at_level(logging.WARNING, logger="read_no_evil_mcp.email.connectors.imap"):
+            emails = connector.fetch_emails("INBOX", lookback=timedelta(days=7))
+
+        assert len(emails) == 1
+        assert emails[0].uid == 456
+        assert emails[0].subject == "Valid Email"
+        assert "Skipping email with missing UID" in caplog.text
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_fetch_emails_all_none_uid_returns_empty(
+        self, mock_mailbox_class: MagicMock, config: IMAPConfig
+    ) -> None:
+        """Test fetch_emails returns empty list when all messages have None uid."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        mock_from = MagicMock()
+        mock_from.name = "Sender"
+        mock_from.email = "sender@example.com"
+
+        none_msg1 = MagicMock()
+        none_msg1.uid = None
+        none_msg1.subject = "Ghost 1"
+        none_msg1.from_values = mock_from
+        none_msg1.date = datetime(2026, 2, 3, 12, 0, 0)
+        none_msg1.attachments = []
+        none_msg1.flags = ()
+
+        none_msg2 = MagicMock()
+        none_msg2.uid = None
+        none_msg2.subject = "Ghost 2"
+        none_msg2.from_values = mock_from
+        none_msg2.date = datetime(2026, 2, 3, 12, 0, 0)
+        none_msg2.attachments = []
+        none_msg2.flags = ()
+
+        mock_mailbox.fetch.return_value = [none_msg1, none_msg2]
+
+        connector = IMAPConnector(config)
+        connector.connect()
+        emails = connector.fetch_emails("INBOX", lookback=timedelta(days=7))
+
+        assert emails == []
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_get_email_returns_none_for_none_uid(
+        self, mock_mailbox_class: MagicMock, config: IMAPConfig, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test get_email returns None when the fetched message has None uid."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        mock_from = MagicMock()
+        mock_from.name = "Sender"
+        mock_from.email = "sender@example.com"
+
+        mock_msg = MagicMock()
+        mock_msg.uid = None
+        mock_msg.subject = "Ghost Email"
+        mock_msg.from_values = mock_from
+        mock_msg.date = datetime(2026, 2, 3, 12, 0, 0)
+        mock_msg.to_values = ()
+        mock_msg.cc_values = ()
+        mock_msg.text = "Body"
+        mock_msg.html = None
+        mock_msg.attachments = []
+        mock_msg.headers = {}
+        mock_msg.flags = ()
+        mock_mailbox.fetch.return_value = [mock_msg]
+
+        connector = IMAPConnector(config)
+        connector.connect()
+        with caplog.at_level(logging.WARNING, logger="read_no_evil_mcp.email.connectors.imap"):
+            email = connector.get_email("INBOX", 123)
+
+        assert email is None
+        assert "Skipping email with missing UID" in caplog.text
 
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
     def test_move_email_success(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:

@@ -1,5 +1,6 @@
 """IMAP connector for reading emails using imap-tools."""
 
+import logging
 from datetime import date, datetime, timedelta
 
 from imap_tools import AND, MailBox, MailBoxUnencrypted
@@ -16,6 +17,8 @@ from read_no_evil_mcp.email.models import (
     Folder,
     OutgoingAttachment,
 )
+
+logger = logging.getLogger(__name__)
 
 # Default sender for emails without from address
 _DEFAULT_SENDER = EmailAddress(address="unknown@unknown")
@@ -134,11 +137,15 @@ class IMAPConnector(BaseConnector):
 
         summaries = []
         for msg in self._mailbox.fetch(criteria, reverse=True, bulk=True):
+            if not msg.uid:
+                logger.warning("Skipping email with missing UID (subject=%r)", msg.subject)
+                continue
+
             sender = _convert_address(msg.from_values)
 
             summaries.append(
                 EmailSummary(
-                    uid=int(msg.uid) if msg.uid else 0,
+                    uid=int(msg.uid),
                     folder=folder,
                     subject=msg.subject or "(no subject)",
                     sender=sender,
@@ -161,6 +168,10 @@ class IMAPConnector(BaseConnector):
         self._mailbox.folder.set(folder)
 
         for msg in self._mailbox.fetch(AND(uid=str(uid))):
+            if not msg.uid:
+                logger.warning("Skipping email with missing UID (subject=%r)", msg.subject)
+                continue
+
             sender = _convert_address(msg.from_values)
 
             attachments = [
@@ -173,7 +184,7 @@ class IMAPConnector(BaseConnector):
             ]
 
             return Email(
-                uid=int(msg.uid) if msg.uid else 0,
+                uid=int(msg.uid),
                 folder=folder,
                 subject=msg.subject or "(no subject)",
                 sender=sender,
