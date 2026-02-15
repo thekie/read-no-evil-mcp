@@ -18,6 +18,13 @@ class TestSettings:
 
         assert settings.default_lookback_days == 7
 
+    def test_default_protection_threshold(self) -> None:
+        """Test default protection threshold is 0.5."""
+        with patch.dict(os.environ, {}, clear=True):
+            settings = Settings()
+
+        assert settings.protection.threshold == 0.5
+
     def test_custom_lookback_days(self) -> None:
         """Test custom lookback days from environment."""
         env = {"RNOE_DEFAULT_LOOKBACK_DAYS": "14"}
@@ -199,6 +206,38 @@ class TestYamlConfigLoading:
         assert settings.accounts[0].id == "work"
         assert settings.accounts[0].host == "mail.example.com"
         assert settings.accounts[0].username == "user@example.com"
+
+    def test_yaml_with_protection_threshold(self, tmp_path: Path) -> None:
+        """YAML with protection threshold loads correctly."""
+        config_file = tmp_path / "protection.yaml"
+        config_file.write_text("protection:\n  threshold: 0.3\n")
+
+        env = {"RNOE_CONFIG_FILE": str(config_file)}
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings()
+
+        assert settings.protection.threshold == 0.3
+
+    def test_yaml_with_per_account_protection_override(self, tmp_path: Path) -> None:
+        """YAML with per-account protection override loads correctly."""
+        config_file = tmp_path / "accounts.yaml"
+        config_file.write_text(
+            "accounts:\n"
+            "  - id: work\n"
+            "    type: imap\n"
+            "    host: mail.example.com\n"
+            "    username: user@example.com\n"
+            "    protection:\n"
+            "      threshold: 0.8\n"
+        )
+
+        env = {"RNOE_CONFIG_FILE": str(config_file)}
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings()
+
+        assert len(settings.accounts) == 1
+        assert settings.accounts[0].protection is not None
+        assert settings.accounts[0].protection.threshold == 0.8
 
     def test_invalid_max_attachment_size_raises(self, tmp_path: Path) -> None:
         """Negative max_attachment_size in YAML triggers validation error."""

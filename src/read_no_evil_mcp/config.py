@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -13,6 +13,7 @@ from pydantic_settings import (
 
 from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.defaults import DEFAULT_MAX_ATTACHMENT_SIZE
+from read_no_evil_mcp.protection.models import ProtectionConfig
 
 
 class YamlConfigSettingsSource(PydanticBaseSettingsSource):
@@ -78,6 +79,9 @@ class Settings(BaseSettings):
 
     # Multi-account configuration
     accounts: list[AccountConfig] = []
+
+    # Protection settings
+    protection: ProtectionConfig = Field(default_factory=ProtectionConfig)
 
     # Application defaults
     default_lookback_days: int = 7

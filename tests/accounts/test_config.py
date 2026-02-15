@@ -10,6 +10,7 @@ from read_no_evil_mcp.accounts.config import (
     SenderRule,
     SubjectRule,
 )
+from read_no_evil_mcp.protection.models import ProtectionConfig
 
 
 class TestAccountConfig:
@@ -169,6 +170,26 @@ class TestAccountConfig:
                 username="user",
                 from_address="",
             )
+
+    def test_protection_defaults_to_none(self) -> None:
+        """Test that protection defaults to None."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user@example.com",
+        )
+        assert config.protection is None
+
+    def test_protection_with_custom_threshold(self) -> None:
+        """Test that protection accepts a ProtectionConfig with custom threshold."""
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user@example.com",
+            protection=ProtectionConfig(threshold=0.3),
+        )
+        assert config.protection is not None
+        assert config.protection.threshold == 0.3
 
     def test_sender_rules_default_empty(self) -> None:
         """Test that sender_rules defaults to empty list."""

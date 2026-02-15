@@ -241,6 +241,33 @@ accounts:
 
 **Security best practice:** Start with read-only access and only enable additional permissions as needed.
 
+### Detection Sensitivity
+
+By default, the prompt injection detector flags content scoring `0.5` or above. You can tune this globally and override per account:
+
+```yaml
+# Global default — applies to all accounts unless overridden
+protection:
+  threshold: 0.5
+
+accounts:
+  - id: "work"
+    type: "imap"
+    host: "mail.company.com"
+    username: "user@company.com"
+    protection:
+      threshold: 0.3   # Stricter — fewer false negatives
+
+  - id: "newsletter"
+    type: "imap"
+    host: "imap.gmail.com"
+    username: "me@gmail.com"
+    protection:
+      threshold: 0.7   # More lenient — fewer false positives
+```
+
+The threshold must be between `0.0` and `1.0`. Lower values are stricter (flag more), higher values are more lenient (flag less). See the **[Configuration Guide](CONFIGURATION.md#protection-settings)** for details.
+
 ### Access Rules
 
 Filter emails by sender and subject patterns. Assign trust levels so known senders pass through directly while unknown senders require confirmation. See the **[Configuration Guide](CONFIGURATION.md)** for regex syntax, tips, and more examples.
@@ -435,7 +462,7 @@ The test suite includes **80+ attack payloads** across 7 categories.
 - [x] Attachment support for send_email ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72))
 - [x] Pagination for list_emails ([#111](https://github.com/thekie/read-no-evil-mcp/issues/111))
 - [x] Streamable HTTP transport ([#187](https://github.com/thekie/read-no-evil-mcp/issues/187))
-- [ ] Configurable sensitivity levels ([#195](https://github.com/thekie/read-no-evil-mcp/issues/195))
+- [x] Configurable sensitivity levels ([#195](https://github.com/thekie/read-no-evil-mcp/issues/195))
 - [x] Docker image ([#188](https://github.com/thekie/read-no-evil-mcp/issues/188))
 
 ### v0.4 (Later)
