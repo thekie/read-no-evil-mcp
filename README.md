@@ -463,11 +463,11 @@ The test suite includes **80+ attack payloads** across 7 categories.
 - [x] Pagination for list_emails ([#111](https://github.com/thekie/read-no-evil-mcp/issues/111))
 - [x] Streamable HTTP transport ([#187](https://github.com/thekie/read-no-evil-mcp/issues/187))
 - [x] Configurable sensitivity levels ([#195](https://github.com/thekie/read-no-evil-mcp/issues/195))
-- [ ] Attachment scanning
 - [x] Docker image ([#188](https://github.com/thekie/read-no-evil-mcp/issues/188))
 
 ### v0.4 (Later)
 - [ ] Keyring credential backend ([#45](https://github.com/thekie/read-no-evil-mcp/issues/45))
+- [ ] Attachment scanning
 - [ ] Gmail API connector
 - [ ] Microsoft Graph connector
 - [ ] Improved obfuscation detection
