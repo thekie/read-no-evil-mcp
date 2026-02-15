@@ -19,7 +19,7 @@ from read_no_evil_mcp.filtering.access_rules import (
     get_list_prompt,
     get_read_prompt,
 )
-from read_no_evil_mcp.models import SecureEmail, SecureEmailSummary
+from read_no_evil_mcp.models import FetchResult, SecureEmail, SecureEmailSummary
 from read_no_evil_mcp.protection.models import ScanResult
 from read_no_evil_mcp.protection.service import ProtectionService
 
@@ -179,20 +179,23 @@ class SecureMailbox:
         lookback: timedelta,
         from_date: date | None = None,
         limit: int | None = None,
-    ) -> list[SecureEmailSummary]:
+        offset: int = 0,
+    ) -> FetchResult:
         """Fetch email summaries from a folder with protection scanning.
 
         Scans subject and sender fields for prompt injection.
         Emails with detected attacks or HIDE access level are filtered out.
+        Pagination (offset/limit) is applied after filtering.
 
         Args:
             folder: Folder to fetch from (default: INBOX)
             lookback: How far back to look
             from_date: Starting point for lookback (default: today)
             limit: Maximum number of emails to return
+            offset: Number of emails to skip (default: 0)
 
         Returns:
-            List of SecureEmailSummary objects (enriched with access level/prompt).
+            FetchResult with paginated items and total count.
 
         Raises:
             PermissionDeniedError: If read access is denied or folder is not allowed.
@@ -204,7 +207,6 @@ class SecureMailbox:
             folder,
             lookback=lookback,
             from_date=from_date,
-            limit=limit,
         )
 
         secure_summaries: list[SecureEmailSummary] = []
@@ -251,7 +253,11 @@ class SecureMailbox:
             )
             secure_summaries.append(secure_summary)
 
-        return secure_summaries
+        total = len(secure_summaries)
+        end = offset + limit if limit is not None else None
+        page = secure_summaries[offset:end]
+
+        return FetchResult(items=page, total=total)
 
     def get_email(self, folder: str, uid: int) -> SecureEmail | None:
         """Get full email content by UID with protection scanning.

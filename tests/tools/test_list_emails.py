@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from read_no_evil_mcp.accounts.config import AccessLevel
 from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.mailbox import SecureEmailSummary
-from read_no_evil_mcp.models import EmailAddress, EmailSummary
+from read_no_evil_mcp.models import EmailAddress, EmailSummary, FetchResult
 from read_no_evil_mcp.tools.list_emails import list_emails
 
 
@@ -38,10 +38,15 @@ def _create_secure_summary(
 
 def _create_mock_mailbox(
     secure_emails: list[SecureEmailSummary] | None = None,
+    total: int | None = None,
 ) -> MagicMock:
     """Create a mock mailbox with standard setup."""
+    items = secure_emails or []
     mock_mailbox = MagicMock()
-    mock_mailbox.fetch_emails.return_value = secure_emails or []
+    mock_mailbox.fetch_emails.return_value = FetchResult(
+        items=items,
+        total=total if total is not None else len(items),
+    )
     mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
     mock_mailbox.__exit__ = MagicMock(return_value=None)
     return mock_mailbox
@@ -89,7 +94,7 @@ class TestListEmails:
         assert result == "No emails found."
 
     def test_respects_limit_parameter(self) -> None:
-        """Test list_emails respects limit parameter."""
+        """Test list_emails passes limit to fetch_emails."""
         mock_mailbox = _create_mock_mailbox(secure_emails=[])
 
         with patch(
@@ -265,6 +270,61 @@ class TestListEmails:
         assert lines[1] == "    -> Ask user for permission before reading."
 
 
+class TestListEmailsPagination:
+    def test_pagination_message_when_more_results(self) -> None:
+        """Test that pagination message shows when there are more results."""
+        secure_emails = [_create_secure_summary(uid=1), _create_secure_summary(uid=2)]
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails, total=5)
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = list_emails.fn(account="work", limit=2)
+
+        assert "Showing 2 of 5 emails. Use offset=2 to see more." in result
+
+    def test_pagination_message_with_offset(self) -> None:
+        """Test pagination message with non-zero offset."""
+        secure_emails = [_create_secure_summary(uid=3), _create_secure_summary(uid=4)]
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails, total=5)
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = list_emails.fn(account="work", limit=2, offset=2)
+
+        assert "Showing 2 of 5 emails. Use offset=4 to see more." in result
+
+    def test_no_pagination_message_when_all_shown(self) -> None:
+        """Test no pagination message when all results are shown."""
+        secure_emails = [_create_secure_summary(uid=1), _create_secure_summary(uid=2)]
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails, total=2)
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = list_emails.fn(account="work")
+
+        assert "Showing" not in result
+        assert "offset=" not in result
+
+    def test_offset_passed_to_fetch_emails(self) -> None:
+        """Test that offset is passed to fetch_emails."""
+        mock_mailbox = _create_mock_mailbox(secure_emails=[])
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            list_emails.fn(account="work", offset=10)
+
+        call_args = mock_mailbox.fetch_emails.call_args
+        assert call_args.kwargs["offset"] == 10
+
+
 class TestListEmailsValidation:
     def test_days_back_zero_rejected(self) -> None:
         result = list_emails.fn(account="work", days_back=0)
@@ -289,3 +349,7 @@ class TestListEmailsValidation:
     def test_limit_negative_rejected(self) -> None:
         result = list_emails.fn(account="work", limit=-3)
         assert result == "Invalid parameter: limit must be a positive integer"
+
+    def test_offset_negative_rejected(self) -> None:
+        result = list_emails.fn(account="work", offset=-1)
+        assert result == "Invalid parameter: offset must be a non-negative integer"

@@ -22,6 +22,7 @@ def list_emails(
     folder: str = "INBOX",
     days_back: int = 7,
     limit: int | None = None,
+    offset: int = 0,
 ) -> str:
     """List email summaries from a folder.
 
@@ -30,6 +31,7 @@ def list_emails(
         folder: Folder to list emails from (default: INBOX).
         days_back: Number of days to look back (default: 7).
         limit: Maximum number of emails to return.
+        offset: Number of emails to skip for pagination (default: 0).
     """
     if days_back < 1:
         return "Invalid parameter: days_back must be a positive integer"
@@ -37,19 +39,22 @@ def list_emails(
         return "Invalid parameter: folder must not be empty"
     if limit is not None and limit < 1:
         return "Invalid parameter: limit must be a positive integer"
+    if offset < 0:
+        return "Invalid parameter: offset must be a non-negative integer"
 
     with create_securemailbox(account) as mailbox:
-        secure_emails = mailbox.fetch_emails(
+        result = mailbox.fetch_emails(
             folder,
             lookback=timedelta(days=days_back),
             limit=limit,
+            offset=offset,
         )
 
-        if not secure_emails:
+        if not result.items:
             return "No emails found."
 
         lines = []
-        for secure_email in secure_emails:
+        for secure_email in result.items:
             email = secure_email.summary
             date_str = email.date.strftime("%Y-%m-%d %H:%M")
             attachment_marker = " [+]" if email.has_attachments else ""
@@ -68,5 +73,12 @@ def list_emails(
             # Add prompt if present in the enriched model
             if secure_email.prompt:
                 lines.append(f"    -> {secure_email.prompt}")
+
+        shown = len(result.items)
+        if shown < result.total:
+            next_offset = offset + shown
+            lines.append(
+                f"\nShowing {shown} of {result.total} emails. Use offset={next_offset} to see more."
+            )
 
         return "\n".join(lines)

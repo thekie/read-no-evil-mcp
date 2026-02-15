@@ -263,6 +263,8 @@ Set a prompt to `null` in config to disable it.
 [2] 2026-02-05 11:30 | vendor@external.com | Invoice attached [ASK]
     -> Ask user for permission before reading.
 [3] 2026-02-05 10:00 | unknown@example.com | Hello [UNREAD]
+
+Showing 3 of 127 emails. Use offset=3 to see more.
 ```
 
 `get_email` (trusted):
@@ -325,7 +327,7 @@ The `send_email` tool supports:
 |------|-------------|------------|
 | `list_accounts` | List configured email accounts | — |
 | `list_folders` | List folders/mailboxes | `read` |
-| `list_emails` | List emails in a folder | `read` |
+| `list_emails` | List emails in a folder (supports `limit`/`offset` pagination) | `read` |
 | `get_email` | Get full email content by UID | `read` |
 | `send_email` | Send an email via SMTP | `send` |
 | `move_email` | Move email to another folder | `move` |
@@ -363,6 +365,7 @@ The test suite includes **80+ attack payloads** across 7 categories.
 ### v0.3 (Current)
 - [x] Sender-based access rules ([#84](https://github.com/thekie/read-no-evil-mcp/issues/84))
 - [x] Attachment support for send_email ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72))
+- [x] Pagination for list_emails ([#111](https://github.com/thekie/read-no-evil-mcp/issues/111))
 - [ ] Configurable sensitivity levels
 - [ ] Attachment scanning
 - [ ] Docker image
