@@ -4,6 +4,10 @@
 
 [![CI](https://github.com/thekie/read-no-evil-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/thekie/read-no-evil-mcp/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![PyPI](https://img.shields.io/pypi/v/read-no-evil-mcp)](https://pypi.org/project/read-no-evil-mcp/)
+[![Python](https://img.shields.io/pypi/pyversions/read-no-evil-mcp)](https://pypi.org/project/read-no-evil-mcp/)
+[![Downloads](https://static.pepy.tech/badge/read-no-evil-mcp)](https://pepy.tech/project/read-no-evil-mcp)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 A secure email gateway MCP server that protects AI agents from prompt injection attacks hidden in emails.
 
