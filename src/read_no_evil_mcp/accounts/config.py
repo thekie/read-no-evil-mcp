@@ -200,6 +200,10 @@ class IMAPAccountConfig(BaseAccountConfig):
         default=False,
         description="Use SSL instead of STARTTLS for SMTP (default: False)",
     )
+    sent_folder: str | None = Field(
+        default=None,
+        description="IMAP folder for saving sent emails (default: auto-detect)",
+    )
     from_address: str | None = Field(
         default=None,
         min_length=1,

@@ -10,6 +10,27 @@ from read_no_evil_mcp.email.models import OutgoingAttachment
 from read_no_evil_mcp.models import SMTPConfig
 
 
+class TestSMTPConfig:
+    def test_sent_folder_default_none(self) -> None:
+        """Test that sent_folder defaults to None."""
+        config = SMTPConfig(
+            host="smtp.example.com",
+            username="user@example.com",
+            password=SecretStr("password123"),
+        )
+        assert config.sent_folder is None
+
+    def test_sent_folder_explicit(self) -> None:
+        """Test that sent_folder can be set explicitly."""
+        config = SMTPConfig(
+            host="smtp.example.com",
+            username="user@example.com",
+            password=SecretStr("password123"),
+            sent_folder="INBOX.Sent",
+        )
+        assert config.sent_folder == "INBOX.Sent"
+
+
 class TestSMTPConnector:
     @pytest.fixture
     def smtp_config(self) -> SMTPConfig:
@@ -102,13 +123,13 @@ class TestSMTPConnector:
                 body="Test body content",
             )
 
-            assert result is True
+            assert isinstance(result, bytes)
             mock_connection.sendmail.assert_called_once()
             call_args = mock_connection.sendmail.call_args
             assert call_args[0][0] == "sender@example.com"
             assert call_args[0][1] == ["recipient@example.com"]
             # Check message content
-            msg_str = call_args[0][2]
+            msg_str = call_args[0][2].decode()
             assert "Test Subject" in msg_str
             assert "Test body content" in msg_str
 
@@ -129,7 +150,7 @@ class TestSMTPConnector:
                 cc=["cc1@example.com", "cc2@example.com"],
             )
 
-            assert result is True
+            assert isinstance(result, bytes)
             call_args = mock_connection.sendmail.call_args
             # Recipients should include both to and cc
             recipients = call_args[0][1]
@@ -137,7 +158,7 @@ class TestSMTPConnector:
             assert "cc1@example.com" in recipients
             assert "cc2@example.com" in recipients
             # Check CC header in message
-            msg_str = call_args[0][2]
+            msg_str = call_args[0][2].decode()
             assert "Cc: cc1@example.com, cc2@example.com" in msg_str
 
     def test_send_email_multiple_recipients(self, smtp_config: SMTPConfig) -> None:
@@ -156,7 +177,7 @@ class TestSMTPConnector:
                 body="Test body",
             )
 
-            assert result is True
+            assert isinstance(result, bytes)
             call_args = mock_connection.sendmail.call_args
             recipients = call_args[0][1]
             assert recipients == ["r1@example.com", "r2@example.com", "r3@example.com"]
@@ -192,9 +213,9 @@ class TestSMTPConnector:
                 reply_to="replies@example.com",
             )
 
-            assert result is True
+            assert isinstance(result, bytes)
             call_args = mock_connection.sendmail.call_args
-            msg_str = call_args[0][2]
+            msg_str = call_args[0][2].decode()
             assert "Reply-To: replies@example.com" in msg_str
 
     def test_send_email_with_from_name(self, smtp_config: SMTPConfig) -> None:
@@ -214,12 +235,12 @@ class TestSMTPConnector:
                 from_name="Atlas",
             )
 
-            assert result is True
+            assert isinstance(result, bytes)
             call_args = mock_connection.sendmail.call_args
             # Envelope should use plain email address
             assert call_args[0][0] == "sender@example.com"
             # Message header should include display name
-            msg_str = call_args[0][2]
+            msg_str = call_args[0][2].decode()
             assert "From: Atlas <sender@example.com>" in msg_str
 
     def test_send_email_with_single_attachment(self, smtp_config: SMTPConfig) -> None:
@@ -245,9 +266,9 @@ class TestSMTPConnector:
                 attachments=[attachment],
             )
 
-            assert result is True
+            assert isinstance(result, bytes)
             call_args = mock_connection.sendmail.call_args
-            msg_str = call_args[0][2]
+            msg_str = call_args[0][2].decode()
             assert "Content-Disposition: attachment" in msg_str
             assert 'filename="test.txt"' in msg_str
             assert "Content-Type: text/plain" in msg_str
@@ -282,9 +303,9 @@ class TestSMTPConnector:
                 attachments=attachments,
             )
 
-            assert result is True
+            assert isinstance(result, bytes)
             call_args = mock_connection.sendmail.call_args
-            msg_str = call_args[0][2]
+            msg_str = call_args[0][2].decode()
             assert 'filename="doc.pdf"' in msg_str
             assert 'filename="image.png"' in msg_str
             assert "Content-Type: application/pdf" in msg_str
@@ -317,9 +338,9 @@ class TestSMTPConnector:
                 attachments=[attachment],
             )
 
-            assert result is True
+            assert isinstance(result, bytes)
             call_args = mock_connection.sendmail.call_args
-            msg_str = call_args[0][2]
+            msg_str = call_args[0][2].decode()
             assert 'filename="report.csv"' in msg_str
             assert "Content-Type: text/csv" in msg_str
 
@@ -348,9 +369,9 @@ class TestSMTPConnector:
                 attachments=[attachment],
             )
 
-            assert result is True
+            assert isinstance(result, bytes)
             call_args = mock_connection.sendmail.call_args
-            msg_str = call_args[0][2]
+            msg_str = call_args[0][2].decode()
             # Check for base64 encoding header
             assert "Content-Transfer-Encoding: base64" in msg_str
             assert 'filename="binary.bin"' in msg_str
@@ -372,7 +393,7 @@ class TestSMTPConnector:
                 attachments=[],
             )
 
-            assert result is True
+            assert isinstance(result, bytes)
 
     def test_send_email_none_attachments(self, smtp_config: SMTPConfig) -> None:
         """Test sending email with None attachments works (backwards compat)."""
@@ -391,7 +412,7 @@ class TestSMTPConnector:
                 attachments=None,
             )
 
-            assert result is True
+            assert isinstance(result, bytes)
 
     def test_header_injection_newline_in_from(self, smtp_config: SMTPConfig) -> None:
         """Test that newline in from_address raises ValueError."""

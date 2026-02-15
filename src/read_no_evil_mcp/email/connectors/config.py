@@ -21,3 +21,4 @@ class SMTPConfig(BaseModel):
     username: str
     password: SecretStr
     ssl: bool = False  # False = use STARTTLS, True = use SSL
+    sent_folder: str | None = None  # None = auto-detect from IMAP folders

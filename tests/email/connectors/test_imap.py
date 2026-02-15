@@ -512,7 +512,7 @@ class TestIMAPConnectorWithSMTP:
 
         assert result is True
         call_args = mock_smtp.sendmail.call_args
-        msg_str = call_args[0][2]
+        msg_str = call_args[0][2].decode()
         assert "Reply-To: replies@example.com" in msg_str
 
     def test_send_not_connected_raises(
@@ -527,3 +527,308 @@ class TestIMAPConnectorWithSMTP:
                 subject="Test",
                 body="Test body",
             )
+
+
+class TestIMAPConnectorSaveToSent:
+    """Tests for saving sent emails to Sent folder via IMAP."""
+
+    @pytest.fixture
+    def imap_config(self) -> IMAPConfig:
+        return IMAPConfig(
+            host="imap.example.com",
+            username="user",
+            password=SecretStr("secret"),
+        )
+
+    @pytest.fixture
+    def smtp_config(self) -> SMTPConfig:
+        return SMTPConfig(
+            host="smtp.example.com",
+            port=587,
+            username="user",
+            password=SecretStr("secret"),
+            ssl=False,
+        )
+
+    @pytest.fixture
+    def smtp_config_with_sent_folder(self) -> SMTPConfig:
+        return SMTPConfig(
+            host="smtp.example.com",
+            port=587,
+            username="user",
+            password=SecretStr("secret"),
+            ssl=False,
+            sent_folder="INBOX.Sent",
+        )
+
+    def _make_mock_folder(self, name: str) -> MagicMock:
+        folder = MagicMock()
+        folder.name = name
+        return folder
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
+    def test_send_saves_to_auto_detected_sent_folder(
+        self,
+        mock_smtp_class: MagicMock,
+        mock_mailbox_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test that send auto-detects the Sent folder and appends the message."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+        mock_smtp = MagicMock()
+        mock_smtp_class.return_value = mock_smtp
+
+        # Simulate IMAP folders
+        mock_mailbox.folder.list.return_value = [
+            self._make_mock_folder("INBOX"),
+            self._make_mock_folder("Sent"),
+            self._make_mock_folder("Trash"),
+        ]
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+
+        result = connector.send(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test Subject",
+            body="Test body",
+        )
+
+        assert result is True
+        mock_smtp.sendmail.assert_called_once()
+        mock_mailbox.client.append.assert_called_once()
+        call_args = mock_mailbox.client.append.call_args
+        assert call_args[0][0] == "Sent"
+        assert call_args[0][1] == "\\Seen"
+        assert isinstance(call_args[0][3], bytes)
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
+    def test_send_saves_to_gmail_sent_folder(
+        self,
+        mock_smtp_class: MagicMock,
+        mock_mailbox_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test that send detects Gmail Sent Mail folder."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+        mock_smtp = MagicMock()
+        mock_smtp_class.return_value = mock_smtp
+
+        mock_mailbox.folder.list.return_value = [
+            self._make_mock_folder("INBOX"),
+            self._make_mock_folder("[Gmail]/Sent Mail"),
+            self._make_mock_folder("[Gmail]/Trash"),
+        ]
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+
+        result = connector.send(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test",
+            body="Test body",
+        )
+
+        assert result is True
+        call_args = mock_mailbox.client.append.call_args
+        assert call_args[0][0] == "[Gmail]/Sent Mail"
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
+    def test_send_saves_to_explicit_sent_folder(
+        self,
+        mock_smtp_class: MagicMock,
+        mock_mailbox_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config_with_sent_folder: SMTPConfig,
+    ) -> None:
+        """Test that explicit sent_folder config is used instead of auto-detect."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+        mock_smtp = MagicMock()
+        mock_smtp_class.return_value = mock_smtp
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config_with_sent_folder)
+        connector.connect()
+
+        result = connector.send(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test",
+            body="Test body",
+        )
+
+        assert result is True
+        call_args = mock_mailbox.client.append.call_args
+        assert call_args[0][0] == "INBOX.Sent"
+        # Should not attempt folder listing when explicit folder is configured
+        mock_mailbox.folder.list.assert_not_called()
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
+    def test_send_succeeds_when_imap_append_fails(
+        self,
+        mock_smtp_class: MagicMock,
+        mock_mailbox_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test that send still returns True when IMAP append fails."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+        mock_smtp = MagicMock()
+        mock_smtp_class.return_value = mock_smtp
+
+        mock_mailbox.folder.list.return_value = [
+            self._make_mock_folder("INBOX"),
+            self._make_mock_folder("Sent"),
+        ]
+        mock_mailbox.client.append.side_effect = Exception("IMAP append failed")
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+
+        result = connector.send(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test",
+            body="Test body",
+        )
+
+        # Send should succeed even though save-to-sent failed
+        assert result is True
+        mock_smtp.sendmail.assert_called_once()
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
+    def test_send_succeeds_when_no_sent_folder_detected(
+        self,
+        mock_smtp_class: MagicMock,
+        mock_mailbox_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test that send succeeds when no Sent folder can be detected."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+        mock_smtp = MagicMock()
+        mock_smtp_class.return_value = mock_smtp
+
+        # No recognizable Sent folder
+        mock_mailbox.folder.list.return_value = [
+            self._make_mock_folder("INBOX"),
+            self._make_mock_folder("Drafts"),
+            self._make_mock_folder("Trash"),
+        ]
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+
+        result = connector.send(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test",
+            body="Test body",
+        )
+
+        assert result is True
+        mock_smtp.sendmail.assert_called_once()
+        mock_mailbox.client.append.assert_not_called()
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
+    def test_send_succeeds_when_folder_list_fails(
+        self,
+        mock_smtp_class: MagicMock,
+        mock_mailbox_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test that send succeeds when folder listing fails during detection."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+        mock_smtp = MagicMock()
+        mock_smtp_class.return_value = mock_smtp
+
+        mock_mailbox.folder.list.side_effect = Exception("IMAP error")
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+
+        result = connector.send(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test",
+            body="Test body",
+        )
+
+        assert result is True
+        mock_smtp.sendmail.assert_called_once()
+        mock_mailbox.client.append.assert_not_called()
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
+    def test_detect_sent_folder_priority_order(
+        self,
+        mock_smtp_class: MagicMock,
+        mock_mailbox_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test that Sent folder detection checks candidates in priority order."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        # Both "Sent" and "INBOX.Sent" exist; "Sent" should win (first in list)
+        mock_mailbox.folder.list.return_value = [
+            self._make_mock_folder("INBOX"),
+            self._make_mock_folder("INBOX.Sent"),
+            self._make_mock_folder("Sent"),
+        ]
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+
+        result = connector._detect_sent_folder()
+        assert result == "Sent"
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
+    def test_detect_sent_folder_inbox_sent(
+        self,
+        mock_smtp_class: MagicMock,
+        mock_mailbox_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test detection of INBOX.Sent folder when Sent doesn't exist."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        mock_mailbox.folder.list.return_value = [
+            self._make_mock_folder("INBOX"),
+            self._make_mock_folder("INBOX.Sent"),
+            self._make_mock_folder("INBOX.Trash"),
+        ]
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+
+        result = connector._detect_sent_folder()
+        assert result == "INBOX.Sent"
+
+    def test_detect_sent_folder_not_connected(
+        self, imap_config: IMAPConfig, smtp_config: SMTPConfig
+    ) -> None:
+        """Test _detect_sent_folder returns None when not connected."""
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        result = connector._detect_sent_folder()
+        assert result is None

@@ -1,5 +1,6 @@
 """IMAP connector for reading emails using imap-tools."""
 
+import logging
 from datetime import date, timedelta
 
 from imap_tools import AND, MailBox, MailBoxUnencrypted
@@ -17,8 +18,13 @@ from read_no_evil_mcp.email.models import (
     OutgoingAttachment,
 )
 
+logger = logging.getLogger(__name__)
+
 # Default sender for emails without from address
 _DEFAULT_SENDER = EmailAddress(address="unknown@unknown")
+
+# Common Sent folder names across email providers
+_COMMON_SENT_FOLDERS = ["Sent", "INBOX.Sent", "[Gmail]/Sent Mail", "Sent Items", "Sent Messages"]
 
 
 def _convert_address(addr: IMAPEmailAddress | None) -> EmailAddress:
@@ -235,6 +241,56 @@ class IMAPConnector(BaseConnector):
 
         return True
 
+    def _detect_sent_folder(self) -> str | None:
+        """Detect the Sent folder by checking existing IMAP folders.
+
+        Returns:
+            The name of the Sent folder if found, None otherwise.
+        """
+        if not self._mailbox:
+            return None
+
+        try:
+            folder_names = {fi.name for fi in self._mailbox.folder.list()}
+        except Exception:
+            logger.warning("Failed to list IMAP folders for Sent folder detection")
+            return None
+
+        for candidate in _COMMON_SENT_FOLDERS:
+            if candidate in folder_names:
+                return candidate
+
+        return None
+
+    def _save_to_sent(self, message_bytes: bytes) -> None:
+        """Save a sent message to the Sent folder via IMAP APPEND.
+
+        Args:
+            message_bytes: The composed email message as bytes.
+        """
+        if not self._mailbox:
+            logger.warning("Cannot save to Sent folder: IMAP not connected")
+            return
+
+        # Determine target folder
+        sent_folder = (
+            self._smtp_config.sent_folder if self._smtp_config else None
+        ) or self._detect_sent_folder()
+
+        if not sent_folder:
+            logger.warning("Could not determine Sent folder; skipping save")
+            return
+
+        try:
+            self._mailbox.client.append(
+                sent_folder,
+                "\\Seen",
+                None,
+                message_bytes,
+            )
+        except Exception:
+            logger.warning("Failed to save sent email to '%s' folder", sent_folder, exc_info=True)
+
     def can_send(self) -> bool:
         """Check if this connector supports sending emails.
 
@@ -281,7 +337,7 @@ class IMAPConnector(BaseConnector):
         if not self._smtp_connector:
             raise RuntimeError("Not connected. Call connect() first.")
 
-        return self._smtp_connector.send_email(
+        message_bytes = self._smtp_connector.send_email(
             from_address=from_address,
             to=to,
             subject=subject,
@@ -291,3 +347,7 @@ class IMAPConnector(BaseConnector):
             reply_to=reply_to,
             attachments=attachments,
         )
+
+        self._save_to_sent(message_bytes)
+
+        return True

@@ -93,6 +93,7 @@ class AccountService:
                     username=config.username,
                     password=password,
                     ssl=config.smtp_ssl,
+                    sent_folder=config.sent_folder,
                 )
 
             return IMAPConnector(imap_config, smtp_config=smtp_config)

@@ -78,7 +78,7 @@ class SMTPConnector:
         cc: list[str] | None = None,
         reply_to: str | None = None,
         attachments: list[OutgoingAttachment] | None = None,
-    ) -> bool:
+    ) -> bytes:
         """Send an email.
 
         Args:
@@ -92,7 +92,7 @@ class SMTPConnector:
             attachments: Optional list of file attachments.
 
         Returns:
-            True if email was sent successfully.
+            The composed message as bytes (for saving to Sent folder).
 
         Raises:
             RuntimeError: If not connected to SMTP server.
@@ -151,5 +151,6 @@ class SMTPConnector:
             recipients.extend(cc)
 
         # Use from_address directly for SMTP envelope (no parsing needed)
-        self._connection.sendmail(from_address, recipients, msg.as_string())
-        return True
+        msg_bytes = msg.as_bytes()
+        self._connection.sendmail(from_address, recipients, msg_bytes)
+        return msg_bytes
