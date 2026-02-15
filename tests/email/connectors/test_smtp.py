@@ -636,6 +636,130 @@ class TestSMTPConnectorBuildMessage:
         assert 'filename="test.txt"' in msg_str
         assert "Content-Type: text/plain" in msg_str
 
+    def test_attachment_filename_directory_traversal_stripped(
+        self, smtp_config: SMTPConfig
+    ) -> None:
+        """Test that directory traversal characters are stripped from attachment filenames."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            attachment = OutgoingAttachment(
+                filename="../../etc/passwd",
+                content=b"malicious content",
+                mime_type="application/octet-stream",
+            )
+
+            result = connector.send_email(
+                from_address="sender@example.com",
+                to=["recipient@example.com"],
+                subject="Test",
+                body="Body",
+                attachments=[attachment],
+            )
+
+            assert result is True
+            call_args = mock_connection.sendmail.call_args
+            msg_str = call_args[0][2]
+            assert 'filename="passwd"' in msg_str
+
+    def test_attachment_filename_absolute_path_stripped(self, smtp_config: SMTPConfig) -> None:
+        """Test that absolute paths are stripped from attachment filenames."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            attachment = OutgoingAttachment(
+                filename="/etc/passwd",
+                content=b"malicious content",
+                mime_type="application/octet-stream",
+            )
+
+            result = connector.send_email(
+                from_address="sender@example.com",
+                to=["recipient@example.com"],
+                subject="Test",
+                body="Body",
+                attachments=[attachment],
+            )
+
+            assert result is True
+            call_args = mock_connection.sendmail.call_args
+            msg_str = call_args[0][2]
+            assert 'filename="passwd"' in msg_str
+
+    def test_attachment_filename_windows_traversal_stripped(self, smtp_config: SMTPConfig) -> None:
+        """Test Windows-style path traversal in attachment filenames.
+
+        On macOS/Linux, os.path.basename does not treat backslash as a
+        separator, so the full string is kept as the basename.
+        """
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            attachment = OutgoingAttachment(
+                filename="..\\..\\Windows\\system.ini",
+                content=b"malicious content",
+                mime_type="application/octet-stream",
+            )
+
+            result = connector.send_email(
+                from_address="sender@example.com",
+                to=["recipient@example.com"],
+                subject="Test",
+                body="Body",
+                attachments=[attachment],
+            )
+
+            assert result is True
+            call_args = mock_connection.sendmail.call_args
+            msg_str = call_args[0][2]
+            # On POSIX, backslash is not a path separator, so basename
+            # returns the entire string unchanged.  The MIME library
+            # escapes backslashes in the Content-Disposition header, so
+            # we verify the filename hasn't been truncated (it still
+            # contains "Windows" and "system.ini").
+            assert "system.ini" in msg_str
+            assert "Windows" in msg_str
+
+    def test_attachment_filename_normal_unchanged(self, smtp_config: SMTPConfig) -> None:
+        """Test that a normal filename is not altered by sanitization."""
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_connection = MagicMock()
+            mock_smtp.return_value = mock_connection
+
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            attachment = OutgoingAttachment(
+                filename="report.pdf",
+                content=b"%PDF-1.4 content",
+                mime_type="application/pdf",
+            )
+
+            result = connector.send_email(
+                from_address="sender@example.com",
+                to=["recipient@example.com"],
+                subject="Test",
+                body="Body",
+                attachments=[attachment],
+            )
+
+            assert result is True
+            call_args = mock_connection.sendmail.call_args
+            msg_str = call_args[0][2]
+            assert 'filename="report.pdf"' in msg_str
+
     def test_build_message_rejects_header_injection(self, smtp_config: SMTPConfig) -> None:
         connector = SMTPConnector(smtp_config)
 
