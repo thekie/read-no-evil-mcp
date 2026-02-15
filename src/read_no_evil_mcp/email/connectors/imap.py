@@ -236,8 +236,8 @@ class IMAPConnector(BaseConnector):
 
         self._mailbox.folder.set(folder)
 
-        # Use imap-tools delete method to mark email as deleted
         self._mailbox.delete(str(uid))
+        self._mailbox.expunge()
 
         return True
 

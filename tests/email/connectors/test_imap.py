@@ -457,6 +457,7 @@ class TestIMAPConnector:
         assert result is True
         mock_mailbox.folder.set.assert_called_with("INBOX")
         mock_mailbox.delete.assert_called_once_with("123")
+        mock_mailbox.expunge.assert_called_once()
 
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
     def test_delete_email_different_folder(
@@ -472,6 +473,7 @@ class TestIMAPConnector:
         assert result is True
         mock_mailbox.folder.set.assert_called_with("Sent")
         mock_mailbox.delete.assert_called_once_with("456")
+        mock_mailbox.expunge.assert_called_once()
 
     def test_delete_email_not_connected(self, config: IMAPConfig) -> None:
         connector = IMAPConnector(config)
