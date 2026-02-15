@@ -133,6 +133,25 @@ The HTTP server listens on `0.0.0.0:8000` by default. Customize with:
 
 For local-only access, set `RNOE_HTTP_HOST=127.0.0.1`. The default `0.0.0.0` binds to all interfaces, which is appropriate for containerized deployments.
 
+## Docker
+
+Run in a container to isolate email credentials from the LLM process:
+
+```bash
+docker build -t read-no-evil-mcp .
+docker run -p 8000:8000 -v ./config.yaml:/app/config.yaml:ro \
+  -e RNOE_ACCOUNT_GMAIL_PASSWORD="your-app-password" \
+  read-no-evil-mcp
+```
+
+Or with docker-compose:
+
+```bash
+docker compose up
+```
+
+The container uses HTTP transport by default and runs as a non-root user. Point your MCP client at `http://localhost:8000/mcp` instead of using stdio.
+
 ## Configuration
 
 ### Config File Locations
@@ -407,7 +426,7 @@ The test suite includes **80+ attack payloads** across 7 categories.
 - [x] Streamable HTTP transport ([#187](https://github.com/thekie/read-no-evil-mcp/issues/187))
 - [ ] Configurable sensitivity levels
 - [ ] Attachment scanning
-- [ ] Docker image
+- [x] Docker image ([#188](https://github.com/thekie/read-no-evil-mcp/issues/188))
 
 ### v0.4 (Later)
 - [ ] Keyring credential backend ([#45](https://github.com/thekie/read-no-evil-mcp/issues/45))
