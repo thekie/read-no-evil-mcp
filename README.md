@@ -390,6 +390,7 @@ The test suite includes **80+ attack payloads** across 7 categories.
 - [ ] Docker image
 
 ### v0.4 (Later)
+- [ ] Keyring credential backend ([#45](https://github.com/thekie/read-no-evil-mcp/issues/45))
 - [ ] Gmail API connector
 - [ ] Microsoft Graph connector
 - [ ] Improved obfuscation detection
