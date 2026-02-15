@@ -1,5 +1,6 @@
 """SMTP connector for sending emails using smtplib."""
 
+import os
 import re
 import smtplib
 from email import encoders
@@ -133,10 +134,11 @@ class SMTPConnector:
                 part = MIMEBase(maintype, subtype)
                 part.set_payload(content)
                 encoders.encode_base64(part)
+                safe_filename = os.path.basename(attachment.filename)
                 part.add_header(
                     "Content-Disposition",
                     "attachment",
-                    filename=attachment.filename,
+                    filename=safe_filename,
                 )
                 msg.attach(part)
 
