@@ -241,10 +241,13 @@ class SecureMailbox:
         )
 
         secure_summaries: list[SecureEmailSummary] = []
+        blocked_count = 0
+        hidden_count = 0
         for summary in summaries:
             # Filter by prompt injection scanning
             scan_result = self._scan_summary(summary)
             if scan_result.is_blocked:
+                blocked_count += 1
                 logger.warning(
                     "Prompt injection blocked in fetch_emails "
                     "(uid=%s, folder=%s, subject=%r, score=%.2f, patterns=%s)",
@@ -268,6 +271,7 @@ class SecureMailbox:
 
             # Filter hidden emails
             if access_level == AccessLevel.HIDE:
+                hidden_count += 1
                 logger.info(
                     "Email hidden by access rules in fetch_emails (uid=%s, folder=%s, subject=%r)",
                     summary.uid,
@@ -288,7 +292,12 @@ class SecureMailbox:
         end = offset + limit if limit is not None else None
         page = secure_summaries[offset:end]
 
-        return FetchResult(items=page, total=total)
+        return FetchResult(
+            items=page,
+            total=total,
+            blocked_count=blocked_count,
+            hidden_count=hidden_count,
+        )
 
     def get_email(self, folder: str, uid: int) -> SecureEmail | None:
         """Get full email content by UID with protection scanning.

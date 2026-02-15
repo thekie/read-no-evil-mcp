@@ -44,6 +44,8 @@ class FetchResult:
 
     items: list["SecureEmailSummary"]
     total: int
+    blocked_count: int = 0
+    hidden_count: int = 0
 
 
 @dataclass
