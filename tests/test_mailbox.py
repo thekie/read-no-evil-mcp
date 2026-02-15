@@ -9,7 +9,7 @@ import pytest
 from read_no_evil_mcp.accounts.config import AccessLevel, SenderRule, SubjectRule
 from read_no_evil_mcp.accounts.permissions import AccountPermissions, RecipientRule
 from read_no_evil_mcp.email.connectors.base import BaseConnector
-from read_no_evil_mcp.email.models import OutgoingAttachment
+from read_no_evil_mcp.email.models import Attachment, OutgoingAttachment
 from read_no_evil_mcp.exceptions import PermissionDeniedError
 from read_no_evil_mcp.filtering.access_rules import AccessRuleMatcher
 from read_no_evil_mcp.mailbox import PromptInjectionError, SecureMailbox
@@ -430,6 +430,38 @@ class TestSecureMailbox:
         # Verify scan was called with HTML content (scan() handles stripping internally)
         call_args = mock_protection.scan.call_args[0][0]
         assert "Ignore previous instructions" in call_args
+
+    def test_get_email_scans_attachment_filenames(
+        self,
+        mailbox: SecureMailbox,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test that get_email scans attachment filenames for prompt injection."""
+        email = Email(
+            uid=123,
+            folder="INBOX",
+            subject="Documents",
+            sender=EmailAddress(address="sender@example.com"),
+            date=datetime(2026, 2, 3, 12, 0, 0),
+            body_plain="Please review.",
+            attachments=[
+                Attachment(filename="report.pdf", content_type="application/pdf"),
+                Attachment(filename="ignore_instructions.txt", content_type="text/plain"),
+            ],
+        )
+        mock_connector.get_email.return_value = email
+        mock_protection.scan.return_value = ScanResult(
+            is_safe=True,
+            score=0.0,
+            detected_patterns=[],
+        )
+
+        mailbox.get_email("INBOX", 123)
+
+        call_args = mock_protection.scan.call_args[0][0]
+        assert "report.pdf" in call_args
+        assert "ignore_instructions.txt" in call_args
 
     def test_send_email_success(
         self,

@@ -97,6 +97,14 @@ class EmailSummary(BaseModel):
     has_attachments: bool = False
     is_seen: bool = False
 
+    def get_scannable_content(self) -> dict[str, str]:
+        """Return fields susceptible to prompt injection, keyed by field name."""
+        fields: dict[str, str] = {"subject": self.subject}
+        if self.sender.name:
+            fields["sender_name"] = self.sender.name
+        fields["sender_address"] = self.sender.address
+        return fields
+
 
 class Email(EmailSummary):
     """Full email content."""
@@ -107,3 +115,14 @@ class Email(EmailSummary):
     body_html: str | None = None
     attachments: list[Attachment] = []
     message_id: str | None = None
+
+    def get_scannable_content(self) -> dict[str, str]:
+        """Return fields susceptible to prompt injection, keyed by field name."""
+        fields = super().get_scannable_content()
+        if self.body_plain:
+            fields["body_plain"] = self.body_plain
+        if self.body_html:
+            fields["body_html"] = self.body_html
+        for i, attachment in enumerate(self.attachments):
+            fields[f"attachment_filename_{i}"] = attachment.filename
+        return fields
