@@ -1,0 +1,9 @@
+services:
+  read-no-evil-mcp:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    environment:
+      - RNOE_TRANSPORT=http
