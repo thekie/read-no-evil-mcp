@@ -430,16 +430,23 @@ The `send_email` tool supports:
 
 ## Detection Capabilities
 
-See **[DETECTION_MATRIX.md](DETECTION_MATRIX.md)** for what's detected and what's not.
+We test against **81 adversarial payloads** across 7 attack categories and publish every result — no cherry-picking, no hiding gaps. See **[DETECTION_MATRIX.md](DETECTION_MATRIX.md)** for the full breakdown.
 
-| Category | Examples | Status |
-|----------|----------|--------|
-| Direct injection | "Ignore previous instructions" | ✅ Detected |
-| Encoded payloads | Base64, ROT13, hex | 🔬 Testing |
-| Hidden text | Zero-width chars, HTML comments | 🔬 Testing |
-| Semantic attacks | Roleplay, fake authority | 🔬 Testing |
+**Overall detection rate: 71.6%** (58/81 payloads caught)
 
-The test suite includes **80+ attack payloads** across 7 categories.
+| Category | Detection Rate | What's Tested |
+|----------|---------------|---------------|
+| Semantic | 100% (14/14) | Roleplay, authority claims, hypotheticals, few-shot |
+| Invisible | 91% (10/11) | Zero-width characters, RTL overrides, byte order marks |
+| Structural | 85% (11/13) | JSON/XML injection, markdown abuse, line splitting |
+| Encoding | 80% (8/10) | Base64, hex, morse, URL encoding, HTML entities |
+| Character | 69% (9/13) | Homoglyphs, fullwidth, leetspeak, combining marks |
+| Baseline | 56% (5/9) | Direct "ignore instructions" prompts, negative tests |
+| Email-specific | 9% (1/11) | HTML comments, signature injection, hidden divs |
+
+The email-specific gap (9%) is a known limitation — these attacks exploit HTML structure that the ML model wasn't trained on. Improving this is on the [roadmap](#roadmap).
+
+**Why publish this?** Most security tools only share success stories. We think you should know exactly what's caught and what isn't, so you can layer your defenses accordingly.
 
 ## Roadmap
 
