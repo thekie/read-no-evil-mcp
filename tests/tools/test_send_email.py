@@ -28,8 +28,7 @@ class TestSendEmail:
                 body="Test body",
             )
 
-        assert "Email sent successfully" in result
-        assert "recipient@example.com" in result
+        assert result == "Email sent successfully to recipient@example.com"
         mock_mailbox.send_email.assert_called_once_with(
             to=["recipient@example.com"],
             subject="Test Subject",
@@ -58,9 +57,10 @@ class TestSendEmail:
                 cc=["cc1@example.com", "cc2@example.com"],
             )
 
-        assert "Email sent successfully" in result
-        assert "recipient@example.com" in result
-        assert "CC: cc1@example.com, cc2@example.com" in result
+        assert result == (
+            "Email sent successfully to recipient@example.com"
+            " (CC: cc1@example.com, cc2@example.com)"
+        )
         mock_mailbox.send_email.assert_called_once_with(
             to=["recipient@example.com"],
             subject="Test Subject",
@@ -89,7 +89,7 @@ class TestSendEmail:
                 reply_to="replies@example.com",
             )
 
-        assert "Email sent successfully" in result
+        assert result == "Email sent successfully to recipient@example.com"
         mock_mailbox.send_email.assert_called_once_with(
             to=["recipient@example.com"],
             subject="Test Subject",
@@ -117,9 +117,7 @@ class TestSendEmail:
                 body="Test body",
             )
 
-        assert "Email sent successfully" in result
-        assert "r1@example.com" in result
-        assert "r2@example.com" in result
+        assert result == "Email sent successfully to r1@example.com, r2@example.com"
 
     def test_send_email_permission_denied(self) -> None:
         """Test send_email returns error when send permission is denied."""
@@ -141,8 +139,7 @@ class TestSendEmail:
                 body="Test body",
             )
 
-        assert "Permission denied" in result
-        assert "Send access denied" in result
+        assert result == "Permission denied: Send access denied for this account"
 
     def test_send_email_sending_not_configured(self) -> None:
         """Test send_email returns error when sending is not configured."""
@@ -164,8 +161,7 @@ class TestSendEmail:
                 body="Test body",
             )
 
-        assert "Error" in result
-        assert "Sending not configured" in result
+        assert result == "Error: Sending not configured for this account"
 
     def test_send_email_passes_account_to_create_securemailbox(self) -> None:
         """Test send_email passes account to create_securemailbox."""
@@ -215,9 +211,9 @@ class TestSendEmail:
                 ],
             )
 
-        assert "Email sent successfully" in result
-        assert "1 attachment(s)" in result
-        assert "test.txt" in result
+        assert result == (
+            "Email sent successfully to recipient@example.com with 1 attachment(s): test.txt"
+        )
 
         # Verify attachment was passed to mailbox
         call_args = mock_mailbox.send_email.call_args
@@ -257,10 +253,10 @@ class TestSendEmail:
                 ],
             )
 
-        assert "Email sent successfully" in result
-        assert "2 attachment(s)" in result
-        assert "doc.pdf" in result
-        assert "image.png" in result
+        assert result == (
+            "Email sent successfully to recipient@example.com"
+            " with 2 attachment(s): doc.pdf, image.png"
+        )
 
     def test_send_email_with_path_attachment(self, tmp_path) -> None:
         """Test send_email tool with file path attachment."""
@@ -291,8 +287,9 @@ class TestSendEmail:
                 ],
             )
 
-        assert "Email sent successfully" in result
-        assert "report.csv" in result
+        assert result == (
+            "Email sent successfully to recipient@example.com with 1 attachment(s): report.csv"
+        )
 
     def test_send_email_attachment_missing_filename(self) -> None:
         """Test send_email returns error when attachment is missing filename."""
@@ -312,7 +309,7 @@ class TestSendEmail:
                 attachments=[{"content": base64.b64encode(b"data").decode()}],
             )
 
-        assert "Invalid input" in result
+        assert result.startswith("Invalid input:")
         assert "filename" in result
 
     def test_send_email_attachment_missing_content_and_path(self) -> None:
@@ -333,8 +330,7 @@ class TestSendEmail:
                 attachments=[{"filename": "test.txt"}],
             )
 
-        assert "Invalid input" in result
-        assert "content" in result or "path" in result
+        assert result == "Invalid input: Attachment 'test.txt' must have either 'content' or 'path'"
 
     def test_send_email_with_empty_attachments_list(self) -> None:
         """Test send_email with empty attachments list."""
@@ -355,9 +351,7 @@ class TestSendEmail:
                 attachments=[],
             )
 
-        assert "Email sent successfully" in result
-        # Should not mention attachments when list is empty
-        assert "attachment" not in result.lower()
+        assert result == "Email sent successfully to recipient@example.com"
 
     def test_send_email_with_none_attachments(self) -> None:
         """Test send_email with None attachments (backwards compat)."""
@@ -378,7 +372,7 @@ class TestSendEmail:
                 attachments=None,
             )
 
-        assert "Email sent successfully" in result
+        assert result == "Email sent successfully to recipient@example.com"
 
 
 class TestParseAttachments:

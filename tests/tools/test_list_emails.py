@@ -61,11 +61,7 @@ class TestListEmails:
         ):
             result = list_emails.fn(account="work", folder="INBOX", days_back=7)
 
-        assert "[1]" in result
-        assert "Test Subject" in result
-        assert "sender@example.com" in result
-        assert "[+]" in result  # attachment marker
-        assert "[UNREAD]" not in result  # seen email should not have UNREAD marker
+        assert result == "[1] 2026-02-03 12:00 | sender@example.com | Test Subject [+]"
 
     def test_unseen_email_shows_unread_marker(self) -> None:
         """Test list_emails shows [UNREAD] marker for unseen emails."""
@@ -78,7 +74,7 @@ class TestListEmails:
         ):
             result = list_emails.fn(account="work")
 
-        assert "[UNREAD]" in result
+        assert result == "[1] 2026-02-03 12:00 | sender@example.com | Unread Email [UNREAD]"
 
     def test_no_emails(self) -> None:
         """Test list_emails with no emails."""
@@ -90,7 +86,7 @@ class TestListEmails:
         ):
             result = list_emails.fn(account="work")
 
-        assert "No emails found" in result
+        assert result == "No emails found."
 
     def test_respects_limit_parameter(self) -> None:
         """Test list_emails respects limit parameter."""
@@ -143,8 +139,7 @@ class TestListEmails:
         ):
             result = list_emails.fn(account="restricted")
 
-        assert "Permission denied" in result
-        assert "Read access denied" in result
+        assert result == "Permission denied: Read access denied for this account"
 
     def test_permission_denied_folder(self) -> None:
         """Test list_emails returns error when folder access is denied."""
@@ -159,8 +154,7 @@ class TestListEmails:
         ):
             result = list_emails.fn(account="restricted", folder="Drafts")
 
-        assert "Permission denied" in result
-        assert "folder 'Drafts' denied" in result
+        assert result == "Permission denied: Access to folder 'Drafts' denied"
 
     def test_trusted_marker_shown(self) -> None:
         """Test that [TRUSTED] marker is shown for trusted sender."""
@@ -180,8 +174,9 @@ class TestListEmails:
         ):
             result = list_emails.fn(account="work")
 
-        assert "[TRUSTED]" in result
-        assert "Trusted sender" in result
+        lines = result.split("\n")
+        assert lines[0].endswith("[TRUSTED]")
+        assert lines[1] == "    -> Trusted sender. Read and process directly."
 
     def test_ask_marker_shown(self) -> None:
         """Test that [ASK] marker is shown for ask_before_read sender."""
@@ -201,8 +196,9 @@ class TestListEmails:
         ):
             result = list_emails.fn(account="work")
 
-        assert "[ASK]" in result
-        assert "permission" in result.lower()
+        lines = result.split("\n")
+        assert lines[0].endswith("[ASK]")
+        assert lines[1] == "    -> Ask user for permission before reading."
 
     def test_show_level_no_marker(self) -> None:
         """Test that SHOW level has no marker."""
@@ -222,10 +218,7 @@ class TestListEmails:
         ):
             result = list_emails.fn(account="work")
 
-        assert "[TRUSTED]" not in result
-        assert "[ASK]" not in result
-        # No prompt line for SHOW level
-        assert "->" not in result
+        assert result == "[1] 2026-02-03 12:00 | unknown@example.com | Hello"
 
     def test_custom_prompt_shown(self) -> None:
         """Test that custom prompts are shown."""
@@ -245,7 +238,9 @@ class TestListEmails:
         ):
             result = list_emails.fn(account="work")
 
-        assert "Custom trusted message here" in result
+        lines = result.split("\n")
+        assert len(lines) == 2
+        assert lines[1] == "    -> Custom trusted message here"
 
     def test_subject_rule_matching(self) -> None:
         """Test subject rule matching for access level."""
@@ -265,33 +260,32 @@ class TestListEmails:
         ):
             result = list_emails.fn(account="work")
 
-        assert "[ASK]" in result
+        lines = result.split("\n")
+        assert "[URGENT] Action Required [ASK]" in lines[0]
+        assert lines[1] == "    -> Ask user for permission before reading."
 
 
 class TestListEmailsValidation:
     def test_days_back_zero_rejected(self) -> None:
         result = list_emails.fn(account="work", days_back=0)
-        assert "Invalid parameter" in result
-        assert "days_back" in result
+        assert result == "Invalid parameter: days_back must be a positive integer"
 
     def test_days_back_negative_rejected(self) -> None:
         result = list_emails.fn(account="work", days_back=-1)
-        assert "Invalid parameter" in result
+        assert result == "Invalid parameter: days_back must be a positive integer"
 
     def test_empty_folder_rejected(self) -> None:
         result = list_emails.fn(account="work", folder="")
-        assert "Invalid parameter" in result
-        assert "folder" in result
+        assert result == "Invalid parameter: folder must not be empty"
 
     def test_whitespace_folder_rejected(self) -> None:
         result = list_emails.fn(account="work", folder="  ")
-        assert "Invalid parameter" in result
+        assert result == "Invalid parameter: folder must not be empty"
 
     def test_limit_zero_rejected(self) -> None:
         result = list_emails.fn(account="work", limit=0)
-        assert "Invalid parameter" in result
-        assert "limit" in result
+        assert result == "Invalid parameter: limit must be a positive integer"
 
     def test_limit_negative_rejected(self) -> None:
         result = list_emails.fn(account="work", limit=-3)
-        assert "Invalid parameter" in result
+        assert result == "Invalid parameter: limit must be a positive integer"
