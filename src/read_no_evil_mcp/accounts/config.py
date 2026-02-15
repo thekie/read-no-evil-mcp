@@ -1,10 +1,71 @@
 """Account configuration models with discriminated union for multi-connector support."""
 
+from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
+from read_no_evil_mcp.accounts._validators import validate_regex_pattern
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
+from read_no_evil_mcp.protection.models import ProtectionConfig
+
+
+class AccessLevel(str, Enum):
+    """Access level for email based on sender/subject rules.
+
+    Levels are ordered by restrictiveness: hide > ask_before_read > show > trusted.
+    When multiple rules match, the most restrictive level wins.
+    """
+
+    TRUSTED = "trusted"
+    SHOW = "show"
+    ASK_BEFORE_READ = "ask_before_read"
+    HIDE = "hide"
+
+
+# Restrictiveness order (higher index = more restrictive)
+ACCESS_LEVEL_RESTRICTIVENESS: dict[AccessLevel, int] = {
+    AccessLevel.TRUSTED: 0,
+    AccessLevel.SHOW: 1,
+    AccessLevel.ASK_BEFORE_READ: 2,
+    AccessLevel.HIDE: 3,
+}
+
+
+class SenderRule(BaseModel):
+    """Rule for matching email sender addresses.
+
+    Attributes:
+        pattern: Regex pattern to match against sender email address.
+        access: Access level to assign when pattern matches.
+    """
+
+    pattern: str = Field(..., min_length=1, description="Regex pattern for sender email")
+    access: AccessLevel = Field(..., description="Access level when pattern matches")
+
+    @field_validator("pattern")
+    @classmethod
+    def validate_pattern(cls, v: str) -> str:
+        """Validate that the pattern is a valid regex without ReDoS risk."""
+        return validate_regex_pattern(v)
+
+
+class SubjectRule(BaseModel):
+    """Rule for matching email subject lines.
+
+    Attributes:
+        pattern: Regex pattern to match against email subject.
+        access: Access level to assign when pattern matches.
+    """
+
+    pattern: str = Field(..., min_length=1, description="Regex pattern for subject line")
+    access: AccessLevel = Field(..., description="Access level when pattern matches")
+
+    @field_validator("pattern")
+    @classmethod
+    def validate_pattern(cls, v: str) -> str:
+        """Validate that the pattern is a valid regex without ReDoS risk."""
+        return validate_regex_pattern(v)
 
 
 class BaseAccountConfig(BaseModel):
@@ -72,22 +133,36 @@ class IMAPAccountConfig(BaseAccountConfig):
         default=None,
         description="Display name for outgoing emails (e.g., 'Atlas')",
     )
+    sent_folder: str | None = Field(
+        default="Sent",
+        description="IMAP folder to save sent emails to (e.g., 'Sent', '[Gmail]/Sent Mail'). "
+        "Set to null to disable saving sent emails.",
+    )
+
+    # Protection settings (overrides global threshold)
+    protection: ProtectionConfig | None = Field(
+        default=None,
+        description="Per-account protection settings (overrides global threshold)",
+    )
+
+    # Access rules
+    sender_rules: list[SenderRule] = Field(
+        default_factory=list,
+        description="Rules for matching sender email addresses",
+    )
+    subject_rules: list[SubjectRule] = Field(
+        default_factory=list,
+        description="Rules for matching email subject lines",
+    )
+    list_prompts: dict[AccessLevel, str | None] = Field(
+        default_factory=dict,
+        description="Agent prompts shown in list_emails per access level",
+    )
+    read_prompts: dict[AccessLevel, str | None] = Field(
+        default_factory=dict,
+        description="Agent prompts shown in get_email per access level",
+    )
 
 
-# Future connectors will follow the same pattern as IMAPAccountConfig:
-# - Inherit from BaseAccountConfig
-# - Add a `type` field with Literal["connector_name"]
-# - Add connector-specific fields
-# Examples: GmailAccountConfig (type="gmail"), MSGraphAccountConfig (type="msgraph")
-
-# Discriminated union - Pydantic picks the right type based on "type" field.
-# When adding new connectors, convert AccountConfig to a discriminated union:
-#
-#     from typing import Annotated, Union
-#     AccountConfig = Annotated[
-#         Union[IMAPAccountConfig, GmailAccountConfig, MSGraphAccountConfig],
-#         Field(discriminator="type"),
-#     ]
-#
-# For now with single type, use simple alias (discriminator activates with Union).
+# When adding new connector types, convert this to a discriminated union on "type".
 AccountConfig = IMAPAccountConfig

@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from pydantic import Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -11,6 +12,8 @@ from pydantic_settings import (
 )
 
 from read_no_evil_mcp.accounts.config import AccountConfig
+from read_no_evil_mcp.defaults import DEFAULT_MAX_ATTACHMENT_SIZE
+from read_no_evil_mcp.protection.models import ProtectionConfig
 
 
 class YamlConfigSettingsSource(PydanticBaseSettingsSource):
@@ -19,7 +22,7 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
     Looks for config file in the following order:
     1. RNOE_CONFIG_FILE environment variable
     2. ./rnoe.yaml (current directory)
-    3. ~/.config/read-no-evil-mcp/config.yaml
+    3. $XDG_CONFIG_HOME/read-no-evil-mcp/config.yaml (defaults to ~/.config)
     """
 
     def get_field_value(self, field: Any, field_name: str) -> tuple[Any, str, bool]:
@@ -42,10 +45,11 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
         """Read YAML config from file."""
         import yaml
 
+        xdg_config = os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
         config_paths = [
             os.environ.get("RNOE_CONFIG_FILE"),
             Path.cwd() / "rnoe.yaml",
-            Path.home() / ".config" / "read-no-evil-mcp" / "config.yaml",
+            Path(xdg_config) / "read-no-evil-mcp" / "config.yaml",
         ]
 
         for path in config_paths:
@@ -76,8 +80,19 @@ class Settings(BaseSettings):
     # Multi-account configuration
     accounts: list[AccountConfig] = []
 
+    # Protection settings
+    protection: ProtectionConfig = Field(default_factory=ProtectionConfig)
+
     # Application defaults
     default_lookback_days: int = 7
+    max_attachment_size: int = DEFAULT_MAX_ATTACHMENT_SIZE
+
+    @field_validator("max_attachment_size")
+    @classmethod
+    def _validate_max_attachment_size(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("max_attachment_size must be positive")
+        return v
 
     @classmethod
     def settings_customise_sources(

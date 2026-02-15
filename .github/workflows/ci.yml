@@ -2,9 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, development]
   pull_request:
-    branches: [main]
+    branches: [main, development]
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -16,28 +19,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+        run: uv sync --extra dev --python ${{ matrix.python-version }}
 
       - name: Lint with ruff
         run: |
-          ruff check src tests
-          ruff format --check src tests
+          uv run ruff check src tests
+          uv run ruff format --check src tests
 
       - name: Type check with mypy
         run: |
-          mypy src
+          uv run mypy src
 
       - name: Run tests
         run: |
-          pytest --tb=short
+          uv run pytest --tb=short
 
   build:
     runs-on: ubuntu-latest
@@ -46,18 +48,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
 
       - name: Build package
-        run: |
-          pip install build
-          python -m build
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: dist
-          path: dist/
+        run: uv build

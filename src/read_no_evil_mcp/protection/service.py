@@ -3,8 +3,8 @@
 import re
 from html.parser import HTMLParser
 
-from read_no_evil_mcp.models import ScanResult
 from read_no_evil_mcp.protection.heuristic import HeuristicScanner
+from read_no_evil_mcp.protection.models import ScanResult
 
 
 class _HTMLTextExtractor(HTMLParser):
@@ -37,12 +37,15 @@ def strip_html_tags(html: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-class ProtectionService:
-    """Orchestrates content scanning for prompt injection attacks.
+_HTML_TAG_PATTERN = re.compile(r"<[a-zA-Z][^>]*>")
 
-    Delegates to HeuristicScanner which uses ProtectAI's DeBERTa model
-    for ML-based prompt injection detection.
-    """
+
+def _looks_like_html(content: str) -> bool:
+    return bool(_HTML_TAG_PATTERN.search(content))
+
+
+class ProtectionService:
+    """Scans content for prompt injection using HeuristicScanner (ProtectAI DeBERTa model)."""
 
     def __init__(self, scanner: HeuristicScanner | None = None) -> None:
         """Initialize the protection service.
@@ -67,7 +70,7 @@ class ProtectionService:
             return ScanResult(is_safe=True, score=0.0, detected_patterns=[])
 
         # Strip HTML tags if content looks like HTML
-        if "<" in content and ">" in content:
+        if _looks_like_html(content):
             content = strip_html_tags(content)
             if not content:
                 return ScanResult(is_safe=True, score=0.0, detected_patterns=[])

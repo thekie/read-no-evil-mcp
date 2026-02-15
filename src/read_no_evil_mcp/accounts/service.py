@@ -4,11 +4,15 @@ from pydantic import SecretStr
 
 from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.accounts.credentials.base import CredentialBackend
+from read_no_evil_mcp.defaults import DEFAULT_MAX_ATTACHMENT_SIZE
 from read_no_evil_mcp.email.connectors.base import BaseConnector
+from read_no_evil_mcp.email.connectors.config import IMAPConfig, SMTPConfig
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
 from read_no_evil_mcp.exceptions import AccountNotFoundError, UnsupportedConnectorError
+from read_no_evil_mcp.filtering.access_rules import AccessRuleMatcher
 from read_no_evil_mcp.mailbox import SecureMailbox
-from read_no_evil_mcp.models import IMAPConfig, SMTPConfig
+from read_no_evil_mcp.protection.heuristic import HeuristicScanner
+from read_no_evil_mcp.protection.service import ProtectionService
 
 
 class AccountService:
@@ -22,15 +26,21 @@ class AccountService:
         self,
         accounts: list[AccountConfig],
         credentials: CredentialBackend,
+        max_attachment_size: int = DEFAULT_MAX_ATTACHMENT_SIZE,
+        default_threshold: float = 0.5,
     ) -> None:
         """Initialize the account service.
 
         Args:
             accounts: List of account configurations.
             credentials: Backend for retrieving account credentials.
+            max_attachment_size: Maximum attachment size in bytes.
+            default_threshold: Global detection threshold (0.0-1.0).
         """
         self._accounts = {a.id: a for a in accounts}
         self._credentials = credentials
+        self._max_attachment_size = max_attachment_size
+        self._default_threshold = default_threshold
 
     def list_accounts(self) -> list[str]:
         """Return list of configured account IDs.
@@ -39,6 +49,23 @@ class AccountService:
             List of account identifiers in the order they were configured.
         """
         return list(self._accounts.keys())
+
+    def get_config(self, account_id: str) -> AccountConfig:
+        """Get the configuration for an account.
+
+        Args:
+            account_id: The unique identifier of the account.
+
+        Returns:
+            The account configuration.
+
+        Raises:
+            AccountNotFoundError: If the account ID is not found.
+        """
+        config = self._accounts.get(account_id)
+        if not config:
+            raise AccountNotFoundError(account_id)
+        return config
 
     def _create_connector(self, config: AccountConfig, password: SecretStr) -> BaseConnector:
         """Create a connector based on account configuration.
@@ -60,6 +87,7 @@ class AccountService:
                 username=config.username,
                 password=password,
                 ssl=config.ssl,
+                sent_folder=config.sent_folder,
             )
 
             # Create SMTP config if send permission is enabled
@@ -73,7 +101,10 @@ class AccountService:
                     ssl=config.smtp_ssl,
                 )
 
-            return IMAPConnector(imap_config, smtp_config=smtp_config)
+            return IMAPConnector(
+                imap_config,
+                smtp_config=smtp_config,
+            )
 
         raise UnsupportedConnectorError(config.type)
 
@@ -101,9 +132,29 @@ class AccountService:
         # Use config.from_address, fall back to config.username if not set
         from_address = config.from_address or config.username
 
+        # Create access rules matcher if rules are configured
+        access_rules_matcher = AccessRuleMatcher(
+            sender_rules=config.sender_rules,
+            subject_rules=config.subject_rules,
+        )
+
+        # Resolve threshold: per-account override > global default
+        threshold = (
+            config.protection.threshold
+            if config.protection is not None
+            else self._default_threshold
+        )
+        scanner = HeuristicScanner(threshold=threshold)
+        protection = ProtectionService(scanner=scanner)
+
         return SecureMailbox(
             connector,
             config.permissions,
+            protection=protection,
             from_address=from_address,
             from_name=config.from_name,
+            access_rules_matcher=access_rules_matcher,
+            list_prompts=config.list_prompts or None,
+            read_prompts=config.read_prompts or None,
+            max_attachment_size=self._max_attachment_size,
         )

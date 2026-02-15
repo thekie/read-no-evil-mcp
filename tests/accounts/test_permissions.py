@@ -1,9 +1,9 @@
-"""Tests for AccountPermissions and PermissionChecker."""
+"""Tests for AccountPermissions."""
 
 import pytest
+from pydantic import ValidationError
 
-from read_no_evil_mcp.accounts.permissions import AccountPermissions, PermissionChecker
-from read_no_evil_mcp.exceptions import PermissionDeniedError
+from read_no_evil_mcp.accounts.permissions import AccountPermissions, RecipientRule
 
 
 class TestAccountPermissions:
@@ -16,6 +16,7 @@ class TestAccountPermissions:
         assert permissions.send is False
         assert permissions.move is False
         assert permissions.folders is None
+        assert permissions.allowed_recipients is None
 
     def test_explicit_permissions(self) -> None:
         """Test explicit permission settings."""
@@ -49,127 +50,49 @@ class TestAccountPermissions:
 
         assert permissions.read is False
 
-
-class TestPermissionChecker:
-    def test_check_read_allowed(self) -> None:
-        """Test check_read passes when read is allowed."""
-        permissions = AccountPermissions(read=True)
-        checker = PermissionChecker(permissions)
-
-        # Should not raise
-        checker.check_read()
-
-    def test_check_read_denied(self) -> None:
-        """Test check_read raises when read is denied."""
-        permissions = AccountPermissions(read=False)
-        checker = PermissionChecker(permissions)
-
-        with pytest.raises(PermissionDeniedError) as exc_info:
-            checker.check_read()
-
-        assert "Read access denied" in str(exc_info.value)
-
-    def test_check_folder_all_allowed(self) -> None:
-        """Test check_folder passes when all folders allowed (None)."""
-        permissions = AccountPermissions(folders=None)
-        checker = PermissionChecker(permissions)
-
-        # Should not raise for any folder
-        checker.check_folder("INBOX")
-        checker.check_folder("Sent")
-        checker.check_folder("Drafts")
-
-    def test_check_folder_specific_allowed(self) -> None:
-        """Test check_folder passes for allowed folders."""
-        permissions = AccountPermissions(folders=["INBOX", "Sent"])
-        checker = PermissionChecker(permissions)
-
-        # Should not raise for allowed folders
-        checker.check_folder("INBOX")
-        checker.check_folder("Sent")
-
-    def test_check_folder_denied(self) -> None:
-        """Test check_folder raises for non-allowed folders."""
-        permissions = AccountPermissions(folders=["INBOX"])
-        checker = PermissionChecker(permissions)
-
-        with pytest.raises(PermissionDeniedError) as exc_info:
-            checker.check_folder("Sent")
-
-        assert "Access to folder 'Sent' denied" in str(exc_info.value)
-
-    def test_check_delete_allowed(self) -> None:
-        """Test check_delete passes when delete is allowed."""
-        permissions = AccountPermissions(delete=True)
-        checker = PermissionChecker(permissions)
-
-        # Should not raise
-        checker.check_delete()
-
-    def test_check_delete_denied(self) -> None:
-        """Test check_delete raises when delete is denied."""
-        permissions = AccountPermissions(delete=False)
-        checker = PermissionChecker(permissions)
-
-        with pytest.raises(PermissionDeniedError) as exc_info:
-            checker.check_delete()
-
-        assert "Delete access denied" in str(exc_info.value)
-
-    def test_check_send_allowed(self) -> None:
-        """Test check_send passes when send is allowed."""
-        permissions = AccountPermissions(send=True)
-        checker = PermissionChecker(permissions)
-
-        # Should not raise
-        checker.check_send()
-
-    def test_check_send_denied(self) -> None:
-        """Test check_send raises when send is denied."""
-        permissions = AccountPermissions(send=False)
-        checker = PermissionChecker(permissions)
-
-        with pytest.raises(PermissionDeniedError) as exc_info:
-            checker.check_send()
-
-        assert "Send access denied" in str(exc_info.value)
-
-    def test_check_move_allowed(self) -> None:
-        """Test check_move passes when move is allowed."""
-        permissions = AccountPermissions(move=True)
-        checker = PermissionChecker(permissions)
-
-        # Should not raise
-        checker.check_move()
-
-    def test_check_move_denied(self) -> None:
-        """Test check_move raises when move is denied."""
-        permissions = AccountPermissions(move=False)
-        checker = PermissionChecker(permissions)
-
-        with pytest.raises(PermissionDeniedError) as exc_info:
-            checker.check_move()
-
-        assert "Move access denied" in str(exc_info.value)
-
-    def test_multiple_permission_checks(self) -> None:
-        """Test multiple permission checks in sequence."""
+    def test_allowed_recipients_with_rules(self) -> None:
+        """Test allowed_recipients with configured rules."""
         permissions = AccountPermissions(
-            read=True,
-            delete=True,
-            folders=["INBOX", "Archive"],
+            send=True,
+            allowed_recipients=[
+                RecipientRule(pattern=r"^team@example\.com$"),
+                RecipientRule(pattern=r"@corp\.com$"),
+            ],
         )
-        checker = PermissionChecker(permissions)
 
-        # All should pass
-        checker.check_read()
-        checker.check_delete()
-        checker.check_folder("INBOX")
-        checker.check_folder("Archive")
+        assert permissions.allowed_recipients is not None
+        assert len(permissions.allowed_recipients) == 2
+        assert permissions.allowed_recipients[0].pattern == r"^team@example\.com$"
+        assert permissions.allowed_recipients[1].pattern == r"@corp\.com$"
 
-        # This should fail
-        with pytest.raises(PermissionDeniedError):
-            checker.check_send()
+    def test_allowed_recipients_none_by_default(self) -> None:
+        """Test that allowed_recipients defaults to None (no restriction)."""
+        permissions = AccountPermissions(send=True)
 
-        with pytest.raises(PermissionDeniedError):
-            checker.check_folder("Sent")
+        assert permissions.allowed_recipients is None
+
+
+class TestRecipientRule:
+    def test_valid_exact_address_pattern(self) -> None:
+        rule = RecipientRule(pattern=r"^user@example\.com$")
+        assert rule.pattern == r"^user@example\.com$"
+
+    def test_valid_domain_pattern(self) -> None:
+        rule = RecipientRule(pattern=r"@example\.com$")
+        assert rule.pattern == r"@example\.com$"
+
+    def test_valid_wildcard_pattern(self) -> None:
+        rule = RecipientRule(pattern=r".*")
+        assert rule.pattern == ".*"
+
+    def test_rejects_nested_quantifier_pattern(self) -> None:
+        with pytest.raises(ValidationError, match="nested quantifiers"):
+            RecipientRule(pattern=r"(a+)+$")
+
+    def test_rejects_invalid_regex(self) -> None:
+        with pytest.raises(ValidationError, match="Invalid regex pattern"):
+            RecipientRule(pattern=r"[invalid")
+
+    def test_rejects_empty_pattern(self) -> None:
+        with pytest.raises(ValidationError):
+            RecipientRule(pattern="")

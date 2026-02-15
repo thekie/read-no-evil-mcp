@@ -4,17 +4,26 @@ Uses the ProtectAI DeBERTa model with PyTorch for ML-based
 prompt injection detection.
 """
 
+import logging
 from typing import Any
 
-import structlog
 from transformers import Pipeline, pipeline
 
-from read_no_evil_mcp.models import ScanResult
+from read_no_evil_mcp.protection.models import ScanResult
 
-logger = structlog.get_logger()
+logger = logging.getLogger(__name__)
 
 # Model for prompt injection detection
 MODEL_ID = "protectai/deberta-v3-base-prompt-injection-v2"
+INJECTION_LABEL = "INJECTION"
+
+
+def _extract_injection_score(results: list[dict[str, Any]]) -> float:
+    """Extract the INJECTION class probability from classifier results."""
+    for entry in results:
+        if entry["label"] == INJECTION_LABEL:
+            return float(entry["score"])
+    return 0.0
 
 
 class HeuristicScanner:
@@ -33,7 +42,7 @@ class HeuristicScanner:
     def _get_classifier(self) -> Any:
         """Lazy load the classifier to avoid slow startup."""
         if self._classifier is None:
-            logger.debug("Loading prompt injection model", model=MODEL_ID)
+            logger.debug("Loading prompt injection model (model=%s)", MODEL_ID)
             self._classifier = pipeline(
                 "text-classification",
                 model=MODEL_ID,
@@ -60,20 +69,18 @@ class HeuristicScanner:
             )
 
         classifier = self._get_classifier()
-        result = classifier(content)[0]
+        results = classifier(content, top_k=None)
 
-        # Model returns label "INJECTION" or "SAFE" with a score
-        is_injection = result["label"] == "INJECTION"
-        score: float = result["score"] if is_injection else 1.0 - result["score"]
+        score = _extract_injection_score(results)
 
         is_safe = score < self._threshold
         detected_patterns: list[str] = []
 
         if not is_safe:
             detected_patterns.append("prompt_injection")
-            logger.warning("Detected prompt injection", injection_score=score)
+            logger.warning("Detected prompt injection (injection_score=%s)", score)
         else:
-            logger.debug("No prompt injection detected", highest_score=score)
+            logger.debug("No prompt injection detected (highest_score=%s)", score)
 
         return ScanResult(
             is_safe=is_safe,

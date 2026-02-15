@@ -1,0 +1,47 @@
+name: Detection Payload
+description: Submit a prompt injection payload that should be detected (or is being missed)
+labels: ["detection"]
+body:
+  - type: dropdown
+    id: category
+    attributes:
+      label: Attack technique category
+      options:
+        - Direct instruction override
+        - Context manipulation
+        - Role-play / persona hijack
+        - Encoding / obfuscation
+        - Multi-turn / chain-of-thought exploitation
+        - Data exfiltration
+        - Tool misuse / function-calling abuse
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: payload
+    attributes:
+      label: Payload content
+      description: The exact prompt injection text. Use a code block if it contains special formatting.
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: expected-result
+    attributes:
+      label: Expected detection result
+      description: Should this payload be caught or is it currently being missed?
+      options:
+        - Should be detected (currently missed)
+        - Detected but should not be (false positive)
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Why this payload should (or should not) be detected, and any additional context.
+    validations:
+      required: false

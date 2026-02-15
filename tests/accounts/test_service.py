@@ -9,6 +9,7 @@ from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.accounts.credentials.base import CredentialBackend
 from read_no_evil_mcp.accounts.service import AccountService
 from read_no_evil_mcp.exceptions import AccountNotFoundError
+from read_no_evil_mcp.protection.models import ProtectionConfig
 
 
 class MockCredentialBackend(CredentialBackend):
@@ -295,3 +296,122 @@ class TestAccountService:
         # Verify SecureMailbox was called with username as from_address
         call_kwargs = mock_mailbox.call_args.kwargs
         assert call_kwargs["from_address"] == "user@work.com"
+
+    @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_passes_sent_folder(
+        self,
+        mock_mailbox: MagicMock,
+        mock_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox passes sent_folder via IMAPConfig."""
+        accounts = [
+            AccountConfig(
+                id="work",
+                host="mail.work.com",
+                username="work@example.com",
+                sent_folder="[Gmail]/Sent Mail",
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}))
+
+        service.get_mailbox("work")
+
+        imap_config = mock_connector.call_args.args[0]
+        assert imap_config.sent_folder == "[Gmail]/Sent Mail"
+
+    @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_passes_sent_folder_none(
+        self,
+        mock_mailbox: MagicMock,
+        mock_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox passes None sent_folder via IMAPConfig to disable saving."""
+        accounts = [
+            AccountConfig(
+                id="work",
+                host="mail.work.com",
+                username="work@example.com",
+                sent_folder=None,
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}))
+
+        service.get_mailbox("work")
+
+        imap_config = mock_connector.call_args.args[0]
+        assert imap_config.sent_folder is None
+
+    @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_uses_global_default_threshold(
+        self,
+        mock_mailbox: MagicMock,
+        mock_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox uses global default threshold when no per-account override."""
+        accounts = [
+            AccountConfig(
+                id="work",
+                host="mail.work.com",
+                username="work@example.com",
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}), default_threshold=0.7)
+
+        service.get_mailbox("work")
+
+        # Verify SecureMailbox was called with a protection service
+        call_kwargs = mock_mailbox.call_args.kwargs
+        protection = call_kwargs["protection"]
+        assert protection._scanner._threshold == 0.7
+
+    @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_uses_per_account_threshold_override(
+        self,
+        mock_mailbox: MagicMock,
+        mock_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox uses per-account threshold when configured."""
+        accounts = [
+            AccountConfig(
+                id="work",
+                host="mail.work.com",
+                username="work@example.com",
+                protection=ProtectionConfig(threshold=0.9),
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}), default_threshold=0.5)
+
+        service.get_mailbox("work")
+
+        # Verify the per-account threshold (0.9) overrides the global default (0.5)
+        call_kwargs = mock_mailbox.call_args.kwargs
+        protection = call_kwargs["protection"]
+        assert protection._scanner._threshold == 0.9
+
+    @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_passes_protection_to_secure_mailbox(
+        self,
+        mock_mailbox: MagicMock,
+        mock_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox passes ProtectionService to SecureMailbox."""
+        from read_no_evil_mcp.protection.service import ProtectionService
+
+        accounts = [
+            AccountConfig(
+                id="work",
+                host="mail.work.com",
+                username="work@example.com",
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}))
+
+        service.get_mailbox("work")
+
+        call_kwargs = mock_mailbox.call_args.kwargs
+        assert isinstance(call_kwargs["protection"], ProtectionService)
