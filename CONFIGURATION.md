@@ -1,6 +1,59 @@
 # Configuration Guide
 
-This guide covers access levels and sender/subject filtering rules in detail. For basic setup, see the [README](README.md).
+This guide covers protection settings, access levels, and sender/subject filtering rules in detail. For basic setup, see the [README](README.md).
+
+## Protection Settings
+
+The prompt injection detector uses a **threshold** to decide when to block an email. Each email gets a score between `0.0` (safe) and `1.0` (definitely malicious). Emails scoring **at or above** the threshold are blocked.
+
+### Global threshold
+
+Set a global default in the top-level `protection` section:
+
+```yaml
+protection:
+  threshold: 0.5   # Default — scores >= 0.5 are blocked
+```
+
+If omitted, the default threshold is `0.5`.
+
+### Per-account override
+
+Override the threshold for individual accounts. This is useful when different mailboxes have different risk profiles:
+
+```yaml
+protection:
+  threshold: 0.5
+
+accounts:
+  - id: "corporate"
+    type: "imap"
+    host: "mail.company.com"
+    username: "ceo@company.com"
+    protection:
+      threshold: 0.3   # Stricter — block more aggressively
+
+  - id: "newsletter"
+    type: "imap"
+    host: "imap.gmail.com"
+    username: "news@gmail.com"
+    protection:
+      threshold: 0.7   # More lenient — reduce false positives
+```
+
+When a per-account `protection` section is present, its threshold is used instead of the global default. Accounts without a `protection` section use the global threshold.
+
+### Choosing a threshold
+
+| Threshold | Effect | Use case |
+|-----------|--------|----------|
+| `0.2`–`0.3` | Very strict — blocks borderline content | High-security inboxes, executive accounts |
+| `0.5` | Balanced (default) | General-purpose email accounts |
+| `0.7`–`0.8` | Lenient — only blocks obvious attacks | Newsletters, automated notifications |
+| `1.0` | Effectively disables blocking | Testing only — **not recommended for production** |
+| `0.0` | Blocks everything | Testing only — no emails will pass through |
+
+The threshold must be between `0.0` and `1.0` (inclusive). Invalid values are rejected at config load time.
 
 ## Access Levels
 
@@ -231,6 +284,10 @@ accounts:
 default_lookback_days: 7          # How far back list_emails looks (default: 7)
 max_attachment_size: 26214400     # Max attachment size in bytes (default: 25 MB)
 
+# Prompt injection detection threshold (default: 0.5)
+protection:
+  threshold: 0.5                  # Scores >= this are blocked (0.0-1.0)
+
 accounts:
   - id: "work"                    # Used in RNOE_ACCOUNT_WORK_PASSWORD env var
     type: "imap"                  # Connector type (only "imap" currently)
@@ -246,6 +303,10 @@ accounts:
     from_address: "alice@company.com"  # Defaults to username if omitted
     from_name: "Alice"            # Display name in sent emails (optional)
     sent_folder: "Sent"           # Where to save sent copies (null to disable)
+
+    # Per-account detection threshold (overrides global)
+    protection:
+      threshold: 0.4              # Stricter than global default
 
     # Permissions — read-only by default
     permissions:
