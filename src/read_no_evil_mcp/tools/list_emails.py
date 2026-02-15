@@ -74,6 +74,17 @@ def list_emails(
             if secure_email.prompt:
                 lines.append(f"    -> {secure_email.prompt}")
 
+        # Show filtering summary if any emails were filtered
+        filter_parts: list[str] = []
+        if result.blocked_count > 0:
+            noun = "email" if result.blocked_count == 1 else "emails"
+            filter_parts.append(f"{result.blocked_count} {noun} blocked by security filter")
+        if result.hidden_count > 0:
+            noun = "email" if result.hidden_count == 1 else "emails"
+            filter_parts.append(f"{result.hidden_count} {noun} hidden by sender rules")
+        if filter_parts:
+            lines.append(f"\nNote: {', '.join(filter_parts)}")
+
         shown = len(result.items)
         if shown < result.total:
             next_offset = offset + shown

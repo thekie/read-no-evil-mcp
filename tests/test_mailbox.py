@@ -2046,3 +2046,147 @@ class TestSecureMailboxPagination:
             lookback=timedelta(days=7),
             from_date=None,
         )
+
+    def test_blocked_count_tracks_injection_filtered_emails(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+        default_permissions: AccountPermissions,
+    ) -> None:
+        """Test that blocked_count tracks emails filtered by prompt injection."""
+        mailbox = SecureMailbox(mock_connector, default_permissions, mock_protection)
+        mock_connector.fetch_emails.return_value = self._make_summaries(3)
+        mock_protection.scan.side_effect = [
+            ScanResult(is_safe=True, score=0.0, detected_patterns=[]),
+            ScanResult(is_safe=False, score=0.9, detected_patterns=["injection"]),
+            ScanResult(is_safe=True, score=0.0, detected_patterns=[]),
+        ]
+
+        result = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
+
+        assert len(result.items) == 2
+        assert result.blocked_count == 1
+        assert result.hidden_count == 0
+
+    def test_hidden_count_tracks_access_rule_filtered_emails(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+        default_permissions: AccountPermissions,
+    ) -> None:
+        """Test that hidden_count tracks emails filtered by HIDE access level."""
+        access_rules = AccessRuleMatcher(
+            sender_rules=[SenderRule(pattern=r".*@spam\.com", access=AccessLevel.HIDE)]
+        )
+        mailbox = SecureMailbox(
+            mock_connector,
+            default_permissions,
+            mock_protection,
+            access_rules_matcher=access_rules,
+        )
+        summaries = [
+            EmailSummary(
+                uid=1,
+                folder="INBOX",
+                subject="Normal",
+                sender=EmailAddress(address="friend@example.com"),
+                date=datetime(2026, 2, 3, 12, 0, 0),
+            ),
+            EmailSummary(
+                uid=2,
+                folder="INBOX",
+                subject="Spam",
+                sender=EmailAddress(address="spammer@spam.com"),
+                date=datetime(2026, 2, 3, 11, 0, 0),
+            ),
+            EmailSummary(
+                uid=3,
+                folder="INBOX",
+                subject="Also normal",
+                sender=EmailAddress(address="colleague@example.com"),
+                date=datetime(2026, 2, 3, 10, 0, 0),
+            ),
+        ]
+        mock_connector.fetch_emails.return_value = summaries
+
+        result = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
+
+        assert len(result.items) == 2
+        assert result.blocked_count == 0
+        assert result.hidden_count == 1
+
+    def test_both_blocked_and_hidden_counts(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+        default_permissions: AccountPermissions,
+    ) -> None:
+        """Test that both blocked_count and hidden_count track correctly."""
+        access_rules = AccessRuleMatcher(
+            sender_rules=[SenderRule(pattern=r".*@spam\.com", access=AccessLevel.HIDE)]
+        )
+        mailbox = SecureMailbox(
+            mock_connector,
+            default_permissions,
+            mock_protection,
+            access_rules_matcher=access_rules,
+        )
+        summaries = [
+            EmailSummary(
+                uid=1,
+                folder="INBOX",
+                subject="Normal",
+                sender=EmailAddress(address="friend@example.com"),
+                date=datetime(2026, 2, 3, 12, 0, 0),
+            ),
+            EmailSummary(
+                uid=2,
+                folder="INBOX",
+                subject="Malicious",
+                sender=EmailAddress(address="attacker@example.com"),
+                date=datetime(2026, 2, 3, 11, 0, 0),
+            ),
+            EmailSummary(
+                uid=3,
+                folder="INBOX",
+                subject="Hidden",
+                sender=EmailAddress(address="spammer@spam.com"),
+                date=datetime(2026, 2, 3, 10, 0, 0),
+            ),
+            EmailSummary(
+                uid=4,
+                folder="INBOX",
+                subject="Also normal",
+                sender=EmailAddress(address="colleague@example.com"),
+                date=datetime(2026, 2, 3, 9, 0, 0),
+            ),
+        ]
+        mock_connector.fetch_emails.return_value = summaries
+        mock_protection.scan.side_effect = [
+            ScanResult(is_safe=True, score=0.0, detected_patterns=[]),
+            ScanResult(is_safe=False, score=0.9, detected_patterns=["injection"]),
+            ScanResult(is_safe=True, score=0.0, detected_patterns=[]),
+            ScanResult(is_safe=True, score=0.0, detected_patterns=[]),
+        ]
+
+        result = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
+
+        assert len(result.items) == 2
+        assert result.blocked_count == 1
+        assert result.hidden_count == 1
+
+    def test_no_filtering_returns_zero_counts(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+        default_permissions: AccountPermissions,
+    ) -> None:
+        """Test that zero counts are returned when no emails are filtered."""
+        mailbox = SecureMailbox(mock_connector, default_permissions, mock_protection)
+        mock_connector.fetch_emails.return_value = self._make_summaries(3)
+
+        result = mailbox.fetch_emails("INBOX", lookback=timedelta(days=7))
+
+        assert len(result.items) == 3
+        assert result.blocked_count == 0
+        assert result.hidden_count == 0

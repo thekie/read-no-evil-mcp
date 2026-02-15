@@ -39,6 +39,8 @@ def _create_secure_summary(
 def _create_mock_mailbox(
     secure_emails: list[SecureEmailSummary] | None = None,
     total: int | None = None,
+    blocked_count: int = 0,
+    hidden_count: int = 0,
 ) -> MagicMock:
     """Create a mock mailbox with standard setup."""
     items = secure_emails or []
@@ -46,6 +48,8 @@ def _create_mock_mailbox(
     mock_mailbox.fetch_emails.return_value = FetchResult(
         items=items,
         total=total if total is not None else len(items),
+        blocked_count=blocked_count,
+        hidden_count=hidden_count,
     )
     mock_mailbox.__enter__ = MagicMock(return_value=mock_mailbox)
     mock_mailbox.__exit__ = MagicMock(return_value=None)
@@ -353,3 +357,75 @@ class TestListEmailsValidation:
     def test_offset_negative_rejected(self) -> None:
         result = list_emails.fn(account="work", offset=-1)
         assert result == "Invalid parameter: offset must be a non-negative integer"
+
+
+class TestListEmailsFilterCounts:
+    def test_blocked_count_shown(self) -> None:
+        """Test that blocked count note is shown when emails are blocked."""
+        secure_emails = [_create_secure_summary(uid=1)]
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails, blocked_count=3)
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = list_emails.fn(account="work")
+
+        assert "Note: 3 emails blocked by security filter" in result
+
+    def test_hidden_count_shown(self) -> None:
+        """Test that hidden count note is shown with singular noun."""
+        secure_emails = [_create_secure_summary(uid=1)]
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails, hidden_count=1)
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = list_emails.fn(account="work")
+
+        assert "Note: 1 email hidden by sender rules" in result
+
+    def test_both_counts_shown(self) -> None:
+        """Test that both blocked and hidden counts are shown together."""
+        secure_emails = [_create_secure_summary(uid=1)]
+        mock_mailbox = _create_mock_mailbox(
+            secure_emails=secure_emails, blocked_count=2, hidden_count=1
+        )
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = list_emails.fn(account="work")
+
+        assert "Note: 2 emails blocked by security filter, 1 email hidden by sender rules" in result
+
+    def test_no_filter_note_when_zero_counts(self) -> None:
+        """Test that no filter note is shown when counts are zero."""
+        secure_emails = [_create_secure_summary(uid=1)]
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails)
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = list_emails.fn(account="work")
+
+        assert "Note:" not in result
+
+    def test_filter_note_with_pagination(self) -> None:
+        """Test that both filter note and pagination message are shown."""
+        secure_emails = [_create_secure_summary(uid=1), _create_secure_summary(uid=2)]
+        mock_mailbox = _create_mock_mailbox(
+            secure_emails=secure_emails, total=5, blocked_count=2, hidden_count=1
+        )
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = list_emails.fn(account="work", limit=2)
+
+        assert "Note: 2 emails blocked by security filter, 1 email hidden by sender rules" in result
+        assert "Showing 2 of 5 emails. Use offset=2 to see more." in result
