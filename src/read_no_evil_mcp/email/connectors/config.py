@@ -11,6 +11,7 @@ class IMAPConfig(BaseModel):
     username: str
     password: SecretStr
     ssl: bool = True
+    sent_folder: str | None = "Sent"
 
 
 class SMTPConfig(BaseModel):

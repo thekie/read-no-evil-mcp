@@ -1,6 +1,6 @@
 """IMAP connector for reading emails using imap-tools."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from imap_tools import AND, MailBox, MailBoxUnencrypted
 from imap_tools import EmailAddress as IMAPEmailAddress
@@ -254,7 +254,7 @@ class IMAPConnector(BaseConnector):
         reply_to: str | None = None,
         attachments: list[OutgoingAttachment] | None = None,
     ) -> bool:
-        """Send an email via SMTP.
+        """Send an email via SMTP and save a copy to the Sent folder.
 
         Args:
             from_address: Sender email address (e.g., "user@example.com").
@@ -281,7 +281,7 @@ class IMAPConnector(BaseConnector):
         if not self._smtp_connector:
             raise RuntimeError("Not connected. Call connect() first.")
 
-        return self._smtp_connector.send_email(
+        msg = self._smtp_connector.build_message(
             from_address=from_address,
             to=to,
             subject=subject,
@@ -291,3 +291,20 @@ class IMAPConnector(BaseConnector):
             reply_to=reply_to,
             attachments=attachments,
         )
+
+        # Send via SMTP
+        recipients = list(to)
+        if cc:
+            recipients.extend(cc)
+        self._smtp_connector.send_message(from_address, recipients, msg)
+
+        # Save to Sent folder via IMAP
+        if self.config.sent_folder and self._mailbox:
+            self._mailbox.append(
+                msg.as_bytes(),
+                self.config.sent_folder,
+                dt=datetime.now(),
+                flag_set=[r"\Seen"],
+            )
+
+        return True

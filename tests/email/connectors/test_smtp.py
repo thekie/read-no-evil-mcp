@@ -548,3 +548,101 @@ class TestSMTPConnector:
                     body="Test",
                     from_name="Evil\nBcc: attacker@evil.com",
                 )
+
+
+class TestSMTPConnectorBuildMessage:
+    @pytest.fixture
+    def smtp_config(self) -> SMTPConfig:
+        return SMTPConfig(
+            host="smtp.example.com",
+            port=587,
+            username="user@example.com",
+            password=SecretStr("password123"),
+            ssl=False,
+        )
+
+    def test_build_message_basic(self, smtp_config: SMTPConfig) -> None:
+        connector = SMTPConnector(smtp_config)
+
+        msg = connector.build_message(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test Subject",
+            body="Test body",
+        )
+
+        assert msg["From"] == "sender@example.com"
+        assert msg["To"] == "recipient@example.com"
+        assert msg["Subject"] == "Test Subject"
+        assert "Test body" in msg.as_string()
+
+    def test_build_message_with_from_name(self, smtp_config: SMTPConfig) -> None:
+        connector = SMTPConnector(smtp_config)
+
+        msg = connector.build_message(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test",
+            body="Body",
+            from_name="Atlas",
+        )
+
+        assert msg["From"] == "Atlas <sender@example.com>"
+
+    def test_build_message_with_cc(self, smtp_config: SMTPConfig) -> None:
+        connector = SMTPConnector(smtp_config)
+
+        msg = connector.build_message(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test",
+            body="Body",
+            cc=["cc1@example.com", "cc2@example.com"],
+        )
+
+        assert msg["Cc"] == "cc1@example.com, cc2@example.com"
+
+    def test_build_message_with_reply_to(self, smtp_config: SMTPConfig) -> None:
+        connector = SMTPConnector(smtp_config)
+
+        msg = connector.build_message(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test",
+            body="Body",
+            reply_to="replies@example.com",
+        )
+
+        assert msg["Reply-To"] == "replies@example.com"
+
+    def test_build_message_with_attachment(self, smtp_config: SMTPConfig) -> None:
+        connector = SMTPConnector(smtp_config)
+
+        attachment = OutgoingAttachment(
+            filename="test.txt",
+            content=b"file content",
+            mime_type="text/plain",
+        )
+
+        msg = connector.build_message(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test",
+            body="Body",
+            attachments=[attachment],
+        )
+
+        msg_str = msg.as_string()
+        assert 'filename="test.txt"' in msg_str
+        assert "Content-Type: text/plain" in msg_str
+
+    def test_build_message_rejects_header_injection(self, smtp_config: SMTPConfig) -> None:
+        connector = SMTPConnector(smtp_config)
+
+        with pytest.raises(ValueError):
+            connector.build_message(
+                from_address="evil@example.com\nBcc: attacker@evil.com",
+                to=["recipient@example.com"],
+                subject="Test",
+                body="Body",
+            )

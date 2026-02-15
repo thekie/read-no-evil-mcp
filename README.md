@@ -300,6 +300,11 @@ accounts:
     from_address: "user@company.com"  # Defaults to username if not set
     from_name: "John Doe"             # Optional display name
 
+    # Sent folder (where to save copies of sent emails via IMAP)
+    sent_folder: "Sent"               # Default: "Sent" (use null to disable)
+    # sent_folder: "[Gmail]/Sent Mail"  # Gmail example
+    # sent_folder: null                 # Disable saving sent emails
+
     permissions:
       send: true
 
