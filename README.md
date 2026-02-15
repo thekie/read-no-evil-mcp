@@ -194,7 +194,7 @@ accounts:
 
 ### Access Rules
 
-Filter emails by sender and subject patterns. Assign trust levels so known senders pass through directly while unknown senders require confirmation.
+Filter emails by sender and subject patterns. Assign trust levels so known senders pass through directly while unknown senders require confirmation. See the **[Configuration Guide](CONFIGURATION.md)** for regex syntax, tips, and more examples.
 
 ```yaml
 accounts:
@@ -205,7 +205,7 @@ accounts:
 
     # Sender-based rules (regex on email address)
     sender_rules:
-      - pattern: ".*@mycompany\\.com"
+      - pattern: "@mycompany\\.com$"
         access: trusted
 
       - pattern: ".*@external-vendor\\.com"
