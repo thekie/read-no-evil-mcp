@@ -45,20 +45,17 @@ class IMAPConnector(BaseConnector):
         self,
         config: IMAPConfig,
         smtp_config: SMTPConfig | None = None,
-        sent_folder: str | None = "Sent",
     ) -> None:
         """Initialize IMAP connector.
 
         Args:
             config: IMAP server configuration.
             smtp_config: Optional SMTP configuration for sending emails.
-            sent_folder: IMAP folder to save sent emails to. None to disable.
         """
         self.config = config
         self._mailbox: MailBox | MailBoxUnencrypted | None = None
         self._smtp_config = smtp_config
         self._smtp_connector: SMTPConnector | None = None
-        self._sent_folder = sent_folder
 
     def connect(self) -> None:
         """Establish connection to IMAP server (and SMTP if configured)."""
@@ -270,7 +267,7 @@ class IMAPConnector(BaseConnector):
             attachments: Optional list of file attachments.
 
         Returns:
-            True if email was sent and saved successfully.
+            True if email was sent successfully.
 
         Raises:
             NotImplementedError: If SMTP is not configured.
@@ -284,7 +281,6 @@ class IMAPConnector(BaseConnector):
         if not self._smtp_connector:
             raise RuntimeError("Not connected. Call connect() first.")
 
-        # Build the message once for both SMTP sending and IMAP saving
         msg = self._smtp_connector.build_message(
             from_address=from_address,
             to=to,
@@ -300,13 +296,13 @@ class IMAPConnector(BaseConnector):
         recipients = list(to)
         if cc:
             recipients.extend(cc)
-        self._smtp_connector.send_message(from_address, recipients, msg.as_string())
+        self._smtp_connector.send_message(from_address, recipients, msg)
 
         # Save to Sent folder via IMAP
-        if self._sent_folder and self._mailbox:
+        if self.config.sent_folder and self._mailbox:
             self._mailbox.append(
                 msg.as_bytes(),
-                self._sent_folder,
+                self.config.sent_folder,
                 dt=datetime.now(),
                 flag_set=[r"\Seen"],
             )

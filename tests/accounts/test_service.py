@@ -303,7 +303,7 @@ class TestAccountService:
         mock_mailbox: MagicMock,
         mock_connector: MagicMock,
     ) -> None:
-        """Test get_mailbox passes sent_folder to IMAPConnector."""
+        """Test get_mailbox passes sent_folder via IMAPConfig."""
         accounts = [
             AccountConfig(
                 id="work",
@@ -316,8 +316,8 @@ class TestAccountService:
 
         service.get_mailbox("work")
 
-        call_kwargs = mock_connector.call_args.kwargs
-        assert call_kwargs["sent_folder"] == "[Gmail]/Sent Mail"
+        imap_config = mock_connector.call_args.args[0]
+        assert imap_config.sent_folder == "[Gmail]/Sent Mail"
 
     @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
     @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
@@ -326,7 +326,7 @@ class TestAccountService:
         mock_mailbox: MagicMock,
         mock_connector: MagicMock,
     ) -> None:
-        """Test get_mailbox passes None sent_folder to disable saving."""
+        """Test get_mailbox passes None sent_folder via IMAPConfig to disable saving."""
         accounts = [
             AccountConfig(
                 id="work",
@@ -339,5 +339,5 @@ class TestAccountService:
 
         service.get_mailbox("work")
 
-        call_kwargs = mock_connector.call_args.kwargs
-        assert call_kwargs["sent_folder"] is None
+        imap_config = mock_connector.call_args.args[0]
+        assert imap_config.sent_folder is None

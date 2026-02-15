@@ -142,13 +142,15 @@ class SMTPConnector:
 
         return msg
 
-    def send_message(self, from_address: str, recipients: list[str], message: str) -> None:
+    def send_message(
+        self, from_address: str, recipients: list[str], message: MIMEMultipart
+    ) -> None:
         """Send a pre-built message via SMTP.
 
         Args:
             from_address: Envelope sender address.
             recipients: List of envelope recipient addresses.
-            message: Raw message string (RFC 2822 format).
+            message: Composed MIME message.
 
         Raises:
             RuntimeError: If not connected to SMTP server.
@@ -157,7 +159,7 @@ class SMTPConnector:
         if not self._connection:
             raise RuntimeError("Not connected. Call connect() first.")
 
-        self._connection.sendmail(from_address, recipients, message)
+        self._connection.sendmail(from_address, recipients, message.as_string())
 
     def send_email(
         self,
@@ -204,5 +206,5 @@ class SMTPConnector:
         if cc:
             recipients.extend(cc)
 
-        self.send_message(from_address, recipients, msg.as_string())
+        self.send_message(from_address, recipients, msg)
         return True

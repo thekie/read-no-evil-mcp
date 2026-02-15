@@ -543,7 +543,13 @@ class TestIMAPConnectorWithSMTP:
         mock_smtp = MagicMock()
         mock_smtp_class.return_value = mock_smtp
 
-        connector = IMAPConnector(imap_config, smtp_config=smtp_config, sent_folder="Sent")
+        imap_config_with_sent = IMAPConfig(
+            host="imap.example.com",
+            username="user",
+            password=SecretStr("secret"),
+            sent_folder="Sent",
+        )
+        connector = IMAPConnector(imap_config_with_sent, smtp_config=smtp_config)
         connector.connect()
 
         connector.send(
@@ -577,9 +583,13 @@ class TestIMAPConnectorWithSMTP:
         mock_smtp = MagicMock()
         mock_smtp_class.return_value = mock_smtp
 
-        connector = IMAPConnector(
-            imap_config, smtp_config=smtp_config, sent_folder="[Gmail]/Sent Mail"
+        imap_config_gmail = IMAPConfig(
+            host="imap.example.com",
+            username="user",
+            password=SecretStr("secret"),
+            sent_folder="[Gmail]/Sent Mail",
         )
+        connector = IMAPConnector(imap_config_gmail, smtp_config=smtp_config)
         connector.connect()
 
         connector.send(
@@ -607,7 +617,13 @@ class TestIMAPConnectorWithSMTP:
         mock_smtp = MagicMock()
         mock_smtp_class.return_value = mock_smtp
 
-        connector = IMAPConnector(imap_config, smtp_config=smtp_config, sent_folder=None)
+        imap_config_no_sent = IMAPConfig(
+            host="imap.example.com",
+            username="user",
+            password=SecretStr("secret"),
+            sent_folder=None,
+        )
+        connector = IMAPConnector(imap_config_no_sent, smtp_config=smtp_config)
         connector.connect()
 
         result = connector.send(

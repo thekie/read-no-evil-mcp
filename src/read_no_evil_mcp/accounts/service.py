@@ -82,6 +82,7 @@ class AccountService:
                 username=config.username,
                 password=password,
                 ssl=config.ssl,
+                sent_folder=config.sent_folder,
             )
 
             # Create SMTP config if send permission is enabled
@@ -98,7 +99,6 @@ class AccountService:
             return IMAPConnector(
                 imap_config,
                 smtp_config=smtp_config,
-                sent_folder=config.sent_folder,
             )
 
         raise UnsupportedConnectorError(config.type)
