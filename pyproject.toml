@@ -28,7 +28,6 @@ dependencies = [
     "fastmcp",
     "transformers>=4.30",
     "torch",
-    "structlog>=24",
     "imap-tools",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
