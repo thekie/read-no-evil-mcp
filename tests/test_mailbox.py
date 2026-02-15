@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from read_no_evil_mcp.accounts.config import AccessLevel, SenderRule, SubjectRule
-from read_no_evil_mcp.accounts.permissions import AccountPermissions
+from read_no_evil_mcp.accounts.permissions import AccountPermissions, RecipientRule
 from read_no_evil_mcp.email.connectors.base import BaseConnector
 from read_no_evil_mcp.email.models import OutgoingAttachment
 from read_no_evil_mcp.exceptions import PermissionDeniedError
@@ -643,6 +643,230 @@ class TestSecureMailbox:
 
         assert "From address not configured" in str(exc_info.value)
         mock_connector.send.assert_not_called()
+
+    def test_send_email_allowed_recipient_permits(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test send_email succeeds when recipient matches allowed pattern."""
+        mock_connector.can_send.return_value = True
+        mock_connector.send.return_value = True
+        permissions = AccountPermissions(
+            send=True,
+            allowed_recipients=[RecipientRule(pattern=r"@example\.com$")],
+        )
+        mailbox = SecureMailbox(
+            mock_connector,
+            permissions,
+            mock_protection,
+            from_address="sender@example.com",
+        )
+
+        result = mailbox.send_email(
+            to=["alice@example.com"],
+            subject="Test",
+            body="Test body",
+        )
+
+        assert result is True
+        mock_connector.send.assert_called_once()
+
+    def test_send_email_denied_recipient_raises(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test send_email raises PermissionDeniedError for unlisted recipient."""
+        mock_connector.can_send.return_value = True
+        permissions = AccountPermissions(
+            send=True,
+            allowed_recipients=[RecipientRule(pattern=r"^team@example\.com$")],
+        )
+        mailbox = SecureMailbox(
+            mock_connector,
+            permissions,
+            mock_protection,
+            from_address="sender@example.com",
+        )
+
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            mailbox.send_email(
+                to=["outsider@evil.com"],
+                subject="Test",
+                body="Test body",
+            )
+
+        assert "outsider@evil.com" in str(exc_info.value)
+        assert "not in the allowed recipients list" in str(exc_info.value)
+        mock_connector.send.assert_not_called()
+
+    def test_send_email_cc_validated_against_allowlist(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test that CC recipients are also validated against the allowlist."""
+        mock_connector.can_send.return_value = True
+        permissions = AccountPermissions(
+            send=True,
+            allowed_recipients=[RecipientRule(pattern=r"@example\.com$")],
+        )
+        mailbox = SecureMailbox(
+            mock_connector,
+            permissions,
+            mock_protection,
+            from_address="sender@example.com",
+        )
+
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            mailbox.send_email(
+                to=["alice@example.com"],
+                subject="Test",
+                body="Test body",
+                cc=["outsider@evil.com"],
+            )
+
+        assert "outsider@evil.com" in str(exc_info.value)
+        mock_connector.send.assert_not_called()
+
+    def test_send_email_case_insensitive_matching(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test that recipient matching is case-insensitive."""
+        mock_connector.can_send.return_value = True
+        mock_connector.send.return_value = True
+        permissions = AccountPermissions(
+            send=True,
+            allowed_recipients=[RecipientRule(pattern=r"^alice@example\.com$")],
+        )
+        mailbox = SecureMailbox(
+            mock_connector,
+            permissions,
+            mock_protection,
+            from_address="sender@example.com",
+        )
+
+        result = mailbox.send_email(
+            to=["ALICE@EXAMPLE.COM"],
+            subject="Test",
+            body="Test body",
+        )
+
+        assert result is True
+        mock_connector.send.assert_called_once()
+
+    def test_send_email_multiple_patterns_any_match(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test that recipient needs to match only one of the allowed patterns."""
+        mock_connector.can_send.return_value = True
+        mock_connector.send.return_value = True
+        permissions = AccountPermissions(
+            send=True,
+            allowed_recipients=[
+                RecipientRule(pattern=r"^team@example\.com$"),
+                RecipientRule(pattern=r"@corp\.com$"),
+            ],
+        )
+        mailbox = SecureMailbox(
+            mock_connector,
+            permissions,
+            mock_protection,
+            from_address="sender@example.com",
+        )
+
+        result = mailbox.send_email(
+            to=["anyone@corp.com"],
+            subject="Test",
+            body="Test body",
+        )
+
+        assert result is True
+
+    def test_send_email_no_allowed_recipients_permits_all(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test that None allowed_recipients permits sending to anyone."""
+        mock_connector.can_send.return_value = True
+        mock_connector.send.return_value = True
+        permissions = AccountPermissions(send=True, allowed_recipients=None)
+        mailbox = SecureMailbox(
+            mock_connector,
+            permissions,
+            mock_protection,
+            from_address="sender@example.com",
+        )
+
+        result = mailbox.send_email(
+            to=["anyone@anywhere.com"],
+            subject="Test",
+            body="Test body",
+        )
+
+        assert result is True
+
+    def test_send_email_empty_allowed_recipients_denies_all(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+    ) -> None:
+        """Test that empty allowed_recipients list denies all recipients."""
+        mock_connector.can_send.return_value = True
+        permissions = AccountPermissions(send=True, allowed_recipients=[])
+        mailbox = SecureMailbox(
+            mock_connector,
+            permissions,
+            mock_protection,
+            from_address="sender@example.com",
+        )
+
+        with pytest.raises(PermissionDeniedError):
+            mailbox.send_email(
+                to=["anyone@example.com"],
+                subject="Test",
+                body="Test body",
+            )
+
+        mock_connector.send.assert_not_called()
+
+    def test_send_email_recipient_denied_logs_info(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test that denied recipients are logged at info level."""
+        mock_connector.can_send.return_value = True
+        permissions = AccountPermissions(
+            send=True,
+            allowed_recipients=[RecipientRule(pattern=r"@example\.com$")],
+        )
+        mailbox = SecureMailbox(
+            mock_connector,
+            permissions,
+            mock_protection,
+            from_address="sender@example.com",
+        )
+
+        with caplog.at_level(logging.INFO, logger="read_no_evil_mcp.mailbox"):
+            with pytest.raises(PermissionDeniedError):
+                mailbox.send_email(
+                    to=["bad@evil.com"],
+                    subject="Test",
+                    body="Test body",
+                )
+
+        assert any(
+            "Recipient denied by allowlist (recipient=bad@evil.com)" in r.message
+            for r in caplog.records
+        )
 
     def test_delete_email_success(
         self,

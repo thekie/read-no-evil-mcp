@@ -3,12 +3,12 @@
 import pytest
 from pydantic import ValidationError
 
+from read_no_evil_mcp.accounts._validators import _has_nested_quantifiers
 from read_no_evil_mcp.accounts.config import (
     AccessLevel,
     AccountConfig,
     SenderRule,
     SubjectRule,
-    _has_nested_quantifiers,
 )
 
 

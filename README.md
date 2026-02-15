@@ -314,6 +314,25 @@ accounts:
 max_attachment_size: 26214400
 ```
 
+#### Recipient Allowlist
+
+Restrict which addresses the agent can send to using regex patterns under `permissions.allowed_recipients`. When set, every recipient (`to` and `cc`) must match at least one pattern or the send is denied.
+
+```yaml
+    permissions:
+      send: true
+      allowed_recipients:
+        - pattern: "^team-inbox@company\\.com$"        # Exact address
+        - pattern: "@company\\.com$"                    # Entire domain
+        - pattern: "@(sales|support)\\.company\\.com$"  # Multiple subdomains
+```
+
+- Matching is **case-insensitive**.
+- Patterns use the same ReDoS-safe regex validation as sender/subject rules.
+- Always **anchor your patterns** (e.g., `@example\.com$` not `example\.com`) to avoid overly permissive matching.
+- When `allowed_recipients` is omitted or `null`, the agent can send to any address (if `send: true`).
+- An empty list (`allowed_recipients: []`) denies all recipients.
+
 The `send_email` tool supports:
 - Multiple recipients (`to`)
 - CC recipients (`cc`)
