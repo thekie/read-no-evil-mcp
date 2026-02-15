@@ -1,5 +1,6 @@
 """Tests for SMTPConnector."""
 
+import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -824,3 +825,200 @@ class TestHeaderInjectionEdgeCases:
                 body="Body",
                 from_name="Evil\nBcc: attacker@evil.com",
             )
+
+
+_SMTP_LOGGER = "read_no_evil_mcp.email.connectors.smtp"
+
+
+class TestSMTPConnectorLogging:
+    @pytest.fixture
+    def smtp_config(self) -> SMTPConfig:
+        return SMTPConfig(
+            host="smtp.example.com",
+            port=587,
+            username="user@example.com",
+            password=SecretStr("password123"),
+            ssl=False,
+        )
+
+    @pytest.fixture
+    def smtp_config_ssl(self) -> SMTPConfig:
+        return SMTPConfig(
+            host="smtp.example.com",
+            port=465,
+            username="user@example.com",
+            password=SecretStr("password123"),
+            ssl=True,
+        )
+
+    def test_connect_logs_debug_parameters(
+        self, smtp_config: SMTPConfig, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_smtp.return_value = MagicMock()
+            connector = SMTPConnector(smtp_config)
+
+            with caplog.at_level(logging.DEBUG, logger=_SMTP_LOGGER):
+                connector.connect()
+
+        debug_records = [r for r in caplog.records if r.levelname == "DEBUG"]
+        assert len(debug_records) == 1
+        assert debug_records[0].message == (
+            "Connecting to SMTP server (host=smtp.example.com, port=587, ssl=False)"
+        )
+
+    def test_connect_logs_debug_parameters_ssl(
+        self, smtp_config_ssl: SMTPConfig, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP_SSL") as mock_smtp:
+            mock_smtp.return_value = MagicMock()
+            connector = SMTPConnector(smtp_config_ssl)
+
+            with caplog.at_level(logging.DEBUG, logger=_SMTP_LOGGER):
+                connector.connect()
+
+        debug_records = [r for r in caplog.records if r.levelname == "DEBUG"]
+        assert len(debug_records) == 1
+        assert debug_records[0].message == (
+            "Connecting to SMTP server (host=smtp.example.com, port=465, ssl=True)"
+        )
+
+    def test_connect_logs_info_on_success(
+        self, smtp_config: SMTPConfig, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_smtp.return_value = MagicMock()
+            connector = SMTPConnector(smtp_config)
+
+            with caplog.at_level(logging.INFO, logger=_SMTP_LOGGER):
+                connector.connect()
+
+        info_records = [r for r in caplog.records if r.levelname == "INFO"]
+        assert len(info_records) == 1
+        assert info_records[0].message == ("SMTP connection established (host=smtp.example.com)")
+
+    def test_disconnect_logs_info(
+        self, smtp_config: SMTPConfig, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_smtp.return_value = MagicMock()
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            with caplog.at_level(logging.INFO, logger=_SMTP_LOGGER):
+                connector.disconnect()
+
+        info_records = [r for r in caplog.records if r.levelname == "INFO"]
+        assert len(info_records) == 1
+        assert info_records[0].message == "SMTP connection closed"
+
+    def test_disconnect_no_log_when_not_connected(
+        self, smtp_config: SMTPConfig, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        connector = SMTPConnector(smtp_config)
+
+        with caplog.at_level(logging.DEBUG, logger=_SMTP_LOGGER):
+            connector.disconnect()
+
+        assert len(caplog.records) == 0
+
+    def test_send_email_logs_info_on_success(
+        self, smtp_config: SMTPConfig, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_smtp.return_value = MagicMock()
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            with caplog.at_level(logging.INFO, logger=_SMTP_LOGGER):
+                connector.send_email(
+                    from_address="sender@example.com",
+                    to=["r1@example.com", "r2@example.com"],
+                    subject="Weekly Report",
+                    body="This body should not appear in logs",
+                )
+
+        info_records = [r for r in caplog.records if r.levelname == "INFO"]
+        assert len(info_records) == 1
+        assert info_records[0].message == ("Email sent (recipients=2, subject='Weekly Report')")
+
+    def test_send_email_with_cc_logs_total_recipients(
+        self, smtp_config: SMTPConfig, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_smtp.return_value = MagicMock()
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            with caplog.at_level(logging.INFO, logger=_SMTP_LOGGER):
+                connector.send_email(
+                    from_address="sender@example.com",
+                    to=["r1@example.com"],
+                    subject="Test",
+                    body="body",
+                    cc=["cc1@example.com", "cc2@example.com"],
+                )
+
+        info_records = [r for r in caplog.records if r.levelname == "INFO"]
+        assert len(info_records) == 1
+        assert info_records[0].message == "Email sent (recipients=3, subject='Test')"
+
+    def test_header_injection_logs_warning(
+        self, smtp_config: SMTPConfig, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_smtp.return_value = MagicMock()
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            with caplog.at_level(logging.WARNING, logger=_SMTP_LOGGER):
+                with pytest.raises(ValueError):
+                    connector.send_email(
+                        from_address="evil@example.com\nBcc: attacker@evil.com",
+                        to=["recipient@example.com"],
+                        subject="Test",
+                        body="Test",
+                    )
+
+        assert len(caplog.records) == 1
+        assert caplog.records[0].message == "Header injection attempt detected"
+
+    def test_logs_never_contain_password(
+        self, smtp_config: SMTPConfig, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_smtp.return_value = MagicMock()
+            connector = SMTPConnector(smtp_config)
+
+            with caplog.at_level(logging.DEBUG, logger=_SMTP_LOGGER):
+                connector.connect()
+                connector.send_email(
+                    from_address="sender@example.com",
+                    to=["recipient@example.com"],
+                    subject="Test",
+                    body="Test",
+                )
+                connector.disconnect()
+
+        all_log_text = " ".join(r.message for r in caplog.records)
+        assert "password123" not in all_log_text
+
+    def test_logs_never_contain_email_body(
+        self, smtp_config: SMTPConfig, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP") as mock_smtp:
+            mock_smtp.return_value = MagicMock()
+            connector = SMTPConnector(smtp_config)
+            connector.connect()
+
+            body_content = "Super secret email body content"
+            with caplog.at_level(logging.DEBUG, logger=_SMTP_LOGGER):
+                connector.send_email(
+                    from_address="sender@example.com",
+                    to=["recipient@example.com"],
+                    subject="Test",
+                    body=body_content,
+                )
+
+        all_log_text = " ".join(r.message for r in caplog.records)
+        assert body_content not in all_log_text
