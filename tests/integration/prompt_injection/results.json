@@ -131,7 +131,7 @@
       "technique": "fullwidth",
       "expected": "unknown",
       "actual": "detected",
-      "score": 0.9991,
+      "score": 1.0,
       "is_regression": false,
       "is_improvement": false
     },
@@ -221,7 +221,7 @@
       "technique": "subscript",
       "expected": "unknown",
       "actual": "detected",
-      "score": 0.9996,
+      "score": 1.0,
       "is_regression": false,
       "is_improvement": false
     },

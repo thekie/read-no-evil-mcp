@@ -1,6 +1,6 @@
 # 🛡️ Detection Matrix
 
-**Last updated:** 2026-02-15 22:18 UTC
+**Last updated:** 2026-02-15 22:35 UTC
 
 These results come from an **adversarial test suite** — payloads specifically crafted to bypass detection. The 71.6% rate reflects worst-case performance against targeted, research-grade attacks.
 
@@ -51,7 +51,7 @@ Detection rate: **9/13** (69%)
 | ✅ | `char_case_alternating` | case | 0.981 | unknown |
 | ✅ | `char_combining_marks` | combining | 0.997 | unknown |
 | ❌ | `char_diacritics` | diacritics | 0.011 | unknown |
-| ✅ | `char_fullwidth` | fullwidth | 0.999 | unknown |
+| ✅ | `char_fullwidth` | fullwidth | 1.000 | unknown |
 | ✅ | `char_homoglyph_cyrillic_a` | homoglyph | 1.000 | unknown |
 | ✅ | `char_homoglyph_greek_i` | homoglyph | 1.000 | unknown |
 | ❌ | `char_homoglyph_mixed` | homoglyph | 0.011 | unknown |
