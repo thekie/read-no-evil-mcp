@@ -135,7 +135,18 @@ For local-only access, set `RNOE_HTTP_HOST=127.0.0.1`. The default `0.0.0.0` bin
 
 ## Docker
 
-Run in a container to isolate email credentials from the LLM process:
+Pre-built images are available on GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/thekie/read-no-evil-mcp:latest
+docker run -p 8000:8000 -v ./config.yaml:/app/config.yaml:ro \
+  -e RNOE_ACCOUNT_GMAIL_PASSWORD="your-app-password" \
+  ghcr.io/thekie/read-no-evil-mcp
+```
+
+Multi-platform images (linux/amd64, linux/arm64) are published automatically on each release.
+
+To build locally instead:
 
 ```bash
 docker build -t read-no-evil-mcp .
