@@ -114,6 +114,25 @@ pip install read-no-evil-mcp
 
 </details>
 
+## Transport
+
+By default, the server uses **stdio** transport (for MCP clients like Claude Desktop). For HTTP-based integrations, set the `RNOE_TRANSPORT` environment variable:
+
+```bash
+# Run with Streamable HTTP transport
+RNOE_TRANSPORT=http read-no-evil-mcp
+```
+
+The HTTP server listens on `0.0.0.0:8000` by default. Customize with:
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `RNOE_TRANSPORT` | `stdio` | Transport protocol (`stdio` or `http`) |
+| `RNOE_HTTP_HOST` | `0.0.0.0` | Bind address for HTTP transport |
+| `RNOE_HTTP_PORT` | `8000` | Port for HTTP transport |
+
+For local-only access, set `RNOE_HTTP_HOST=127.0.0.1`. The default `0.0.0.0` binds to all interfaces, which is appropriate for containerized deployments.
+
 ## Configuration
 
 ### Config File Locations
@@ -385,6 +404,7 @@ The test suite includes **80+ attack payloads** across 7 categories.
 - [x] Sender-based access rules ([#84](https://github.com/thekie/read-no-evil-mcp/issues/84))
 - [x] Attachment support for send_email ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72))
 - [x] Pagination for list_emails ([#111](https://github.com/thekie/read-no-evil-mcp/issues/111))
+- [x] Streamable HTTP transport ([#187](https://github.com/thekie/read-no-evil-mcp/issues/187))
 - [ ] Configurable sensitivity levels
 - [ ] Attachment scanning
 - [ ] Docker image

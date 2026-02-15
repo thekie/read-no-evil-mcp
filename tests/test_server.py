@@ -13,6 +13,7 @@ from read_no_evil_mcp.exceptions import (
     ConfigError,
     PermissionDeniedError,
 )
+from read_no_evil_mcp.server import main
 from read_no_evil_mcp.tools import mcp
 
 EXPECTED_TOOLS = {
@@ -195,3 +196,44 @@ class TestInvalidInvocations:
     async def test_missing_required_param(self, client: Client) -> None:
         with pytest.raises(ToolError, match="Missing required argument"):
             await client.call_tool("list_folders", {})
+
+
+class TestTransportSelection:
+    @patch("read_no_evil_mcp.server.mcp")
+    def test_default_stdio_transport(
+        self, mock_mcp: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("RNOE_TRANSPORT", raising=False)
+        monkeypatch.delenv("RNOE_HTTP_HOST", raising=False)
+        monkeypatch.delenv("RNOE_HTTP_PORT", raising=False)
+        main()
+        mock_mcp.run.assert_called_once_with()
+
+    @patch("read_no_evil_mcp.server.mcp")
+    def test_http_transport_default_host_port(
+        self, mock_mcp: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RNOE_TRANSPORT", "http")
+        monkeypatch.delenv("RNOE_HTTP_HOST", raising=False)
+        monkeypatch.delenv("RNOE_HTTP_PORT", raising=False)
+        main()
+        mock_mcp.run.assert_called_once_with(transport="http", host="0.0.0.0", port=8000)
+
+    @patch("read_no_evil_mcp.server.mcp")
+    def test_http_transport_custom_host_port(
+        self, mock_mcp: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RNOE_TRANSPORT", "http")
+        monkeypatch.setenv("RNOE_HTTP_HOST", "127.0.0.1")
+        monkeypatch.setenv("RNOE_HTTP_PORT", "9090")
+        main()
+        mock_mcp.run.assert_called_once_with(transport="http", host="127.0.0.1", port=9090)
+
+    @patch("read_no_evil_mcp.server.mcp")
+    def test_invalid_port_raises_value_error(
+        self, mock_mcp: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RNOE_TRANSPORT", "http")
+        monkeypatch.setenv("RNOE_HTTP_PORT", "not-a-number")
+        with pytest.raises(ValueError, match="invalid literal for int()"):
+            main()
