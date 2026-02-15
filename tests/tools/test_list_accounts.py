@@ -14,8 +14,7 @@ class TestListAccounts:
         ):
             result = list_accounts.fn()
 
-        assert "work" in result
-        assert "personal" in result
+        assert result == "- work\n- personal"
 
     def test_no_accounts(self) -> None:
         """Test list_accounts with no accounts configured."""
@@ -25,7 +24,7 @@ class TestListAccounts:
         ):
             result = list_accounts.fn()
 
-        assert "No accounts configured" in result
+        assert result == "No accounts configured."
 
     def test_single_account(self) -> None:
         """Test list_accounts with single account."""
@@ -35,4 +34,4 @@ class TestListAccounts:
         ):
             result = list_accounts.fn()
 
-        assert "default" in result
+        assert result == "- default"

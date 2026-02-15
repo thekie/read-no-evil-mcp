@@ -38,6 +38,11 @@ def generate_matrix() -> str:
         "",
         f"**Last updated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
         "",
+        "These results come from an **adversarial test suite** — payloads specifically"
+        " crafted to bypass detection. The"
+        f" {rate:.1f}% rate reflects worst-case performance against targeted,"
+        " research-grade attacks.",
+        "",
         "## Summary",
         "",
         "| Metric | Value |",

@@ -2,6 +2,8 @@
 
 from datetime import datetime
 
+import pytest
+
 from read_no_evil_mcp.models import (
     Attachment,
     Email,
@@ -9,6 +11,7 @@ from read_no_evil_mcp.models import (
     EmailSummary,
     Folder,
     IMAPConfig,
+    OutgoingAttachment,
     ScanResult,
 )
 
@@ -84,6 +87,111 @@ class TestAttachment:
         assert att.size is None
 
 
+class TestOutgoingAttachment:
+    def test_with_content(self):
+        """Test attachment with in-memory content."""
+        content = b"Hello, World!"
+        att = OutgoingAttachment(
+            filename="test.txt",
+            content=content,
+            mime_type="text/plain",
+        )
+        assert att.filename == "test.txt"
+        assert att.mime_type == "text/plain"
+        assert att.get_content() == content
+
+    def test_with_path(self, tmp_path):
+        """Test attachment loaded from file path."""
+        file_path = tmp_path / "test.txt"
+        file_path.write_bytes(b"File content")
+
+        att = OutgoingAttachment(
+            filename="test.txt",
+            path=str(file_path),
+        )
+        assert att.get_content() == b"File content"
+
+    def test_default_mime_type(self):
+        """Test default MIME type is application/octet-stream."""
+        att = OutgoingAttachment(filename="test.bin", content=b"data")
+        assert att.mime_type == "application/octet-stream"
+
+    def test_content_takes_precedence_over_path(self, tmp_path):
+        """Test that content is used even if path is also provided."""
+        file_path = tmp_path / "test.txt"
+        file_path.write_bytes(b"File content")
+
+        att = OutgoingAttachment(
+            filename="test.txt",
+            content=b"Memory content",
+            path=str(file_path),
+        )
+        # Should return in-memory content, not file content
+        assert att.get_content() == b"Memory content"
+
+    def test_raises_without_content_or_path(self):
+        """Test that validation rejects attachment with neither content nor path."""
+        with pytest.raises(ValueError, match="Either content or path must be provided"):
+            OutgoingAttachment(filename="test.txt")
+
+    def test_raises_for_nonexistent_file(self):
+        """Test that get_content raises FileNotFoundError for missing file."""
+        att = OutgoingAttachment(
+            filename="test.txt",
+            path="/nonexistent/path/file.txt",
+        )
+        with pytest.raises(FileNotFoundError):
+            att.get_content()
+
+    def test_binary_content(self):
+        """Test attachment with binary content."""
+        content = bytes(range(256))
+        att = OutgoingAttachment(
+            filename="binary.bin",
+            content=content,
+            mime_type="application/octet-stream",
+        )
+        assert att.get_content() == content
+
+    def test_check_size_file_too_large(self, tmp_path):
+        """Test that check_size raises ValueError for oversized files."""
+        file_path = tmp_path / "large.bin"
+        file_path.write_bytes(b"x" * 101)
+
+        att = OutgoingAttachment(filename="large.bin", path=str(file_path))
+        with pytest.raises(ValueError, match="101 bytes.*max 100"):
+            att.check_size(max_size=100)
+
+    def test_check_size_content_too_large(self):
+        """Test that check_size raises ValueError for oversized in-memory content."""
+        att = OutgoingAttachment(filename="large.bin", content=b"x" * 101)
+        with pytest.raises(ValueError, match="101 bytes.*max 100"):
+            att.check_size(max_size=100)
+
+    def test_check_size_file_at_limit(self, tmp_path):
+        """Test that a file exactly at the size limit passes check_size."""
+        file_path = tmp_path / "exact.bin"
+        file_path.write_bytes(b"x" * 100)
+
+        att = OutgoingAttachment(filename="exact.bin", path=str(file_path))
+        att.check_size(max_size=100)  # should not raise
+
+    def test_check_size_content_at_limit(self):
+        """Test that in-memory content exactly at the size limit passes check_size."""
+        att = OutgoingAttachment(filename="exact.bin", content=b"x" * 100)
+        att.check_size(max_size=100)  # should not raise
+
+    def test_check_size_rejects_smaller_limit(self, tmp_path):
+        """Test that check_size rejects content exceeding a custom limit."""
+        file_path = tmp_path / "medium.bin"
+        file_path.write_bytes(b"x" * 50)
+
+        att = OutgoingAttachment(filename="medium.bin", path=str(file_path))
+        att.check_size(max_size=100)  # should not raise
+        with pytest.raises(ValueError, match="50 bytes.*max 10"):
+            att.check_size(max_size=10)
+
+
 class TestEmailSummary:
     def test_basic(self):
         summary = EmailSummary(
@@ -95,6 +203,7 @@ class TestEmailSummary:
         )
         assert summary.uid == 123
         assert summary.has_attachments is False
+        assert summary.is_seen is False
 
     def test_with_attachments(self):
         summary = EmailSummary(
@@ -106,6 +215,27 @@ class TestEmailSummary:
             has_attachments=True,
         )
         assert summary.has_attachments is True
+
+    def test_is_seen_default_false(self):
+        summary = EmailSummary(
+            uid=123,
+            folder="INBOX",
+            subject="Test",
+            sender=EmailAddress(address="sender@example.com"),
+            date=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        assert summary.is_seen is False
+
+    def test_is_seen_explicit_true(self):
+        summary = EmailSummary(
+            uid=123,
+            folder="INBOX",
+            subject="Test",
+            sender=EmailAddress(address="sender@example.com"),
+            date=datetime(2026, 2, 3, 12, 0, 0),
+            is_seen=True,
+        )
+        assert summary.is_seen is True
 
 
 class TestEmail:
@@ -122,6 +252,7 @@ class TestEmail:
         assert email.body_plain == "Hello, World!"
         assert email.body_html is None
         assert email.attachments == []
+        assert email.is_seen is False
 
     def test_full_email(self):
         email = Email(
@@ -141,6 +272,18 @@ class TestEmail:
         assert len(email.cc) == 1
         assert len(email.attachments) == 1
         assert email.message_id == "<abc123@example.com>"
+
+    def test_is_seen_inherited(self):
+        email = Email(
+            uid=123,
+            folder="INBOX",
+            subject="Test",
+            sender=EmailAddress(address="sender@example.com"),
+            date=datetime(2026, 2, 3, 12, 0, 0),
+            is_seen=True,
+            body_plain="Test body",
+        )
+        assert email.is_seen is True
 
 
 class TestScanResult:

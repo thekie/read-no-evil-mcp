@@ -6,7 +6,7 @@ from read_no_evil_mcp.accounts.config import (
     IMAPAccountConfig,
 )
 from read_no_evil_mcp.accounts.credentials import CredentialBackend, EnvCredentialBackend
-from read_no_evil_mcp.accounts.permissions import AccountPermissions, PermissionChecker
+from read_no_evil_mcp.accounts.permissions import AccountPermissions
 from read_no_evil_mcp.accounts.service import AccountService
 
 __all__ = [
@@ -17,5 +17,4 @@ __all__ = [
     "CredentialBackend",
     "EnvCredentialBackend",
     "IMAPAccountConfig",
-    "PermissionChecker",
 ]

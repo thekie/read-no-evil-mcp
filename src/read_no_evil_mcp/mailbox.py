@@ -1,13 +1,37 @@
 """Secure mailbox with prompt injection protection and permission enforcement."""
 
+import logging
+import re
 from datetime import date, timedelta
+from functools import lru_cache
 from types import TracebackType
 
+from read_no_evil_mcp.accounts.config import AccessLevel
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
+from read_no_evil_mcp.defaults import DEFAULT_MAX_ATTACHMENT_SIZE
 from read_no_evil_mcp.email.connectors.base import BaseConnector
+from read_no_evil_mcp.email.models import (
+    EmailSummary,
+    Folder,
+    OutgoingAttachment,
+)
 from read_no_evil_mcp.exceptions import PermissionDeniedError
-from read_no_evil_mcp.models import Email, EmailSummary, Folder, ScanResult
+from read_no_evil_mcp.filtering.access_rules import (
+    AccessRuleMatcher,
+    get_list_prompt,
+    get_read_prompt,
+)
+from read_no_evil_mcp.models import FetchResult, SecureEmail, SecureEmailSummary
+from read_no_evil_mcp.protection.models import ScanResult
 from read_no_evil_mcp.protection.service import ProtectionService
+
+logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=256)
+def _compile_recipient_pattern(pattern: str) -> re.Pattern[str]:
+    """Compile and cache a recipient regex pattern (case-insensitive)."""
+    return re.compile(pattern, re.IGNORECASE)
 
 
 class PromptInjectionError(Exception):
@@ -25,11 +49,10 @@ class PromptInjectionError(Exception):
 
 
 class SecureMailbox:
-    """Secure email access with prompt injection protection and permission enforcement.
+    """Scans email content for prompt injection before returning it to the agent.
 
-    Wraps a BaseConnector and scans email content before returning it.
-    Blocks emails that contain detected prompt injection attacks.
-    Enforces account permissions on all operations.
+    Blocks emails with detected attacks, enforces per-account permissions,
+    and annotates results with access level and prompt from access rules.
     """
 
     def __init__(
@@ -39,6 +62,10 @@ class SecureMailbox:
         protection: ProtectionService | None = None,
         from_address: str | None = None,
         from_name: str | None = None,
+        access_rules_matcher: AccessRuleMatcher | None = None,
+        list_prompts: dict[AccessLevel, str | None] | None = None,
+        read_prompts: dict[AccessLevel, str | None] | None = None,
+        max_attachment_size: int = DEFAULT_MAX_ATTACHMENT_SIZE,
     ) -> None:
         """Initialize secure mailbox.
 
@@ -46,66 +73,89 @@ class SecureMailbox:
             connector: Email connector for fetching and optionally sending emails.
             permissions: Account permissions to enforce.
             protection: Protection service for scanning. Defaults to standard service.
-            from_address: Sender email address for outgoing emails (e.g., "user@example.com").
-            from_name: Optional display name for sender (e.g., "Atlas").
+            from_address: Sender email address for outgoing emails.
+            from_name: Optional display name for sender.
+            access_rules_matcher: Matcher for sender/subject access rules.
+            list_prompts: Custom prompts for list_emails output per access level.
+            read_prompts: Custom prompts for get_email output per access level.
+            max_attachment_size: Maximum attachment size in bytes.
         """
         self._connector = connector
         self._permissions = permissions
         self._protection = protection or ProtectionService()
         self._from_address = from_address
         self._from_name = from_name
+        self._access_rules_matcher = access_rules_matcher or AccessRuleMatcher()
+        self._list_prompts = list_prompts
+        self._read_prompts = read_prompts
+        self._max_attachment_size = max_attachment_size
+
+    def _get_access_level(self, sender: str, subject: str) -> AccessLevel:
+        """Get access level for an email based on sender and subject rules."""
+        level = self._access_rules_matcher.get_access_level(sender, subject)
+        logger.debug("Access level for sender=%s subject=%r: %s", sender, subject, level.value)
+        return level
+
+    def _get_list_prompt(self, level: AccessLevel) -> str | None:
+        """Get the prompt to show in list_emails for an access level."""
+        return get_list_prompt(level, self._list_prompts)
+
+    def _get_read_prompt(self, level: AccessLevel) -> str | None:
+        """Get the prompt to show in get_email for an access level."""
+        return get_read_prompt(level, self._read_prompts)
 
     def _require_read(self) -> None:
-        """Check if read access is allowed.
-
-        Raises:
-            PermissionDeniedError: If read access is denied.
-        """
+        """Check if read access is allowed."""
         if not self._permissions.read:
+            logger.info("Read permission denied")
             raise PermissionDeniedError("Read access denied for this account")
 
     def _require_folder(self, folder: str) -> None:
-        """Check if access to a specific folder is allowed.
-
-        Args:
-            folder: The folder name to check access for.
-
-        Raises:
-            PermissionDeniedError: If access to the folder is denied.
-        """
+        """Check if access to a specific folder is allowed."""
         if self._permissions.folders is not None and folder not in self._permissions.folders:
+            logger.info("Folder access denied (folder=%s)", folder)
             raise PermissionDeniedError(f"Access to folder '{folder}' denied")
 
     def _require_move(self) -> None:
-        """Check if move access is allowed.
-
-        Raises:
-            PermissionDeniedError: If move access is denied.
-        """
+        """Check if move access is allowed."""
         if not self._permissions.move:
+            logger.info("Move permission denied")
             raise PermissionDeniedError("Move access denied for this account")
 
     def _filter_allowed_folders(self, folders: list[Folder]) -> list[Folder]:
-        """Filter folders to only include those allowed by permissions.
-
-        Args:
-            folders: List of folders to filter.
-
-        Returns:
-            List of folders that are allowed by permissions.
-        """
+        """Filter folders to only include those allowed by permissions."""
         if self._permissions.folders is None:
             return folders
         return [f for f in folders if f.name in self._permissions.folders]
 
     def _require_send(self) -> None:
-        """Check if send access is allowed.
-
-        Raises:
-            PermissionDeniedError: If send access is denied.
-        """
+        """Check if send access is allowed."""
         if not self._permissions.send:
+            logger.info("Send permission denied")
             raise PermissionDeniedError("Send access denied for this account")
+
+    def _require_allowed_recipients(self, to: list[str], cc: list[str] | None) -> None:
+        """Check all recipients against the allowed_recipients patterns.
+
+        Raises PermissionDeniedError if any recipient doesn't match at least one
+        allowed pattern.  Skips validation when allowed_recipients is None.
+        """
+        rules = self._permissions.allowed_recipients
+        if rules is None:
+            return
+
+        all_recipients = list(to)
+        if cc:
+            all_recipients.extend(cc)
+
+        for recipient in all_recipients:
+            if not any(
+                _compile_recipient_pattern(rule.pattern).search(recipient) for rule in rules
+            ):
+                logger.info("Recipient denied by allowlist (recipient=%s)", recipient)
+                raise PermissionDeniedError(
+                    f"Recipient '{recipient}' is not in the allowed recipients list"
+                )
 
     def connect(self) -> None:
         """Connect to the email server."""
@@ -143,21 +193,8 @@ class SecureMailbox:
         return self._filter_allowed_folders(folders)
 
     def _scan_summary(self, summary: EmailSummary) -> ScanResult:
-        """Scan email summary fields for prompt injection.
-
-        Args:
-            summary: Email summary to scan.
-
-        Returns:
-            ScanResult from scanning subject and sender.
-        """
-        parts: list[str] = [summary.subject]
-
-        if summary.sender.name:
-            parts.append(summary.sender.name)
-        parts.append(summary.sender.address)
-
-        combined = "\n".join(parts)
+        """Scan email summary fields for prompt injection."""
+        combined = "\n".join(summary.get_scannable_content().values())
         return self._protection.scan(combined)
 
     def fetch_emails(
@@ -167,20 +204,23 @@ class SecureMailbox:
         lookback: timedelta,
         from_date: date | None = None,
         limit: int | None = None,
-    ) -> list[EmailSummary]:
+        offset: int = 0,
+    ) -> FetchResult:
         """Fetch email summaries from a folder with protection scanning.
 
         Scans subject and sender fields for prompt injection.
-        Emails with detected attacks are filtered out.
+        Emails with detected attacks or HIDE access level are filtered out.
+        Pagination (offset/limit) is applied after filtering.
 
         Args:
             folder: Folder to fetch from (default: INBOX)
             lookback: How far back to look
             from_date: Starting point for lookback (default: today)
             limit: Maximum number of emails to return
+            offset: Number of emails to skip (default: 0)
 
         Returns:
-            List of safe EmailSummary objects, newest first.
+            FetchResult with paginated items and total count.
 
         Raises:
             PermissionDeniedError: If read access is denied or folder is not allowed.
@@ -192,18 +232,68 @@ class SecureMailbox:
             folder,
             lookback=lookback,
             from_date=from_date,
-            limit=limit,
         )
 
-        safe_summaries: list[EmailSummary] = []
+        secure_summaries: list[SecureEmailSummary] = []
+        blocked_count = 0
+        hidden_count = 0
         for summary in summaries:
+            # Filter by prompt injection scanning
             scan_result = self._scan_summary(summary)
-            if not scan_result.is_blocked:
-                safe_summaries.append(summary)
+            if scan_result.is_blocked:
+                blocked_count += 1
+                logger.warning(
+                    "Prompt injection blocked in fetch_emails "
+                    "(uid=%s, folder=%s, subject=%r, score=%.2f, patterns=%s)",
+                    summary.uid,
+                    summary.folder,
+                    summary.subject,
+                    scan_result.score,
+                    scan_result.detected_patterns,
+                )
+                continue
 
-        return safe_summaries
+            logger.debug(
+                "Email scan safe (uid=%s, folder=%s, score=%.2f)",
+                summary.uid,
+                summary.folder,
+                scan_result.score,
+            )
 
-    def get_email(self, folder: str, uid: int) -> Email | None:
+            # Get access level
+            access_level = self._get_access_level(summary.sender.address, summary.subject)
+
+            # Filter hidden emails
+            if access_level == AccessLevel.HIDE:
+                hidden_count += 1
+                logger.info(
+                    "Email hidden by access rules in fetch_emails (uid=%s, folder=%s, subject=%r)",
+                    summary.uid,
+                    summary.folder,
+                    summary.subject,
+                )
+                continue
+
+            # Build secure summary with access info
+            secure_summary = SecureEmailSummary(
+                summary=summary,
+                access_level=access_level,
+                prompt=self._get_list_prompt(access_level),
+            )
+            secure_summaries.append(secure_summary)
+
+        total = len(secure_summaries)
+        end = offset + limit if limit is not None else None
+        page = secure_summaries[offset:end]
+
+        return FetchResult(
+            items=page,
+            total=total,
+            blocked_count=blocked_count,
+            hidden_count=hidden_count,
+        )
+
+    def get_email(self, folder: str, uid: int) -> SecureEmail | None:
         """Get full email content by UID with protection scanning.
 
         Scans email content for prompt injection attacks before returning.
@@ -213,7 +303,7 @@ class SecureMailbox:
             uid: Unique identifier of the email
 
         Returns:
-            Full Email object or None if not found.
+            SecureEmail object (enriched with access level/prompt) or None if not found.
 
         Raises:
             PermissionDeniedError: If read access is denied or folder is not allowed.
@@ -227,25 +317,47 @@ class SecureMailbox:
         if email is None:
             return None
 
-        # Build content to scan: subject, sender, body
-        parts: list[str] = [email.subject]
+        # Get access level
+        access_level = self._get_access_level(email.sender.address, email.subject)
 
-        if email.sender.name:
-            parts.append(email.sender.name)
-        parts.append(email.sender.address)
+        # Check if hidden by access rules
+        if access_level == AccessLevel.HIDE:
+            logger.info(
+                "Email hidden by access rules in get_email (uid=%s, folder=%s, subject=%r)",
+                uid,
+                folder,
+                email.subject,
+            )
+            return None
 
-        if email.body_plain:
-            parts.append(email.body_plain)
-        if email.body_html:
-            parts.append(email.body_html)
-
-        combined = "\n".join(parts)
+        combined = "\n".join(email.get_scannable_content().values())
         scan_result = self._protection.scan(combined)
 
         if scan_result.is_blocked:
+            logger.warning(
+                "Prompt injection detected in get_email "
+                "(uid=%s, folder=%s, subject=%r, score=%.2f, patterns=%s)",
+                uid,
+                folder,
+                email.subject,
+                scan_result.score,
+                scan_result.detected_patterns,
+            )
             raise PromptInjectionError(scan_result, uid, folder)
 
-        return email
+        logger.debug(
+            "Email scan safe (uid=%s, folder=%s, score=%.2f)",
+            uid,
+            folder,
+            scan_result.score,
+        )
+
+        # Return secure email with access info
+        return SecureEmail(
+            email=email,
+            access_level=access_level,
+            prompt=self._get_read_prompt(access_level),
+        )
 
     def send_email(
         self,
@@ -254,6 +366,7 @@ class SecureMailbox:
         body: str,
         cc: list[str] | None = None,
         reply_to: str | None = None,
+        attachments: list[OutgoingAttachment] | None = None,
     ) -> bool:
         """Send an email.
 
@@ -263,6 +376,7 @@ class SecureMailbox:
             body: Email body text (plain text).
             cc: Optional list of CC recipients.
             reply_to: Optional Reply-To email address.
+            attachments: Optional list of file attachments.
 
         Returns:
             True if email was sent successfully.
@@ -272,12 +386,17 @@ class SecureMailbox:
             RuntimeError: If sending is not supported by the connector.
         """
         self._require_send()
+        self._require_allowed_recipients(to, cc)
 
         if not self._connector.can_send():
             raise RuntimeError("Sending not configured for this account")
 
         if not self._from_address:
             raise RuntimeError("From address not configured for this account")
+
+        if attachments:
+            for attachment in attachments:
+                attachment.check_size(max_size=self._max_attachment_size)
 
         return self._connector.send(
             from_address=self._from_address,
@@ -287,6 +406,7 @@ class SecureMailbox:
             from_name=self._from_name,
             cc=cc,
             reply_to=reply_to,
+            attachments=attachments,
         )
 
     def move_email(self, folder: str, uid: int, target_folder: str) -> bool:
@@ -323,6 +443,7 @@ class SecureMailbox:
             PermissionDeniedError: If delete access is denied or folder is not allowed.
         """
         if not self._permissions.delete:
+            logger.info("Delete permission denied")
             raise PermissionDeniedError("Delete access denied for this account")
         self._require_folder(folder)
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "read-no-evil-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "A secure email gateway MCP server that protects AI agents from prompt injection attacks in emails"
 readme = "README.md"
 license = "Apache-2.0"
@@ -12,7 +12,11 @@ requires-python = ">=3.10"
 authors = [
     { name = "read-no-evil-mcp contributors" }
 ]
-keywords = ["mcp", "email", "security", "prompt-injection", "llm"]
+keywords = [
+    "mcp", "prompt-injection", "email-security", "llm-security",
+    "ai-agents", "claude", "imap", "ai-safety", "deberta",
+    "email-gateway", "anthropic",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -23,12 +27,13 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Security",
     "Topic :: Communications :: Email",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
 ]
 dependencies = [
-    "fastmcp",
-    "transformers>=4.30",
-    "torch",
-    "structlog>=24",
+    "fastmcp>=2.14.5",
+    "transformers>=4.30,<5.0",
+    "torch>=2.0,<3.0",
     "imap-tools",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
@@ -51,6 +56,8 @@ read-no-evil-mcp = "read_no_evil_mcp.server:main"
 Homepage = "https://github.com/thekie/read-no-evil-mcp"
 Repository = "https://github.com/thekie/read-no-evil-mcp"
 Issues = "https://github.com/thekie/read-no-evil-mcp/issues"
+Documentation = "https://github.com/thekie/read-no-evil-mcp#readme"
+Changelog = "https://github.com/thekie/read-no-evil-mcp/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/read_no_evil_mcp"]

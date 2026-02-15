@@ -14,17 +14,28 @@ Instructions for AI coding assistants working on this project.
 - **MCP SDK** for Model Context Protocol server
 - **ProtectAI DeBERTa model** for prompt injection detection
 
+## Development Setup
+
+- **uv** for environment and dependency management
+- Install dependencies: `uv sync --extra dev`
+- All commands below should be run via `uv run` (e.g., `uv run pytest`)
+
 ## Code Style
 
 ### Formatting & Linting
 - **ruff** for linting and formatting
-- Run before committing: `ruff check . && ruff format . && mypy src/`
+- Run before committing: `uv run ruff check . && uv run ruff format . && uv run mypy src/`
 
 ### Type Hints
 - **mypy** with strict mode
 - All functions must have type hints
 - Use `| None` instead of `Optional[]`
 - External libs without stubs are configured in `pyproject.toml`
+
+### Logging
+- Use stdlib `logging` — no third-party logging libraries
+- Create loggers with `logger = logging.getLogger(__name__)`
+- Use `%`-style formatting: `logger.warning("msg (key=%s)", val)`
 
 ### Imports
 - Use absolute imports: `from read_no_evil_mcp.models import Email`
@@ -34,17 +45,27 @@ Instructions for AI coding assistants working on this project.
 
 ```
 src/read_no_evil_mcp/
-├── __init__.py          # Package exports
-├── models.py            # Pydantic data models
-├── connectors/          # Email provider connectors
-│   └── imap.py
-├── protection/          # Security scanners (ProtectAI DeBERTa model)
-└── server/              # MCP server implementation
+├── server.py              # MCP server entry point
+├── config.py              # App configuration loading
+├── mailbox.py             # SecureMailbox (main orchestrator)
+├── models.py              # Shared Pydantic models
+├── accounts/              # Account management & permissions
+├── email/                 # Email connectors
+│   ├── models.py          # Email data models
+│   └── connectors/        # IMAP (reading) and SMTP (sending)
+├── filtering/             # Sender/subject-based access rules
+├── protection/            # Prompt injection detection (ML + heuristic)
+└── tools/                 # MCP tool implementations
 
-tests/                   # Mirrors src/ structure
-├── test_models.py
-└── connectors/
-    └── test_imap.py
+tests/                     # Mirrors src/ structure
+├── accounts/
+├── email/connectors/
+├── filtering/
+├── protection/
+├── tools/
+└── integration/           # Integration tests (require ML model)
+    └── prompt_injection/
+        └── payloads/      # YAML-defined attack payloads
 ```
 
 ## Testing
@@ -52,7 +73,9 @@ tests/                   # Mirrors src/ structure
 - **pytest** for unit tests
 - Mirror source structure in `tests/`
 - Use mocks for external services (IMAP, etc.)
-- Run: `pytest`
+- Assert the full expected string, not individual substrings (e.g., `assert record.message == "full message"` instead of multiple `assert "part" in record.message`)
+- Run unit tests: `uv run pytest`
+- Run integration tests (requires ML model): `uv run pytest -m integration`
 
 ## Commit Messages
 
@@ -68,11 +91,12 @@ Example: `feat: Add Gmail API connector`
 
 ## PR Workflow
 
-1. Create feature branch from `main`
+1. Create feature branch from `development`
 2. Make changes with tests
 3. Ensure CI passes (lint, type check, tests)
-4. Create PR with clear description
+4. Create PR **targeting `development`** (not `main`)
 5. Reference related issues: `Closes #123`
+6. `main` is only updated via release merges from `development`
 
 ## Dependencies
 

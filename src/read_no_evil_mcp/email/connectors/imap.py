@@ -1,21 +1,24 @@
 """IMAP connector for reading emails using imap-tools."""
 
-from datetime import date, timedelta
+import logging
+from datetime import date, datetime, timedelta
 
 from imap_tools import AND, MailBox, MailBoxUnencrypted
 from imap_tools import EmailAddress as IMAPEmailAddress
 
 from read_no_evil_mcp.email.connectors.base import BaseConnector
+from read_no_evil_mcp.email.connectors.config import IMAPConfig, SMTPConfig
 from read_no_evil_mcp.email.connectors.smtp import SMTPConnector
-from read_no_evil_mcp.models import (
+from read_no_evil_mcp.email.models import (
     Attachment,
     Email,
     EmailAddress,
     EmailSummary,
     Folder,
-    IMAPConfig,
-    SMTPConfig,
+    OutgoingAttachment,
 )
+
+logger = logging.getLogger(__name__)
 
 # Default sender for emails without from address
 _DEFAULT_SENDER = EmailAddress(address="unknown@unknown")
@@ -58,7 +61,7 @@ class IMAPConnector(BaseConnector):
         self._smtp_connector: SMTPConnector | None = None
 
     def connect(self) -> None:
-        """Establish connection to IMAP server (and SMTP if configured)."""
+        """Establish connection to IMAP server."""
         if self.config.ssl:
             mailbox: MailBox | MailBoxUnencrypted = MailBox(self.config.host, self.config.port)
         else:
@@ -69,11 +72,6 @@ class IMAPConnector(BaseConnector):
             self.config.password.get_secret_value(),
         )
         self._mailbox = mailbox
-
-        # Connect to SMTP if configured
-        if self._smtp_config:
-            self._smtp_connector = SMTPConnector(self._smtp_config)
-            self._smtp_connector.connect()
 
     def disconnect(self) -> None:
         """Close connection to IMAP server (and SMTP if connected)."""
@@ -134,16 +132,21 @@ class IMAPConnector(BaseConnector):
 
         summaries = []
         for msg in self._mailbox.fetch(criteria, reverse=True, bulk=True):
+            if not msg.uid:
+                logger.warning("Skipping email with missing UID (subject=%r)", msg.subject)
+                continue
+
             sender = _convert_address(msg.from_values)
 
             summaries.append(
                 EmailSummary(
-                    uid=int(msg.uid) if msg.uid else 0,
+                    uid=int(msg.uid),
                     folder=folder,
                     subject=msg.subject or "(no subject)",
                     sender=sender,
                     date=msg.date,
                     has_attachments=len(msg.attachments) > 0,
+                    is_seen="\\Seen" in msg.flags,
                 )
             )
 
@@ -160,6 +163,10 @@ class IMAPConnector(BaseConnector):
         self._mailbox.folder.set(folder)
 
         for msg in self._mailbox.fetch(AND(uid=str(uid))):
+            if not msg.uid:
+                logger.warning("Skipping email with missing UID (subject=%r)", msg.subject)
+                continue
+
             sender = _convert_address(msg.from_values)
 
             attachments = [
@@ -172,12 +179,13 @@ class IMAPConnector(BaseConnector):
             ]
 
             return Email(
-                uid=int(msg.uid) if msg.uid else 0,
+                uid=int(msg.uid),
                 folder=folder,
                 subject=msg.subject or "(no subject)",
                 sender=sender,
                 date=msg.date,
                 has_attachments=len(attachments) > 0,
+                is_seen="\\Seen" in msg.flags,
                 to=_convert_addresses(msg.to_values),
                 cc=_convert_addresses(msg.cc_values),
                 body_plain=msg.text or None,
@@ -228,8 +236,8 @@ class IMAPConnector(BaseConnector):
 
         self._mailbox.folder.set(folder)
 
-        # Use imap-tools delete method to mark email as deleted
         self._mailbox.delete(str(uid))
+        self._mailbox.expunge()
 
         return True
 
@@ -250,8 +258,9 @@ class IMAPConnector(BaseConnector):
         from_name: str | None = None,
         cc: list[str] | None = None,
         reply_to: str | None = None,
+        attachments: list[OutgoingAttachment] | None = None,
     ) -> bool:
-        """Send an email via SMTP.
+        """Send an email via SMTP and save a copy to the Sent folder.
 
         Args:
             from_address: Sender email address (e.g., "user@example.com").
@@ -261,6 +270,7 @@ class IMAPConnector(BaseConnector):
             from_name: Optional display name for sender (e.g., "Atlas").
             cc: Optional list of CC recipients.
             reply_to: Optional Reply-To email address.
+            attachments: Optional list of file attachments.
 
         Returns:
             True if email was sent successfully.
@@ -275,9 +285,10 @@ class IMAPConnector(BaseConnector):
             )
 
         if not self._smtp_connector:
-            raise RuntimeError("Not connected. Call connect() first.")
+            self._smtp_connector = SMTPConnector(self._smtp_config)
+            self._smtp_connector.connect()
 
-        return self._smtp_connector.send_email(
+        msg = self._smtp_connector.build_message(
             from_address=from_address,
             to=to,
             subject=subject,
@@ -285,4 +296,22 @@ class IMAPConnector(BaseConnector):
             from_name=from_name,
             cc=cc,
             reply_to=reply_to,
+            attachments=attachments,
         )
+
+        # Send via SMTP
+        recipients = list(to)
+        if cc:
+            recipients.extend(cc)
+        self._smtp_connector.send_message(from_address, recipients, msg)
+
+        # Save to Sent folder via IMAP
+        if self.config.sent_folder and self._mailbox:
+            self._mailbox.append(
+                msg.as_bytes(),
+                self.config.sent_folder,
+                dt=datetime.now(),
+                flag_set=[r"\Seen"],
+            )
+
+        return True

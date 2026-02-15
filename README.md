@@ -4,6 +4,10 @@
 
 [![CI](https://github.com/thekie/read-no-evil-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/thekie/read-no-evil-mcp/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![PyPI](https://img.shields.io/pypi/v/read-no-evil-mcp)](https://pypi.org/project/read-no-evil-mcp/)
+[![Python](https://img.shields.io/pypi/pyversions/read-no-evil-mcp)](https://pypi.org/project/read-no-evil-mcp/)
+[![Downloads](https://static.pepy.tech/badge/read-no-evil-mcp)](https://pepy.tech/project/read-no-evil-mcp)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 A secure email gateway MCP server that protects AI agents from prompt injection attacks hidden in emails.
 
@@ -38,12 +42,54 @@ The AI reads this, follows the hidden instruction, and your data is compromised.
 
 ## Features
 
-- 🛡️ **Prompt Injection Detection** — ML-powered scanning using [ProtectAI's DeBERTa model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2)
-- 🔐 **Per-Account Permissions** — Fine-grained access control (read-only by default, restrict folders, control delete/send)
-- 📧 **Multi-Account Support** — Configure multiple IMAP accounts with different permissions each
-- 🔌 **MCP Integration** — Exposes email functionality via [Model Context Protocol](https://modelcontextprotocol.io/)
-- 🏠 **Local Inference** — Model runs on your machine, no data sent to external APIs
-- 🪶 **Lightweight** — CPU-only PyTorch (~200MB) for fast, efficient inference
+- 🛡️ **Prompt Injection Detection** — Scans emails using [ProtectAI's DeBERTa model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2)
+- 🔐 **Per-Account Permissions** — Read-only by default, restrict folders, control delete/send per account
+- 📧 **Multi-Account Support** — Configure multiple IMAP accounts with different permissions
+- 🔌 **MCP Integration** — Exposes email tools via [Model Context Protocol](https://modelcontextprotocol.io/)
+- 🏠 **Local** — Model runs on your machine, no data sent to external APIs
+- 🪶 **CPU-only PyTorch** (~200MB) — No GPU required
+
+## Quick Start
+
+1. **Install**:
+
+```bash
+uvx read-no-evil-mcp
+```
+
+2. **Create a config file** (`~/.config/read-no-evil-mcp/config.yaml`):
+
+```yaml
+accounts:
+  - id: "gmail"
+    type: "imap"
+    host: "imap.gmail.com"
+    username: "you@gmail.com"
+```
+
+3. **Set your password**:
+
+```bash
+export RNOE_ACCOUNT_GMAIL_PASSWORD="your-app-password"
+```
+
+4. **Configure your MCP client** (e.g., Claude Desktop, Cline):
+
+```json
+{
+  "mcpServers": {
+    "email": {
+      "command": "uvx",
+      "args": ["read-no-evil-mcp"],
+      "env": {
+        "RNOE_ACCOUNT_GMAIL_PASSWORD": "your-app-password"
+      }
+    }
+  }
+}
+```
+
+5. **Ask your AI to check your email** — injected content is blocked before it reaches the agent.
 
 ## Installation
 
@@ -52,18 +98,6 @@ The AI reads this, follows the hidden instruction, and your data is compromised.
 ```bash
 # One-liner, auto-installs everything
 uvx read-no-evil-mcp
-```
-
-Or in your MCP client config:
-```json
-{
-  "mcpServers": {
-    "email": {
-      "command": "uvx",
-      "args": ["read-no-evil-mcp"]
-    }
-  }
-}
 ```
 
 ### Using pip
@@ -84,17 +118,54 @@ pip install read-no-evil-mcp
 
 </details>
 
-<details>
-<summary>Development setup</summary>
+## Transport
+
+By default, the server uses **stdio** transport (for MCP clients like Claude Desktop). For HTTP-based integrations, set the `RNOE_TRANSPORT` environment variable:
 
 ```bash
-git clone https://github.com/thekie/read-no-evil-mcp.git
-cd read-no-evil-mcp
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install -e ".[dev]"
+# Run with Streamable HTTP transport
+RNOE_TRANSPORT=http read-no-evil-mcp
 ```
 
-</details>
+The HTTP server listens on `0.0.0.0:8000` by default. Customize with:
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `RNOE_TRANSPORT` | `stdio` | Transport protocol (`stdio` or `http`) |
+| `RNOE_HTTP_HOST` | `0.0.0.0` | Bind address for HTTP transport |
+| `RNOE_HTTP_PORT` | `8000` | Port for HTTP transport |
+
+For local-only access, set `RNOE_HTTP_HOST=127.0.0.1`. The default `0.0.0.0` binds to all interfaces, which is appropriate for containerized deployments.
+
+## Docker
+
+Pre-built images are available on GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/thekie/read-no-evil-mcp:latest
+docker run -p 8000:8000 -v ./config.yaml:/app/config.yaml:ro \
+  -e RNOE_ACCOUNT_GMAIL_PASSWORD="your-app-password" \
+  ghcr.io/thekie/read-no-evil-mcp
+```
+
+Multi-platform images (linux/amd64, linux/arm64) are published automatically on each release.
+
+To build locally instead:
+
+```bash
+docker build -t read-no-evil-mcp .
+docker run -p 8000:8000 -v ./config.yaml:/app/config.yaml:ro \
+  -e RNOE_ACCOUNT_GMAIL_PASSWORD="your-app-password" \
+  read-no-evil-mcp
+```
+
+Or with docker-compose:
+
+```bash
+docker compose up
+```
+
+The container uses HTTP transport by default and runs as a non-root user. Point your MCP client at `http://localhost:8000/mcp` instead of using stdio.
 
 ## Configuration
 
@@ -104,7 +175,7 @@ read-no-evil-mcp looks for configuration in this order:
 
 1. `RNOE_CONFIG_FILE` environment variable (if set)
 2. `./rnoe.yaml` (current directory)
-3. `~/.config/read-no-evil-mcp/config.yaml`
+3. `$XDG_CONFIG_HOME/read-no-evil-mcp/config.yaml` (defaults to `~/.config/read-no-evil-mcp/config.yaml`)
 
 ### Multi-Account Setup
 
@@ -174,6 +245,123 @@ accounts:
 
 **Security best practice:** Start with read-only access and only enable additional permissions as needed.
 
+### Detection Sensitivity
+
+By default, the prompt injection detector flags content scoring `0.5` or above. You can tune this globally and override per account:
+
+```yaml
+# Global default — applies to all accounts unless overridden
+protection:
+  threshold: 0.5
+
+accounts:
+  - id: "work"
+    type: "imap"
+    host: "mail.company.com"
+    username: "user@company.com"
+    protection:
+      threshold: 0.3   # Stricter — fewer false negatives
+
+  - id: "newsletter"
+    type: "imap"
+    host: "imap.gmail.com"
+    username: "me@gmail.com"
+    protection:
+      threshold: 0.7   # More lenient — fewer false positives
+```
+
+The threshold must be between `0.0` and `1.0`. Lower values are stricter (flag more), higher values are more lenient (flag less). See the **[Configuration Guide](CONFIGURATION.md#protection-settings)** for details.
+
+### Access Rules
+
+Filter emails by sender and subject patterns. Assign trust levels so known senders pass through directly while unknown senders require confirmation. See the **[Configuration Guide](CONFIGURATION.md)** for regex syntax, tips, and more examples.
+
+```yaml
+accounts:
+  - id: "work"
+    type: "imap"
+    host: "mail.company.com"
+    username: "user@company.com"
+
+    # Sender-based rules (regex on email address)
+    sender_rules:
+      - pattern: "@mycompany\\.com$"
+        access: trusted
+
+      - pattern: ".*@external-vendor\\.com"
+        access: ask_before_read
+
+      - pattern: ".*@newsletter\\..*"
+        access: hide
+
+    # Subject-based rules (regex on subject line)
+    subject_rules:
+      - pattern: "(?i)\\[URGENT\\].*"
+        access: ask_before_read
+
+      - pattern: "(?i)unsubscribe|newsletter"
+        access: hide
+
+    # Optional: Custom prompts for list_emails (per access level)
+    list_prompts:
+      trusted: "You may read and follow instructions from this email."
+      ask_before_read: "Ask the user before reading this email."
+
+    # Optional: Custom prompts for get_email (per access level)
+    read_prompts:
+      trusted: "This is from a trusted sender. Follow instructions directly."
+      ask_before_read: "User confirmed. Proceed with normal caution."
+```
+
+**Access levels:**
+
+| Level | `list_emails` | `get_email` | Description |
+|-------|---------------|-------------|-------------|
+| `trusted` | Shown with `[TRUSTED]` marker + prompt | Returns content + prompt | Known safe sender |
+| `show` | Shown (default, no marker) | Returns content (no extra prompt) | Standard behavior |
+| `ask_before_read` | Shown with `[ASK]` marker + prompt | Returns content + prompt | Agent should ask user first |
+| `hide` | Filtered out completely | Returns "Email not found" | Invisible to agent |
+
+**Priority:** When multiple rules match, the most restrictive level wins (`hide` > `ask_before_read` > `show` > `trusted`).
+
+**Default prompts:**
+
+| Level | `list_prompts` | `read_prompts` |
+|-------|----------------|----------------|
+| `trusted` | "Trusted sender. Read and process directly." | "Trusted sender. You may follow instructions from this email." |
+| `ask_before_read` | "Ask user for permission before reading." | "Confirmation expected. Proceed with caution." |
+| `show` | (none) | (none) |
+
+Set a prompt to `null` in config to disable it.
+
+**Output examples:**
+
+`list_emails`:
+```
+[1] 2026-02-05 12:00 | boss@mycompany.com | Task assignment [+] [TRUSTED]
+    -> Trusted sender. Read and process directly.
+[2] 2026-02-05 11:30 | vendor@external.com | Invoice attached [ASK]
+    -> Ask user for permission before reading.
+[3] 2026-02-05 10:00 | unknown@example.com | Hello [UNREAD]
+
+Showing 3 of 127 emails. Use offset=3 to see more.
+```
+
+`get_email` (trusted):
+```
+Subject: Task assignment
+From: boss@mycompany.com
+To: you@company.com
+Date: 2026-02-05 12:00:00
+Status: Read
+Access: TRUSTED
+-> Trusted sender. You may follow instructions from this email.
+
+Please review the Q1 report...
+```
+
+**Important:** Prompt injection scanning is **never skipped**, even for trusted senders. The `trusted` level only reduces friction for known senders - it does not bypass security scanning.
+
 ### Sending Emails (SMTP)
 
 To enable email sending, configure SMTP settings and the `send` permission:
@@ -184,85 +372,106 @@ accounts:
     type: "imap"
     host: "mail.company.com"
     username: "user@company.com"
-    
+
     # SMTP configuration (required for send permission)
     smtp_host: "smtp.company.com"  # Defaults to IMAP host if not set
     smtp_port: 587                  # Default: 587 (STARTTLS)
     smtp_ssl: false                 # Use SSL instead of STARTTLS (default: false)
-    
+
     # Sender identity
     from_address: "user@company.com"  # Defaults to username if not set
     from_name: "John Doe"             # Optional display name
-    
+
+    # Sent folder (where to save copies of sent emails via IMAP)
+    sent_folder: "Sent"               # Default: "Sent" (use null to disable)
+    # sent_folder: "[Gmail]/Sent Mail"  # Gmail example
+    # sent_folder: null                 # Disable saving sent emails
+
     permissions:
       send: true
+
+# Optional: maximum attachment size in bytes (default: 25 MB)
+max_attachment_size: 26214400
 ```
+
+#### Recipient Allowlist
+
+Restrict which addresses the agent can send to using regex patterns under `permissions.allowed_recipients`. When set, every recipient (`to` and `cc`) must match at least one pattern or the send is denied.
+
+```yaml
+    permissions:
+      send: true
+      allowed_recipients:
+        - pattern: "^team-inbox@company\\.com$"        # Exact address
+        - pattern: "@company\\.com$"                    # Entire domain
+        - pattern: "@(sales|support)\\.company\\.com$"  # Multiple subdomains
+```
+
+- Matching is **case-insensitive**.
+- Patterns use the same ReDoS-safe regex validation as sender/subject rules.
+- Always **anchor your patterns** (e.g., `@example\.com$` not `example\.com`) to avoid overly permissive matching.
+- When `allowed_recipients` is omitted or `null`, the agent can send to any address (if `send: true`).
+- An empty list (`allowed_recipients: []`) denies all recipients.
 
 The `send_email` tool supports:
 - Multiple recipients (`to`)
 - CC recipients (`cc`)
 - Reply-To header (`reply_to`)
 - Plain text body
+- File attachments (base64-encoded content or file path)
 
-**Note:** Attachments are planned for v0.3 ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72)).
+## MCP Tools
 
-## Quick Start
-
-1. **Create a config file** (`~/.config/read-no-evil-mcp/config.yaml`):
-
-```yaml
-accounts:
-  - id: "gmail"
-    type: "imap"
-    host: "imap.gmail.com"
-    username: "you@gmail.com"
-```
-
-2. **Set your password**:
-
-```bash
-export RNOE_ACCOUNT_GMAIL_PASSWORD="your-app-password"
-```
-
-3. **Configure your MCP client** (e.g., Claude Desktop, Cline):
-
-```json
-{
-  "mcpServers": {
-    "email": {
-      "command": "read-no-evil-mcp",
-      "env": {
-        "RNOE_ACCOUNT_GMAIL_PASSWORD": "your-app-password"
-      }
-    }
-  }
-}
-```
-
-4. **Ask your AI to check your email** — it will only see safe content!
+| Tool | Description | Permission |
+|------|-------------|------------|
+| `list_accounts` | List configured email accounts | — |
+| `list_folders` | List folders/mailboxes | `read` |
+| `list_emails` | List emails in a folder (supports `limit`/`offset` pagination) | `read` |
+| `get_email` | Get full email content by UID | `read` |
+| `send_email` | Send an email via SMTP | `send` |
+| `move_email` | Move email to another folder | `move` |
+| `delete_email` | Permanently delete an email | `delete` |
 
 ## Detection Capabilities
 
-See **[DETECTION_MATRIX.md](DETECTION_MATRIX.md)** for what's detected and what's not.
+We test against **81 adversarial payloads** across 7 attack categories and publish every result — no cherry-picking, no hiding gaps. See **[DETECTION_MATRIX.md](DETECTION_MATRIX.md)** for the full breakdown.
 
-| Category | Examples | Status |
-|----------|----------|--------|
-| Direct injection | "Ignore previous instructions" | ✅ Detected |
-| Encoded payloads | Base64, ROT13, hex | 🔬 Testing |
-| Hidden text | Zero-width chars, HTML comments | 🔬 Testing |
-| Semantic attacks | Roleplay, fake authority | 🔬 Testing |
+**Overall detection rate: 71.6%** (58/81 payloads caught)
 
-We maintain a comprehensive test suite with **80+ attack payloads** across 7 categories.
+| Category | Detection Rate | What's Tested |
+|----------|---------------|---------------|
+| Semantic | 100% (14/14) | Roleplay, authority claims, hypotheticals, few-shot |
+| Invisible | 91% (10/11) | Zero-width characters, RTL overrides, byte order marks |
+| Structural | 85% (11/13) | JSON/XML injection, markdown abuse, line splitting |
+| Encoding | 80% (8/10) | Base64, hex, morse, URL encoding, HTML entities |
+| Character | 69% (9/13) | Homoglyphs, fullwidth, leetspeak, combining marks |
+| Baseline | 56% (5/9) | Direct "ignore instructions" prompts, negative tests |
+| Email-specific | 9% (1/11) | HTML comments, signature injection, hidden divs |
+
+The email-specific gap (9%) is a known limitation — these attacks exploit HTML structure that the ML model wasn't trained on. Improving this is on the [roadmap](#roadmap).
+
+**Why publish this?** Most security tools only share success stories. We think you should know exactly what's caught and what isn't, so you can layer your defenses accordingly.
+
+## Performance Notes
+
+| Metric | Value |
+|--------|-------|
+| First startup | ~30s (one-time model download, ~500 MB) |
+| Subsequent starts | ~2–3s (model cached locally) |
+| Per-email scan | <100 ms typical |
+| Memory footprint | ~500 MB (CPU-only PyTorch + model) |
+
+First startup downloads the [DeBERTa prompt-injection model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2) from Hugging Face. After that, the model is cached in `~/.cache/huggingface/` and subsequent starts are fast. See [#91](https://github.com/thekie/read-no-evil-mcp/issues/91) for startup optimization plans.
 
 ## Roadmap
 
-### v0.1 (Previous)
+### v0.1
 - [x] IMAP email connector
 - [x] ML-based prompt injection detection
 - [x] MCP server with list/read tools
 - [x] Comprehensive test suite
 
-### v0.2 (Current) ✅
+### v0.2
 - [x] Multi-account support
 - [x] YAML-based configuration
 - [x] Rights management (per-account permissions)
@@ -270,36 +479,30 @@ We maintain a comprehensive test suite with **80+ attack payloads** across 7 cat
 - [x] Send emails (SMTP)
 - [x] Move emails between folders
 
-### v0.3 (Future)
-- [ ] Attachment support for send_email ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72))
-- [ ] Configurable sensitivity levels
-- [ ] Attachment scanning
-- [ ] Docker image
+### v0.3 (Current)
+- [x] Sender-based access rules ([#84](https://github.com/thekie/read-no-evil-mcp/issues/84))
+- [x] Attachment support for send_email ([#72](https://github.com/thekie/read-no-evil-mcp/issues/72))
+- [x] Pagination for list_emails ([#111](https://github.com/thekie/read-no-evil-mcp/issues/111))
+- [x] Streamable HTTP transport ([#187](https://github.com/thekie/read-no-evil-mcp/issues/187))
+- [x] Configurable sensitivity levels ([#195](https://github.com/thekie/read-no-evil-mcp/issues/195))
+- [x] Docker image ([#188](https://github.com/thekie/read-no-evil-mcp/issues/188))
 
 ### v0.4 (Later)
+- [ ] Keyring credential backend ([#45](https://github.com/thekie/read-no-evil-mcp/issues/45))
+- [ ] Attachment scanning
 - [ ] Gmail API connector
 - [ ] Microsoft Graph connector
 - [ ] Improved obfuscation detection
 
 ## Contributing
 
-We welcome contributions! Here's how you can help:
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for dev setup, testing, and PR workflow.
 
-### 🧪 Add Test Cases
-The easiest way to contribute — add new attack payloads to test our detection:
+**Quick ways to help:**
 
-```bash
-# Just edit a YAML file, no Python required!
-tests/integration/prompt_injection/payloads/encoding.yaml
-```
-
-See [payloads/README.md](tests/integration/prompt_injection/payloads/README.md) for the format.
-
-### 🛡️ Improve Detection
-Check [DETECTION_MATRIX.md](DETECTION_MATRIX.md) for techniques we miss (❌), and help us detect them!
-
-### 📧 Add Connectors
-Want Gmail API or Microsoft Graph support? PRs welcome!
+- **Add test cases** — Edit a YAML file, no Python required! See [payloads/README.md](tests/integration/prompt_injection/payloads/README.md)
+- **Improve detection** — Check [DETECTION_MATRIX.md](DETECTION_MATRIX.md) for techniques we miss (❌)
+- **Add connectors** — Gmail API, Microsoft Graph — PRs welcome!
 
 ## Security
 

@@ -1,7 +1,7 @@
 {
   "total": 81,
-  "detected": 57,
-  "missed": 24,
+  "detected": 58,
+  "missed": 23,
   "regressions": 0,
   "improvements": 0,
   "results": [
@@ -760,8 +760,8 @@
       "category": "structural",
       "technique": "markdown",
       "expected": "unknown",
-      "actual": "missed",
-      "score": 0.0015,
+      "actual": "detected",
+      "score": 1.0,
       "is_regression": false,
       "is_improvement": false
     },
