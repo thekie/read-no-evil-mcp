@@ -209,6 +209,11 @@ class IMAPAccountConfig(BaseAccountConfig):
         default=None,
         description="Display name for outgoing emails (e.g., 'Atlas')",
     )
+    sent_folder: str | None = Field(
+        default="Sent",
+        description="IMAP folder to save sent emails to (e.g., 'Sent', '[Gmail]/Sent Mail'). "
+        "Set to null to disable saving sent emails.",
+    )
 
     # Access rules
     sender_rules: list[SenderRule] = Field(

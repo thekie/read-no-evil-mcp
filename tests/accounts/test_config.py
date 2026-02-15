@@ -134,6 +134,32 @@ class TestAccountConfig:
         assert config.from_address is None
         assert config.from_name is None
 
+    def test_sent_folder_defaults_to_sent(self) -> None:
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+        )
+        assert config.sent_folder == "Sent"
+
+    def test_sent_folder_custom(self) -> None:
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+            sent_folder="[Gmail]/Sent Mail",
+        )
+        assert config.sent_folder == "[Gmail]/Sent Mail"
+
+    def test_sent_folder_disabled(self) -> None:
+        config = AccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user",
+            sent_folder=None,
+        )
+        assert config.sent_folder is None
+
     def test_from_address_cannot_be_empty(self) -> None:
         """Test that from_address cannot be empty string."""
         with pytest.raises(ValidationError):

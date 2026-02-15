@@ -295,3 +295,49 @@ class TestAccountService:
         # Verify SecureMailbox was called with username as from_address
         call_kwargs = mock_mailbox.call_args.kwargs
         assert call_kwargs["from_address"] == "user@work.com"
+
+    @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_passes_sent_folder(
+        self,
+        mock_mailbox: MagicMock,
+        mock_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox passes sent_folder to IMAPConnector."""
+        accounts = [
+            AccountConfig(
+                id="work",
+                host="mail.work.com",
+                username="work@example.com",
+                sent_folder="[Gmail]/Sent Mail",
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}))
+
+        service.get_mailbox("work")
+
+        call_kwargs = mock_connector.call_args.kwargs
+        assert call_kwargs["sent_folder"] == "[Gmail]/Sent Mail"
+
+    @patch("read_no_evil_mcp.accounts.service.IMAPConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_passes_sent_folder_none(
+        self,
+        mock_mailbox: MagicMock,
+        mock_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox passes None sent_folder to disable saving."""
+        accounts = [
+            AccountConfig(
+                id="work",
+                host="mail.work.com",
+                username="work@example.com",
+                sent_folder=None,
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}))
+
+        service.get_mailbox("work")
+
+        call_kwargs = mock_connector.call_args.kwargs
+        assert call_kwargs["sent_folder"] is None

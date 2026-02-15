@@ -95,7 +95,11 @@ class AccountService:
                     ssl=config.smtp_ssl,
                 )
 
-            return IMAPConnector(imap_config, smtp_config=smtp_config)
+            return IMAPConnector(
+                imap_config,
+                smtp_config=smtp_config,
+                sent_folder=config.sent_folder,
+            )
 
         raise UnsupportedConnectorError(config.type)
 
