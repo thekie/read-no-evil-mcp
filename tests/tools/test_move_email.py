@@ -20,8 +20,7 @@ class TestMoveEmail:
         ):
             result = move_email.fn(account="work", folder="INBOX", uid=123, target_folder="Archive")
 
-        assert "moved to Archive" in result
-        assert "INBOX/123" in result
+        assert result == "Email INBOX/123 moved to Archive."
         mock_mailbox.move_email.assert_called_once_with("INBOX", 123, "Archive")
 
     def test_moves_email_to_spam(self) -> None:
@@ -37,7 +36,7 @@ class TestMoveEmail:
         ):
             result = move_email.fn(account="work", folder="INBOX", uid=456, target_folder="Spam")
 
-        assert "moved to Spam" in result
+        assert result == "Email INBOX/456 moved to Spam."
         mock_mailbox.move_email.assert_called_once_with("INBOX", 456, "Spam")
 
     def test_email_not_found(self) -> None:
@@ -53,8 +52,7 @@ class TestMoveEmail:
         ):
             result = move_email.fn(account="work", folder="INBOX", uid=999, target_folder="Archive")
 
-        assert "not found" in result
-        assert "INBOX/999" in result
+        assert result == "Email not found: INBOX/999"
 
     def test_permission_denied_move(self) -> None:
         """Test move_email returns error when move permission is denied."""
@@ -73,8 +71,7 @@ class TestMoveEmail:
                 account="restricted", folder="INBOX", uid=1, target_folder="Archive"
             )
 
-        assert "Permission denied" in result
-        assert "Move access denied" in result
+        assert result == "Permission denied: Move access denied for this account"
 
     def test_permission_denied_source_folder(self) -> None:
         """Test move_email returns error when source folder access is denied."""
@@ -93,8 +90,7 @@ class TestMoveEmail:
                 account="restricted", folder="Secret", uid=1, target_folder="Archive"
             )
 
-        assert "Permission denied" in result
-        assert "folder 'Secret' denied" in result
+        assert result == "Permission denied: Access to folder 'Secret' denied"
 
     def test_permission_denied_target_folder(self) -> None:
         """Test move_email returns error when target folder access is denied."""
@@ -113,8 +109,7 @@ class TestMoveEmail:
                 account="work", folder="INBOX", uid=1, target_folder="Restricted"
             )
 
-        assert "Permission denied" in result
-        assert "folder 'Restricted' denied" in result
+        assert result == "Permission denied: Access to folder 'Restricted' denied"
 
     def test_passes_account_to_create_securemailbox(self) -> None:
         """Test move_email passes account to create_securemailbox."""
@@ -144,26 +139,22 @@ class TestMoveEmail:
         ):
             result = move_email.fn(account="work", folder="INBOX", uid=1, target_folder="Archive")
 
-        assert "Error" in result
-        assert "Connection lost" in result
+        assert result == "Error: Connection lost"
 
 
 class TestMoveEmailValidation:
     def test_uid_zero_rejected(self) -> None:
         result = move_email.fn(account="work", folder="INBOX", uid=0, target_folder="Archive")
-        assert "Invalid parameter" in result
-        assert "uid" in result
+        assert result == "Invalid parameter: uid must be a positive integer"
 
     def test_empty_folder_rejected(self) -> None:
         result = move_email.fn(account="work", folder="", uid=1, target_folder="Archive")
-        assert "Invalid parameter" in result
-        assert "folder" in result
+        assert result == "Invalid parameter: folder must not be empty"
 
     def test_empty_target_folder_rejected(self) -> None:
         result = move_email.fn(account="work", folder="INBOX", uid=1, target_folder="")
-        assert "Invalid parameter" in result
-        assert "target_folder" in result
+        assert result == "Invalid parameter: target_folder must not be empty"
 
     def test_whitespace_target_folder_rejected(self) -> None:
         result = move_email.fn(account="work", folder="INBOX", uid=1, target_folder="   ")
-        assert "Invalid parameter" in result
+        assert result == "Invalid parameter: target_folder must not be empty"

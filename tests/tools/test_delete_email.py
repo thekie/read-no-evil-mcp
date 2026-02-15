@@ -20,8 +20,7 @@ class TestDeleteEmail:
         ):
             result = delete_email.fn(account="work", folder="INBOX", uid=123)
 
-        assert "Successfully deleted" in result
-        assert "INBOX/123" in result
+        assert result == "Successfully deleted email INBOX/123"
         mock_mailbox.delete_email.assert_called_once_with("INBOX", 123)
 
     def test_delete_fails(self) -> None:
@@ -37,8 +36,7 @@ class TestDeleteEmail:
         ):
             result = delete_email.fn(account="work", folder="INBOX", uid=123)
 
-        assert "Failed to delete" in result
-        assert "INBOX/123" in result
+        assert result == "Failed to delete email INBOX/123"
 
     def test_passes_account_to_create_securemailbox(self) -> None:
         """Test delete_email passes account to create_securemailbox."""
@@ -70,8 +68,7 @@ class TestDeleteEmail:
         ):
             result = delete_email.fn(account="restricted", folder="INBOX", uid=1)
 
-        assert "Permission denied" in result
-        assert "Delete access denied" in result
+        assert result == "Permission denied: Delete access denied for this account"
 
     def test_permission_denied_folder(self) -> None:
         """Test delete_email returns error when folder access is denied."""
@@ -88,8 +85,7 @@ class TestDeleteEmail:
         ):
             result = delete_email.fn(account="restricted", folder="Secret", uid=1)
 
-        assert "Permission denied" in result
-        assert "folder 'Secret' denied" in result
+        assert result == "Permission denied: Access to folder 'Secret' denied"
 
     def test_different_folder(self) -> None:
         """Test delete_email works with different folders."""
@@ -104,26 +100,23 @@ class TestDeleteEmail:
         ):
             result = delete_email.fn(account="work", folder="Sent", uid=456)
 
-        assert "Successfully deleted" in result
-        assert "Sent/456" in result
+        assert result == "Successfully deleted email Sent/456"
         mock_mailbox.delete_email.assert_called_once_with("Sent", 456)
 
 
 class TestDeleteEmailValidation:
     def test_uid_zero_rejected(self) -> None:
         result = delete_email.fn(account="work", folder="INBOX", uid=0)
-        assert "Invalid parameter" in result
-        assert "uid" in result
+        assert result == "Invalid parameter: uid must be a positive integer"
 
     def test_uid_negative_rejected(self) -> None:
         result = delete_email.fn(account="work", folder="INBOX", uid=-5)
-        assert "Invalid parameter" in result
+        assert result == "Invalid parameter: uid must be a positive integer"
 
     def test_empty_folder_rejected(self) -> None:
         result = delete_email.fn(account="work", folder="", uid=1)
-        assert "Invalid parameter" in result
-        assert "folder" in result
+        assert result == "Invalid parameter: folder must not be empty"
 
     def test_whitespace_folder_rejected(self) -> None:
         result = delete_email.fn(account="work", folder="  ", uid=1)
-        assert "Invalid parameter" in result
+        assert result == "Invalid parameter: folder must not be empty"

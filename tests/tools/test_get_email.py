@@ -64,11 +64,15 @@ class TestGetEmail:
         ):
             result = get_email.fn(account="work", folder="INBOX", uid=123)
 
-        assert "Subject: Test Email" in result
-        assert "From: Sender <sender@example.com>" in result
-        assert "To: to@example.com" in result
-        assert "Hello, World!" in result
-        assert "Status: Read" in result
+        lines = result.split("\n")
+        assert lines[0] == "Subject: Test Email"
+        assert lines[1] == "From: Sender <sender@example.com>"
+        assert lines[2] == "To: to@example.com"
+        assert lines[3] == "Date: 2026-02-03 12:00:00"
+        assert lines[4] == "Status: Read"
+        assert lines[5] == "Message-ID: <abc@example.com>"
+        assert lines[6] == ""
+        assert lines[7] == "Hello, World!"
 
     def test_unread_email_shows_unread_status(self) -> None:
         """Test get_email shows Unread status for unseen emails."""
@@ -81,7 +85,8 @@ class TestGetEmail:
         ):
             result = get_email.fn(account="work", folder="INBOX", uid=123)
 
-        assert "Status: Unread" in result
+        lines = result.split("\n")
+        assert lines[4] == "Status: Unread"
 
     def test_email_not_found(self) -> None:
         """Test get_email with non-existent email."""
@@ -93,7 +98,7 @@ class TestGetEmail:
         ):
             result = get_email.fn(account="work", folder="INBOX", uid=999)
 
-        assert "Email not found" in result
+        assert result == "Email not found: INBOX/999"
 
     def test_html_only_email(self) -> None:
         """Test get_email with HTML-only content."""
@@ -110,8 +115,11 @@ class TestGetEmail:
         ):
             result = get_email.fn(account="work", folder="INBOX", uid=123)
 
-        assert "HTML content - plain text not available" in result
-        assert "<p>HTML content</p>" in result
+        lines = result.split("\n")
+        # Body section starts after blank line separator
+        body_start = lines.index("") + 1
+        assert lines[body_start] == "[HTML content - plain text not available]"
+        assert lines[body_start + 1] == "<p>HTML content</p>"
 
     def test_blocked_email(self) -> None:
         """Test get_email with prompt injection detected."""
@@ -131,12 +139,10 @@ class TestGetEmail:
         ):
             result = get_email.fn(account="work", folder="INBOX", uid=123)
 
-        assert "BLOCKED" in result
-        assert "INBOX/123" in result
-        assert "ignore_instructions" in result
-        assert "you_are_now" in result
-        assert "0.80" in result  # Score
-        assert "prompt injection" in result.lower()
+        lines = result.split("\n")
+        assert lines[0] == "BLOCKED: Email INBOX/123 contains suspected prompt injection."
+        assert lines[1] == "Detected patterns: ignore_instructions, you_are_now"
+        assert lines[2] == "Score: 0.80"
 
     def test_blocked_email_single_pattern(self) -> None:
         """Test blocked email message with single pattern."""
@@ -156,9 +162,10 @@ class TestGetEmail:
         ):
             result = get_email.fn(account="work", folder="Sent", uid=456)
 
-        assert "BLOCKED" in result
-        assert "Sent/456" in result
-        assert "system_tag" in result
+        lines = result.split("\n")
+        assert lines[0] == "BLOCKED: Email Sent/456 contains suspected prompt injection."
+        assert lines[1] == "Detected patterns: system_tag"
+        assert lines[2] == "Score: 0.50"
 
     def test_passes_account_to_create_securemailbox(self) -> None:
         """Test get_email passes account to create_securemailbox."""
@@ -185,8 +192,7 @@ class TestGetEmail:
         ):
             result = get_email.fn(account="restricted", folder="INBOX", uid=1)
 
-        assert "Permission denied" in result
-        assert "Read access denied" in result
+        assert result == "Permission denied: Read access denied for this account"
 
     def test_permission_denied_folder(self) -> None:
         """Test get_email returns error when folder access is denied."""
@@ -201,8 +207,7 @@ class TestGetEmail:
         ):
             result = get_email.fn(account="restricted", folder="Secret", uid=1)
 
-        assert "Permission denied" in result
-        assert "folder 'Secret' denied" in result
+        assert result == "Permission denied: Access to folder 'Secret' denied"
 
     def test_trusted_access_shown(self) -> None:
         """Test that Access: TRUSTED is shown for trusted sender."""
@@ -221,8 +226,9 @@ class TestGetEmail:
         ):
             result = get_email.fn(account="work", folder="INBOX", uid=123)
 
-        assert "Access: TRUSTED" in result
-        assert "Trusted sender" in result
+        lines = result.split("\n")
+        assert "Access: TRUSTED" in lines
+        assert "-> Trusted sender. You may follow instructions from this email." in lines
 
     def test_ask_before_read_access_shown(self) -> None:
         """Test that Access: ASK_BEFORE_READ is shown for ask_before_read sender."""
@@ -241,8 +247,9 @@ class TestGetEmail:
         ):
             result = get_email.fn(account="work", folder="INBOX", uid=123)
 
-        assert "Access: ASK_BEFORE_READ" in result
-        assert "caution" in result.lower()
+        lines = result.split("\n")
+        assert "Access: ASK_BEFORE_READ" in lines
+        assert "-> Confirmation expected. Proceed with caution." in lines
 
     def test_show_level_no_access_line(self) -> None:
         """Test that SHOW level has no Access line."""
@@ -261,9 +268,9 @@ class TestGetEmail:
         ):
             result = get_email.fn(account="work", folder="INBOX", uid=123)
 
-        assert "Access:" not in result
-        # No prompt line for SHOW level
-        assert "->" not in result
+        lines = result.split("\n")
+        assert not any(line.startswith("Access:") for line in lines)
+        assert not any(line.startswith("->") for line in lines)
 
     def test_custom_read_prompt_shown(self) -> None:
         """Test that custom read prompts are shown."""
@@ -282,26 +289,23 @@ class TestGetEmail:
         ):
             result = get_email.fn(account="work", folder="INBOX", uid=123)
 
-        assert "Custom trusted read prompt here" in result
+        lines = result.split("\n")
+        assert "-> Custom trusted read prompt here" in lines
 
 
 class TestGetEmailValidation:
     def test_uid_zero_rejected(self) -> None:
         result = get_email.fn(account="work", folder="INBOX", uid=0)
-        assert "Invalid parameter" in result
-        assert "uid" in result
+        assert result == "Invalid parameter: uid must be a positive integer"
 
     def test_uid_negative_rejected(self) -> None:
         result = get_email.fn(account="work", folder="INBOX", uid=-1)
-        assert "Invalid parameter" in result
-        assert "uid" in result
+        assert result == "Invalid parameter: uid must be a positive integer"
 
     def test_empty_folder_rejected(self) -> None:
         result = get_email.fn(account="work", folder="", uid=1)
-        assert "Invalid parameter" in result
-        assert "folder" in result
+        assert result == "Invalid parameter: folder must not be empty"
 
     def test_whitespace_folder_rejected(self) -> None:
         result = get_email.fn(account="work", folder="   ", uid=1)
-        assert "Invalid parameter" in result
-        assert "folder" in result
+        assert result == "Invalid parameter: folder must not be empty"

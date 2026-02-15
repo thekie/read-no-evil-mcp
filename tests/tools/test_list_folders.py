@@ -24,8 +24,7 @@ class TestListFolders:
         ):
             result = list_folders.fn(account="work")
 
-        assert "INBOX" in result
-        assert "Sent" in result
+        assert result == "- INBOX\n- Sent"
 
     def test_empty_folders(self) -> None:
         """Test list_folders with no folders."""
@@ -40,7 +39,7 @@ class TestListFolders:
         ):
             result = list_folders.fn(account="work")
 
-        assert "No folders found" in result
+        assert result == "No folders found."
 
     def test_runtime_error_returns_message(self) -> None:
         """Test that RuntimeError is caught and returned as user-friendly message."""
@@ -55,8 +54,7 @@ class TestListFolders:
         ):
             result = list_folders.fn(account="work")
 
-        assert "Error" in result
-        assert "Connection error" in result
+        assert result == "Error: Connection error"
         mock_mailbox.__exit__.assert_called_once()
 
     def test_passes_account_to_create_securemailbox(self) -> None:
@@ -89,5 +87,4 @@ class TestListFolders:
         ):
             result = list_folders.fn(account="restricted")
 
-        assert "Permission denied" in result
-        assert "Read access denied" in result
+        assert result == "Permission denied: Read access denied for this account"
