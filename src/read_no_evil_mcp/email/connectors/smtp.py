@@ -1,5 +1,6 @@
 """SMTP connector for sending emails using smtplib."""
 
+import logging
 import os
 import re
 import smtplib
@@ -11,6 +12,8 @@ from email.mime.text import MIMEText
 from read_no_evil_mcp.email.connectors.config import SMTPConfig
 from read_no_evil_mcp.email.models import OutgoingAttachment
 
+logger = logging.getLogger(__name__)
+
 _HEADER_INJECTION_RE = re.compile(r"[\r\n\0]")
 
 
@@ -21,6 +24,8 @@ def _validate_header_value(value: str) -> None:
         ValueError: If the value contains newline, carriage return, or null characters.
     """
     if _HEADER_INJECTION_RE.search(value):
+        # SECURITY: Do not log the value — it may contain injection payloads
+        logger.warning("Header injection attempt detected")
         raise ValueError("Value contains invalid characters (newline, carriage return, or null)")
 
 
@@ -38,6 +43,12 @@ class SMTPConnector:
 
     def connect(self) -> None:
         """Establish connection to SMTP server."""
+        logger.debug(
+            "Connecting to SMTP server (host=%s, port=%s, ssl=%s)",
+            self.config.host,
+            self.config.port,
+            self.config.ssl,
+        )
         if self.config.ssl:
             self._connection = smtplib.SMTP_SSL(self.config.host, self.config.port)
         else:
@@ -48,12 +59,14 @@ class SMTPConnector:
             self.config.username,
             self.config.password.get_secret_value(),
         )
+        logger.info("SMTP connection established (host=%s)", self.config.host)
 
     def disconnect(self) -> None:
         """Close connection to SMTP server."""
         if self._connection:
             self._connection.quit()
             self._connection = None
+            logger.info("SMTP connection closed")
 
     def __enter__(self) -> "SMTPConnector":
         """Enter context manager, connecting to the server."""
@@ -209,4 +222,5 @@ class SMTPConnector:
             recipients.extend(cc)
 
         self.send_message(from_address, recipients, msg)
+        logger.info("Email sent (recipients=%d, subject=%r)", len(recipients), subject)
         return True
