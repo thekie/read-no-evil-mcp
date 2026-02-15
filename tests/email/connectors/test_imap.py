@@ -522,65 +522,75 @@ class TestIMAPConnectorWithSMTP:
             )
         assert "does not support sending" in str(exc_info.value)
 
+    @patch("read_no_evil_mcp.email.connectors.imap.SMTPConnector")
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
-    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
     def test_connect_with_smtp(
         self,
-        mock_smtp_class: MagicMock,
         mock_mailbox_class: MagicMock,
+        mock_smtp_connector_class: MagicMock,
         imap_config: IMAPConfig,
         smtp_config: SMTPConfig,
     ) -> None:
-        """Test connect establishes both IMAP and SMTP connections."""
+        """Test connect only establishes IMAP connection, not SMTP."""
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
-        mock_smtp = MagicMock()
-        mock_smtp_class.return_value = mock_smtp
 
         connector = IMAPConnector(imap_config, smtp_config=smtp_config)
         connector.connect()
 
         mock_mailbox_class.assert_called_once()
-        mock_smtp_class.assert_called_once_with("smtp.example.com", 587)
-        mock_smtp.starttls.assert_called_once()
-        mock_smtp.login.assert_called_once()
+        mock_mailbox.login.assert_called_once()
+        mock_smtp_connector_class.assert_not_called()
 
+    @patch("read_no_evil_mcp.email.connectors.imap.SMTPConnector")
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
-    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
     def test_disconnect_with_smtp(
         self,
-        mock_smtp_class: MagicMock,
         mock_mailbox_class: MagicMock,
+        mock_smtp_connector_class: MagicMock,
         imap_config: IMAPConfig,
         smtp_config: SMTPConfig,
     ) -> None:
-        """Test disconnect closes both IMAP and SMTP connections."""
+        """Test disconnect closes both IMAP and SMTP connections after send."""
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
-        mock_smtp = MagicMock()
-        mock_smtp_class.return_value = mock_smtp
+        mock_smtp_connector = MagicMock()
+        mock_smtp_connector_class.return_value = mock_smtp_connector
+        mock_smtp_connector.build_message.return_value = MagicMock(
+            as_bytes=MagicMock(return_value=b"msg")
+        )
 
         connector = IMAPConnector(imap_config, smtp_config=smtp_config)
         connector.connect()
+        # Trigger lazy SMTP init by sending
+        connector.send(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test",
+            body="Test body",
+        )
         connector.disconnect()
 
         mock_mailbox.logout.assert_called_once()
-        mock_smtp.quit.assert_called_once()
+        mock_smtp_connector.disconnect.assert_called_once()
 
+    @patch("read_no_evil_mcp.email.connectors.imap.SMTPConnector")
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
-    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
     def test_send_email(
         self,
-        mock_smtp_class: MagicMock,
         mock_mailbox_class: MagicMock,
+        mock_smtp_connector_class: MagicMock,
         imap_config: IMAPConfig,
         smtp_config: SMTPConfig,
     ) -> None:
         """Test sending email via IMAP connector with SMTP."""
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
-        mock_smtp = MagicMock()
-        mock_smtp_class.return_value = mock_smtp
+        mock_smtp_connector = MagicMock()
+        mock_smtp_connector_class.return_value = mock_smtp_connector
+        mock_smtp_connector.build_message.return_value = MagicMock(
+            as_bytes=MagicMock(return_value=b"msg")
+        )
 
         connector = IMAPConnector(imap_config, smtp_config=smtp_config)
         connector.connect()
@@ -593,22 +603,25 @@ class TestIMAPConnectorWithSMTP:
         )
 
         assert result is True
-        mock_smtp.sendmail.assert_called_once()
+        mock_smtp_connector.send_message.assert_called_once()
 
+    @patch("read_no_evil_mcp.email.connectors.imap.SMTPConnector")
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
-    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
     def test_send_email_with_reply_to(
         self,
-        mock_smtp_class: MagicMock,
         mock_mailbox_class: MagicMock,
+        mock_smtp_connector_class: MagicMock,
         imap_config: IMAPConfig,
         smtp_config: SMTPConfig,
     ) -> None:
         """Test sending email with reply_to parameter."""
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
-        mock_smtp = MagicMock()
-        mock_smtp_class.return_value = mock_smtp
+        mock_smtp_connector = MagicMock()
+        mock_smtp_connector_class.return_value = mock_smtp_connector
+        mock_smtp_connector.build_message.return_value = MagicMock(
+            as_bytes=MagicMock(return_value=b"msg")
+        )
 
         connector = IMAPConnector(imap_config, smtp_config=smtp_config)
         connector.connect()
@@ -622,37 +635,62 @@ class TestIMAPConnectorWithSMTP:
         )
 
         assert result is True
-        call_args = mock_smtp.sendmail.call_args
-        msg_str = call_args[0][2]
-        assert "Reply-To: replies@example.com" in msg_str
+        # Verify reply_to was passed to build_message
+        mock_smtp_connector.build_message.assert_called_once_with(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test Subject",
+            body="Test body",
+            from_name=None,
+            cc=None,
+            reply_to="replies@example.com",
+            attachments=None,
+        )
 
-    def test_send_not_connected_raises(
-        self, imap_config: IMAPConfig, smtp_config: SMTPConfig
+    @patch("read_no_evil_mcp.email.connectors.imap.SMTPConnector")
+    def test_send_without_imap_connect_lazy_inits_smtp(
+        self,
+        mock_smtp_connector_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
     ) -> None:
-        """Test send raises RuntimeError when not connected."""
-        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
-        with pytest.raises(RuntimeError, match="Not connected"):
-            connector.send(
-                from_address="sender@example.com",
-                to=["recipient@example.com"],
-                subject="Test",
-                body="Test body",
-            )
+        """Test send lazy-initializes SMTP even without prior IMAP connect."""
+        mock_smtp_connector = MagicMock()
+        mock_smtp_connector_class.return_value = mock_smtp_connector
+        mock_smtp_connector.build_message.return_value = MagicMock(
+            as_bytes=MagicMock(return_value=b"msg")
+        )
 
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        result = connector.send(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test",
+            body="Test body",
+        )
+
+        assert result is True
+        mock_smtp_connector_class.assert_called_once_with(smtp_config)
+        mock_smtp_connector.connect.assert_called_once()
+        mock_smtp_connector.send_message.assert_called_once()
+
+    @patch("read_no_evil_mcp.email.connectors.imap.SMTPConnector")
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
-    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
     def test_send_saves_to_sent_folder(
         self,
-        mock_smtp_class: MagicMock,
         mock_mailbox_class: MagicMock,
+        mock_smtp_connector_class: MagicMock,
         imap_config: IMAPConfig,
         smtp_config: SMTPConfig,
     ) -> None:
         """Test send appends email to the Sent folder via IMAP."""
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
-        mock_smtp = MagicMock()
-        mock_smtp_class.return_value = mock_smtp
+        mock_smtp_connector = MagicMock()
+        mock_smtp_connector_class.return_value = mock_smtp_connector
+        mock_msg = MagicMock()
+        mock_msg.as_bytes.return_value = b"Subject: Test Subject\r\n\r\nTest body"
+        mock_smtp_connector.build_message.return_value = mock_msg
 
         imap_config_with_sent = IMAPConfig(
             host="imap.example.com",
@@ -679,20 +717,23 @@ class TestIMAPConnectorWithSMTP:
         # Verify \Seen flag is set
         assert call_args.kwargs["flag_set"] == [r"\Seen"]
 
+    @patch("read_no_evil_mcp.email.connectors.imap.SMTPConnector")
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
-    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
     def test_send_custom_sent_folder(
         self,
-        mock_smtp_class: MagicMock,
         mock_mailbox_class: MagicMock,
+        mock_smtp_connector_class: MagicMock,
         imap_config: IMAPConfig,
         smtp_config: SMTPConfig,
     ) -> None:
         """Test send uses custom sent folder name (e.g., Gmail)."""
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
-        mock_smtp = MagicMock()
-        mock_smtp_class.return_value = mock_smtp
+        mock_smtp_connector = MagicMock()
+        mock_smtp_connector_class.return_value = mock_smtp_connector
+        mock_smtp_connector.build_message.return_value = MagicMock(
+            as_bytes=MagicMock(return_value=b"msg")
+        )
 
         imap_config_gmail = IMAPConfig(
             host="imap.example.com",
@@ -713,20 +754,23 @@ class TestIMAPConnectorWithSMTP:
         call_args = mock_mailbox.append.call_args
         assert call_args.args[1] == "[Gmail]/Sent Mail"
 
+    @patch("read_no_evil_mcp.email.connectors.imap.SMTPConnector")
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
-    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
     def test_send_skips_save_when_sent_folder_none(
         self,
-        mock_smtp_class: MagicMock,
         mock_mailbox_class: MagicMock,
+        mock_smtp_connector_class: MagicMock,
         imap_config: IMAPConfig,
         smtp_config: SMTPConfig,
     ) -> None:
         """Test send does not append when sent_folder is None."""
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
-        mock_smtp = MagicMock()
-        mock_smtp_class.return_value = mock_smtp
+        mock_smtp_connector = MagicMock()
+        mock_smtp_connector_class.return_value = mock_smtp_connector
+        mock_smtp_connector.build_message.return_value = MagicMock(
+            as_bytes=MagicMock(return_value=b"msg")
+        )
 
         imap_config_no_sent = IMAPConfig(
             host="imap.example.com",
@@ -745,23 +789,26 @@ class TestIMAPConnectorWithSMTP:
         )
 
         assert result is True
-        mock_smtp.sendmail.assert_called_once()
+        mock_smtp_connector.send_message.assert_called_once()
         mock_mailbox.append.assert_not_called()
 
+    @patch("read_no_evil_mcp.email.connectors.imap.SMTPConnector")
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
-    @patch("read_no_evil_mcp.email.connectors.smtp.smtplib.SMTP")
     def test_send_default_sent_folder(
         self,
-        mock_smtp_class: MagicMock,
         mock_mailbox_class: MagicMock,
+        mock_smtp_connector_class: MagicMock,
         imap_config: IMAPConfig,
         smtp_config: SMTPConfig,
     ) -> None:
         """Test send defaults to 'Sent' folder when not specified."""
         mock_mailbox = MagicMock()
         mock_mailbox_class.return_value = mock_mailbox
-        mock_smtp = MagicMock()
-        mock_smtp_class.return_value = mock_smtp
+        mock_smtp_connector = MagicMock()
+        mock_smtp_connector_class.return_value = mock_smtp_connector
+        mock_smtp_connector.build_message.return_value = MagicMock(
+            as_bytes=MagicMock(return_value=b"msg")
+        )
 
         connector = IMAPConnector(imap_config, smtp_config=smtp_config)
         connector.connect()
@@ -775,3 +822,78 @@ class TestIMAPConnectorWithSMTP:
 
         call_args = mock_mailbox.append.call_args
         assert call_args.args[1] == "Sent"
+
+    @patch("read_no_evil_mcp.email.connectors.imap.SMTPConnector")
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_connect_does_not_open_smtp(
+        self,
+        mock_mailbox_class: MagicMock,
+        mock_smtp_connector_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test connect with smtp_config does not instantiate or connect SMTPConnector."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+
+        mock_smtp_connector_class.assert_not_called()
+        assert connector._smtp_connector is None
+
+    @patch("read_no_evil_mcp.email.connectors.imap.SMTPConnector")
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_send_lazy_initializes_smtp(
+        self,
+        mock_mailbox_class: MagicMock,
+        mock_smtp_connector_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test send creates and connects SMTPConnector on first call."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+        mock_smtp_connector = MagicMock()
+        mock_smtp_connector_class.return_value = mock_smtp_connector
+        mock_smtp_connector.build_message.return_value = MagicMock(
+            as_bytes=MagicMock(return_value=b"msg")
+        )
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+
+        # Before send, no SMTP connector exists
+        assert connector._smtp_connector is None
+
+        connector.send(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="Test",
+            body="Test body",
+        )
+
+        # After send, SMTP connector was created and connected
+        mock_smtp_connector_class.assert_called_once_with(smtp_config)
+        mock_smtp_connector.connect.assert_called_once()
+        mock_smtp_connector.send_message.assert_called_once()
+
+    @patch("read_no_evil_mcp.email.connectors.imap.SMTPConnector")
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_disconnect_without_send_skips_smtp(
+        self,
+        mock_mailbox_class: MagicMock,
+        mock_smtp_connector_class: MagicMock,
+        imap_config: IMAPConfig,
+        smtp_config: SMTPConfig,
+    ) -> None:
+        """Test disconnect after connect without send does not disconnect SMTP."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        connector = IMAPConnector(imap_config, smtp_config=smtp_config)
+        connector.connect()
+        connector.disconnect()
+
+        mock_smtp_connector_class.assert_not_called()
+        mock_mailbox.logout.assert_called_once()

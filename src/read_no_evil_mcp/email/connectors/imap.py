@@ -61,7 +61,7 @@ class IMAPConnector(BaseConnector):
         self._smtp_connector: SMTPConnector | None = None
 
     def connect(self) -> None:
-        """Establish connection to IMAP server (and SMTP if configured)."""
+        """Establish connection to IMAP server."""
         if self.config.ssl:
             mailbox: MailBox | MailBoxUnencrypted = MailBox(self.config.host, self.config.port)
         else:
@@ -72,11 +72,6 @@ class IMAPConnector(BaseConnector):
             self.config.password.get_secret_value(),
         )
         self._mailbox = mailbox
-
-        # Connect to SMTP if configured
-        if self._smtp_config:
-            self._smtp_connector = SMTPConnector(self._smtp_config)
-            self._smtp_connector.connect()
 
     def disconnect(self) -> None:
         """Close connection to IMAP server (and SMTP if connected)."""
@@ -290,7 +285,8 @@ class IMAPConnector(BaseConnector):
             )
 
         if not self._smtp_connector:
-            raise RuntimeError("Not connected. Call connect() first.")
+            self._smtp_connector = SMTPConnector(self._smtp_config)
+            self._smtp_connector.connect()
 
         msg = self._smtp_connector.build_message(
             from_address=from_address,
