@@ -1,6 +1,17 @@
 # Contributing
 
-Development setup, testing, and PR workflow for read-no-evil-mcp.
+Thanks for your interest in read-no-evil-mcp! Whether you're fixing a typo, reporting a detection miss, or building a new feature — all contributions help make email safer for AI agents.
+
+New here? Issues labeled [**good first issue**](https://github.com/thekie/read-no-evil-mcp/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) are a great starting point.
+
+## Contributing Without Code
+
+Not every contribution requires writing Python:
+
+- **Report detection misses** — If you find a prompt injection payload that slips past detection (or a legitimate email that gets flagged), [open an issue](https://github.com/thekie/read-no-evil-mcp/issues/new) with the content and expected result.
+- **Add test payloads** — Submit new prompt injection payloads as YAML (see [Adding Test Cases](#adding-test-cases-no-python-required) below). No Python required.
+- **Improve documentation** — Fix unclear instructions, add examples, or translate docs.
+- **Share use cases** — Tell us how you're using read-no-evil-mcp. Real-world usage helps prioritize what to build next.
 
 ## Development Setup
 
@@ -143,6 +154,10 @@ Example: `feat: Add Gmail API connector`
 5. Reference related issues: `Closes #123`
 
 > **Note:** `main` is only updated via release merges from `development`.
+
+## Recognition
+
+This project uses [All Contributors](https://allcontributors.org/) to recognize all types of contributions — code, documentation, testing, bug reports, and more. After your first PR is merged, you'll be added to the contributors table in the README.
 
 ## Security
 
