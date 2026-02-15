@@ -194,13 +194,7 @@ class SecureMailbox:
 
     def _scan_summary(self, summary: EmailSummary) -> ScanResult:
         """Scan email summary fields for prompt injection."""
-        parts: list[str] = [summary.subject]
-
-        if summary.sender.name:
-            parts.append(summary.sender.name)
-        parts.append(summary.sender.address)
-
-        combined = "\n".join(parts)
+        combined = "\n".join(summary.get_scannable_content().values())
         return self._protection.scan(combined)
 
     def fetch_emails(
@@ -336,19 +330,7 @@ class SecureMailbox:
             )
             return None
 
-        # Build content to scan: subject, sender, body
-        parts: list[str] = [email.subject]
-
-        if email.sender.name:
-            parts.append(email.sender.name)
-        parts.append(email.sender.address)
-
-        if email.body_plain:
-            parts.append(email.body_plain)
-        if email.body_html:
-            parts.append(email.body_html)
-
-        combined = "\n".join(parts)
+        combined = "\n".join(email.get_scannable_content().values())
         scan_result = self._protection.scan(combined)
 
         if scan_result.is_blocked:
