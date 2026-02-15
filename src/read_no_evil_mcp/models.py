@@ -22,6 +22,7 @@ from read_no_evil_mcp.protection.models import ScanResult
 
 __all__ = [
     # Secure mailbox models (primary)
+    "FetchResult",
     "SecureEmail",
     "SecureEmailSummary",
     # Re-exports for backwards compatibility
@@ -35,6 +36,14 @@ __all__ = [
     "ScanResult",
     "SMTPConfig",
 ]
+
+
+@dataclass
+class FetchResult:
+    """Paginated result from fetching email summaries."""
+
+    items: list["SecureEmailSummary"]
+    total: int
 
 
 @dataclass
