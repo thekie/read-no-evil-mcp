@@ -73,6 +73,7 @@ tests/                     # Mirrors src/ structure
 - **pytest** for unit tests
 - Mirror source structure in `tests/`
 - Use mocks for external services (IMAP, etc.)
+- Assert the full expected string, not individual substrings (e.g., `assert record.message == "full message"` instead of multiple `assert "part" in record.message`)
 - Run unit tests: `uv run pytest`
 - Run integration tests (requires ML model): `uv run pytest -m integration`
 
