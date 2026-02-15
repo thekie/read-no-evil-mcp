@@ -4,14 +4,14 @@ Uses the ProtectAI DeBERTa model with PyTorch for ML-based
 prompt injection detection.
 """
 
+import logging
 from typing import Any
 
-import structlog
 from transformers import Pipeline, pipeline
 
 from read_no_evil_mcp.protection.models import ScanResult
 
-logger = structlog.get_logger()
+logger = logging.getLogger(__name__)
 
 # Model for prompt injection detection
 MODEL_ID = "protectai/deberta-v3-base-prompt-injection-v2"
@@ -42,7 +42,7 @@ class HeuristicScanner:
     def _get_classifier(self) -> Any:
         """Lazy load the classifier to avoid slow startup."""
         if self._classifier is None:
-            logger.debug("Loading prompt injection model", model=MODEL_ID)
+            logger.debug("Loading prompt injection model (model=%s)", MODEL_ID)
             self._classifier = pipeline(
                 "text-classification",
                 model=MODEL_ID,
@@ -78,9 +78,9 @@ class HeuristicScanner:
 
         if not is_safe:
             detected_patterns.append("prompt_injection")
-            logger.warning("Detected prompt injection", injection_score=score)
+            logger.warning("Detected prompt injection (injection_score=%s)", score)
         else:
-            logger.debug("No prompt injection detected", highest_score=score)
+            logger.debug("No prompt injection detected (highest_score=%s)", score)
 
         return ScanResult(
             is_safe=is_safe,

@@ -32,6 +32,11 @@ Instructions for AI coding assistants working on this project.
 - Use `| None` instead of `Optional[]`
 - External libs without stubs are configured in `pyproject.toml`
 
+### Logging
+- Use stdlib `logging` — no third-party logging libraries
+- Create loggers with `logger = logging.getLogger(__name__)`
+- Use `%`-style formatting: `logger.warning("msg (key=%s)", val)`
+
 ### Imports
 - Use absolute imports: `from read_no_evil_mcp.models import Email`
 - Sort with ruff (isort rules)
