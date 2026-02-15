@@ -770,3 +770,57 @@ class TestSMTPConnectorBuildMessage:
                 subject="Test",
                 body="Body",
             )
+
+
+class TestHeaderInjectionEdgeCases:
+    @pytest.fixture
+    def smtp_config(self) -> SMTPConfig:
+        return SMTPConfig(
+            host="smtp.example.com",
+            port=587,
+            username="user@example.com",
+            password=SecretStr("password123"),
+            ssl=False,
+        )
+
+    def test_unicode_line_separator_allowed(self, smtp_config: SMTPConfig) -> None:
+        connector = SMTPConnector(smtp_config)
+        msg = connector.build_message(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="test\u2028subject",
+            body="Body",
+        )
+        assert msg["Subject"] == "test\u2028subject"
+
+    def test_unicode_paragraph_separator_allowed(self, smtp_config: SMTPConfig) -> None:
+        connector = SMTPConnector(smtp_config)
+        msg = connector.build_message(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject="test\u2029subject",
+            body="Body",
+        )
+        assert msg["Subject"] == "test\u2029subject"
+
+    def test_subject_allows_special_characters(self, smtp_config: SMTPConfig) -> None:
+        connector = SMTPConnector(smtp_config)
+        subject = "Meeting \U0001f4c5 with caf\u00e9 \u2603"
+        msg = connector.build_message(
+            from_address="sender@example.com",
+            to=["recipient@example.com"],
+            subject=subject,
+            body="Body",
+        )
+        assert msg["Subject"] == subject
+
+    def test_from_name_with_newline_rejected(self, smtp_config: SMTPConfig) -> None:
+        connector = SMTPConnector(smtp_config)
+        with pytest.raises(ValueError):
+            connector.build_message(
+                from_address="sender@example.com",
+                to=["recipient@example.com"],
+                subject="Test",
+                body="Body",
+                from_name="Evil\nBcc: attacker@evil.com",
+            )
