@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from read_no_evil_mcp.accounts._validators import validate_regex_pattern
 from read_no_evil_mcp.accounts.permissions import AccountPermissions
+from read_no_evil_mcp.protection.models import ProtectionConfig
 
 
 class AccessLevel(str, Enum):
@@ -136,6 +137,12 @@ class IMAPAccountConfig(BaseAccountConfig):
         default="Sent",
         description="IMAP folder to save sent emails to (e.g., 'Sent', '[Gmail]/Sent Mail'). "
         "Set to null to disable saving sent emails.",
+    )
+
+    # Protection settings (overrides global threshold)
+    protection: ProtectionConfig | None = Field(
+        default=None,
+        description="Per-account protection settings (overrides global threshold)",
     )
 
     # Access rules

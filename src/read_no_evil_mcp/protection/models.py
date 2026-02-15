@@ -1,6 +1,22 @@
 """Protection-related data models."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class ProtectionConfig(BaseModel):
+    """Configuration for prompt injection detection.
+
+    Attributes:
+        threshold: Detection threshold (0.0-1.0). Scores at or above this
+            value are considered prompt injection. Defaults to 0.5.
+    """
+
+    threshold: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Detection threshold (0.0-1.0). Scores >= this are flagged.",
+    )
 
 
 class ScanResult(BaseModel):

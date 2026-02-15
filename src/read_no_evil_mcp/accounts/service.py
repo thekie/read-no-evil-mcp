@@ -11,6 +11,8 @@ from read_no_evil_mcp.email.connectors.imap import IMAPConnector
 from read_no_evil_mcp.exceptions import AccountNotFoundError, UnsupportedConnectorError
 from read_no_evil_mcp.filtering.access_rules import AccessRuleMatcher
 from read_no_evil_mcp.mailbox import SecureMailbox
+from read_no_evil_mcp.protection.heuristic import HeuristicScanner
+from read_no_evil_mcp.protection.service import ProtectionService
 
 
 class AccountService:
@@ -25,6 +27,7 @@ class AccountService:
         accounts: list[AccountConfig],
         credentials: CredentialBackend,
         max_attachment_size: int = DEFAULT_MAX_ATTACHMENT_SIZE,
+        default_threshold: float = 0.5,
     ) -> None:
         """Initialize the account service.
 
@@ -32,10 +35,12 @@ class AccountService:
             accounts: List of account configurations.
             credentials: Backend for retrieving account credentials.
             max_attachment_size: Maximum attachment size in bytes.
+            default_threshold: Global detection threshold (0.0-1.0).
         """
         self._accounts = {a.id: a for a in accounts}
         self._credentials = credentials
         self._max_attachment_size = max_attachment_size
+        self._default_threshold = default_threshold
 
     def list_accounts(self) -> list[str]:
         """Return list of configured account IDs.
@@ -133,9 +138,19 @@ class AccountService:
             subject_rules=config.subject_rules,
         )
 
+        # Resolve threshold: per-account override > global default
+        threshold = (
+            config.protection.threshold
+            if config.protection is not None
+            else self._default_threshold
+        )
+        scanner = HeuristicScanner(threshold=threshold)
+        protection = ProtectionService(scanner=scanner)
+
         return SecureMailbox(
             connector,
             config.permissions,
+            protection=protection,
             from_address=from_address,
             from_name=config.from_name,
             access_rules_matcher=access_rules_matcher,

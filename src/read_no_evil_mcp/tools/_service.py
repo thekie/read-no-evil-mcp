@@ -29,6 +29,7 @@ def get_account_service() -> AccountService:
         settings.accounts,
         EnvCredentialBackend(),
         max_attachment_size=settings.max_attachment_size,
+        default_threshold=settings.protection.threshold,
     )
 
 
