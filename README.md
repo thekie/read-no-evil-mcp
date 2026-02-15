@@ -452,6 +452,17 @@ The email-specific gap (9%) is a known limitation — these attacks exploit HTML
 
 **Why publish this?** Most security tools only share success stories. We think you should know exactly what's caught and what isn't, so you can layer your defenses accordingly.
 
+## Performance Notes
+
+| Metric | Value |
+|--------|-------|
+| First startup | ~30s (one-time model download, ~500 MB) |
+| Subsequent starts | ~2–3s (model cached locally) |
+| Per-email scan | <100 ms typical |
+| Memory footprint | ~500 MB (CPU-only PyTorch + model) |
+
+First startup downloads the [DeBERTa prompt-injection model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2) from Hugging Face. After that, the model is cached in `~/.cache/huggingface/` and subsequent starts are fast. See [#91](https://github.com/thekie/read-no-evil-mcp/issues/91) for startup optimization plans.
+
 ## Roadmap
 
 ### v0.1
