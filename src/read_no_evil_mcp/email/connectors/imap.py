@@ -1,7 +1,7 @@
 """IMAP connector for reading emails using imap-tools."""
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from imap_tools import AND, MailBox, MailBoxUnencrypted
 from imap_tools import EmailAddress as IMAPEmailAddress
@@ -76,7 +76,10 @@ class IMAPConnector(BaseConnector):
     def disconnect(self) -> None:
         """Close connection to IMAP server (and SMTP if connected)."""
         if self._mailbox:
-            self._mailbox.logout()
+            try:
+                self._mailbox.logout()
+            except Exception:
+                logger.debug("IMAP logout failed (connection may already be closed)")
             self._mailbox = None
 
         if self._smtp_connector:
@@ -310,7 +313,7 @@ class IMAPConnector(BaseConnector):
             self._mailbox.append(
                 msg.as_bytes(),
                 self.config.sent_folder,
-                dt=datetime.now(),
+                dt=datetime.now(timezone.utc),
                 flag_set=[r"\Seen"],
             )
 
