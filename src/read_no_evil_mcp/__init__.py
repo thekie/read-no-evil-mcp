@@ -18,7 +18,7 @@ from read_no_evil_mcp.models import (
 from read_no_evil_mcp.protection.heuristic import HeuristicScanner
 from read_no_evil_mcp.protection.service import ProtectionService
 
-__version__ = "0.3.1"
+__version__ = "0.3.2"
 
 __all__ = [
     "Attachment",
