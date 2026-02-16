@@ -76,7 +76,10 @@ class IMAPConnector(BaseConnector):
     def disconnect(self) -> None:
         """Close connection to IMAP server (and SMTP if connected)."""
         if self._mailbox:
-            self._mailbox.logout()
+            try:
+                self._mailbox.logout()
+            except Exception:
+                logger.debug("IMAP logout failed (connection may already be closed)")
             self._mailbox = None
 
         if self._smtp_connector:
