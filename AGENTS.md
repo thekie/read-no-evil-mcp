@@ -98,6 +98,21 @@ Example: `feat: Add Gmail API connector`
 5. Reference related issues: `Closes #123`
 6. `main` is only updated via release merges from `development`
 
+## Release Checklist
+
+When bumping a version for release:
+
+1. **Update version in all three locations:**
+   - `pyproject.toml` → `version = "x.y.z"`
+   - `src/read_no_evil_mcp/__init__.py` → `__version__ = "x.y.z"`
+   - `uv.lock` → run `uv lock` after updating `pyproject.toml`
+2. **Update `CHANGELOG.md`:**
+   - Add a new `## [x.y.z] - YYYY-MM-DD` section at the top
+   - Add a comparison link at the bottom: `[x.y.z]: https://github.com/thekie/read-no-evil-mcp/compare/vPREV...vx.y.z`
+   - Reference PRs/issues with `[#NNN]` and add link definitions
+3. **Commit** with `chore: Bump version to x.y.z and update changelog`
+4. **Hotfix PRs target `main`**, feature PRs target `development`
+
 ## Dependencies
 
 - Add runtime deps to `dependencies` in `pyproject.toml`

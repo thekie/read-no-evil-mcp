@@ -143,7 +143,7 @@ Pre-built images are available on GitHub Container Registry:
 
 ```bash
 docker pull ghcr.io/thekie/read-no-evil-mcp:latest
-docker run -p 8000:8000 -v ./config.yaml:/app/config.yaml:ro \
+docker run -p 8000:8000 -v ./config.yaml:/app/rnoe.yaml:ro \
   -e RNOE_ACCOUNT_GMAIL_PASSWORD="your-app-password" \
   ghcr.io/thekie/read-no-evil-mcp
 ```
@@ -154,7 +154,7 @@ To build locally instead:
 
 ```bash
 docker build -t read-no-evil-mcp .
-docker run -p 8000:8000 -v ./config.yaml:/app/config.yaml:ro \
+docker run -p 8000:8000 -v ./config.yaml:/app/rnoe.yaml:ro \
   -e RNOE_ACCOUNT_GMAIL_PASSWORD="your-app-password" \
   read-no-evil-mcp
 ```
