@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-02-16
+
+### Fixed
+
+- Docker config not found: mount path in README and docker-compose.yml pointed to `/app/config.yaml` instead of `/app/rnoe.yaml` ([#256])
+- Docker container PermissionError on first startup: Hugging Face model downloads failed because the `rnoe` system user had no writable cache directory ([#256])
+- Send email failure "date_time must be aware": use timezone-aware datetime when saving to Sent folder via IMAP ([#256])
+- IMAP disconnect error on logout when server already closed the connection ([#256])
+
+## [0.3.2] - 2026-02-16
+
+### Fixed
+
+- Docker container crash on startup: use `--no-editable` install so the package is available in the runtime stage ([#251])
+
+## [0.3.1] - 2026-02-15
+
+### Fixed
+
+- Docker build failure: copy `README.md` into build context so `hatchling` can find it ([#245])
+
 ## [0.3.0] - 2026-02-15
 
 ### Added
@@ -86,8 +107,15 @@ Initial public release with core email gateway functionality:
 - Subject and sender filtering rules
 - MCP server with stdio transport
 
+[0.3.3]: https://github.com/thekie/read-no-evil-mcp/compare/v0.3.2...v0.3.3
+[0.3.2]: https://github.com/thekie/read-no-evil-mcp/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/thekie/read-no-evil-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/thekie/read-no-evil-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/thekie/read-no-evil-mcp/releases/tag/v0.2.0
+
+[#245]: https://github.com/thekie/read-no-evil-mcp/issues/245
+[#251]: https://github.com/thekie/read-no-evil-mcp/issues/251
+[#256]: https://github.com/thekie/read-no-evil-mcp/pull/256
 
 [#82]: https://github.com/thekie/read-no-evil-mcp/pull/82
 [#84]: https://github.com/thekie/read-no-evil-mcp/pull/86
