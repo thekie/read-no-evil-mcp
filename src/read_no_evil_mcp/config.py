@@ -4,7 +4,9 @@ import os
 from pathlib import Path
 from typing import Any
 
+import yaml
 from pydantic import Field, field_validator
+from pydantic_core import ValidationError
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -14,6 +16,24 @@ from pydantic_settings import (
 from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.defaults import DEFAULT_MAX_ATTACHMENT_SIZE
 from read_no_evil_mcp.protection.models import ProtectionConfig
+
+
+class ConfigError(Exception):
+    """Custom exception for configuration errors with user-friendly messages."""
+
+    def __init__(self, message: str, file_path: str | None = None, line: int | None = None, col: int | None = None):
+        self.file_path = file_path
+        self.line = line
+        self.col = col
+        full_message = message
+        if file_path:
+            location = f" in {file_path}"
+            if line is not None:
+                location += f" at line {line}"
+                if col is not None:
+                    location += f", column {col}"
+            full_message = f"Configuration error{location}: {message}"
+        super().__init__(full_message)
 
 
 class YamlConfigSettingsSource(PydanticBaseSettingsSource):
@@ -42,9 +62,7 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
         return self._yaml_data
 
     def _read_yaml_file(self) -> dict[str, Any]:
-        """Read YAML config from file."""
-        import yaml
-
+        """Read YAML config from file with improved error messages."""
         xdg_config = os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
         config_paths = [
             os.environ.get("RNOE_CONFIG_FILE"),
@@ -53,12 +71,78 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
         ]
 
         for path in config_paths:
-            if path and Path(path).exists():
-                with open(path) as f:
-                    data = yaml.safe_load(f)
-                    return data if data else {}
+            if path:
+                path_obj = Path(path)
+                if path_obj.exists():
+                    try:
+                        with open(path_obj) as f:
+                            data = yaml.safe_load(f)
+                            return data if data else {}
+                    except yaml.YAMLError as e:
+                        # Parse YAML error location if available
+                        line = getattr(e, 'problem_mark', None)
+                        line_num = line.line if line else None
+                        col_num = line.column if line else None
+                        error_msg = str(e)
+                        if hasattr(e, 'problem'):
+                            error_msg = e.problem
+                        raise ConfigError(
+                            f"Invalid YAML syntax: {error_msg}",
+                            file_path=str(path_obj),
+                            line=line_num,
+                            col=col_num,
+                        ) from e
+                    except PermissionError as e:
+                        raise ConfigError(
+                            f"Cannot read config file — permission denied",
+                            file_path=str(path_obj),
+                        ) from e
+                    except OSError as e:
+                        raise ConfigError(
+                            f"Cannot read config file: {e}",
+                            file_path=str(path_obj),
+                        ) from e
 
         return {}
+
+
+def _parse_validation_error(error: ValidationError, accounts: list[dict] | None = None) -> str:
+    """Convert Pydantic ValidationError to user-friendly message."""
+    errors = error.errors()
+    if not errors:
+        return "Unknown validation error"
+
+    # Group errors by location
+    for err in errors:
+        loc = err.get("loc", ())
+        msg = err.get("msg", "")
+        input_type = err.get("type", "")
+
+        # Check for missing required fields (especially for accounts)
+        if input_type == "missing" and loc:
+            field_name = loc[-1]
+            # Check if this is an account configuration
+            if "account" in [str(l).lower() for l in loc] or (accounts and any(
+                field_name in ["host", "username", "password"] for acc in accounts
+            )):
+                if field_name == "host":
+                    return f"Account is missing required field 'host'. Required fields for IMAP accounts: host, username"
+                elif field_name == "username":
+                    return f"Account is missing required field 'username'. Required fields for IMAP accounts: host, username"
+                elif field_name == "id":
+                    return "Account is missing required field 'id'. Each account needs a unique identifier (e.g., 'work', 'personal')"
+            return f"Missing required field '{field_name}'"
+
+        # Check for invalid account ID format
+        if input_type == "string_pattern" and "id" in [str(l).lower() for l in loc]:
+            return "Account ID must start with a letter and contain only letters, numbers, hyphens, and underscores (e.g., 'work', 'my-gmail')"
+
+        # Generic field errors
+        if loc:
+            field_name = ".".join(str(l) for l in loc)
+            return f"Invalid value for '{field_name}': {msg}"
+
+    return str(error)
 
 
 class Settings(BaseSettings):
@@ -111,3 +195,25 @@ class Settings(BaseSettings):
             dotenv_settings,
             file_secret_settings,
         )
+
+
+def get_settings_eager() -> Settings:
+    """Load settings with eager validation at startup.
+    
+    This function validates configuration immediately, failing fast with
+    clear error messages if the configuration is invalid.
+    
+    Raises:
+        ConfigError: If configuration is invalid with user-friendly message.
+        ValidationError: If Pydantic validation fails (wrapped message).
+    """
+    try:
+        settings = Settings()
+        # Validate accounts by accessing them (triggers any lazy validation)
+        _ = settings.accounts
+        _ = settings.protection
+        return settings
+    except ValidationError as e:
+        # Convert to user-friendly message
+        friendly_msg = _parse_validation_error(e)
+        raise ConfigError(friendly_msg) from e
