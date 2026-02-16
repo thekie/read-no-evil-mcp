@@ -21,7 +21,11 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 EXPOSE 8000
 
-RUN groupadd --system rnoe && useradd --system --gid rnoe rnoe
+RUN groupadd --system rnoe && useradd --system --gid rnoe rnoe \
+    && mkdir -p /app/.cache && chown rnoe:rnoe /app/.cache
+
+ENV HF_HOME=/app/.cache/huggingface
+
 USER rnoe
 
 ENTRYPOINT ["read-no-evil-mcp"]
