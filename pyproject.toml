@@ -32,7 +32,7 @@ classifiers = [
 ]
 dependencies = [
     "fastmcp>=2.14.5",
-    "transformers>=4.30,<5.0",
+    "transformers>=4.30,<6.0",
     "torch>=2.0,<3.0",
     "imap-tools",
     "pydantic>=2.0",
