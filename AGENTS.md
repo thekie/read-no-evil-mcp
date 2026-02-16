@@ -98,6 +98,13 @@ Example: `feat: Add Gmail API connector`
 5. Reference related issues: `Closes #123`
 6. `main` is only updated via release merges from `development`
 
+## Changelog
+
+- **Every PR** must add an entry to the `## [Unreleased]` section of `CHANGELOG.md`
+- Use the appropriate subsection: `Added`, `Fixed`, `Changed`, `Security`, `Documentation`
+- Reference the PR/issue: `- Description of change ([#NNN])`
+- Add the link definition at the bottom of the file: `[#NNN]: https://github.com/thekie/read-no-evil-mcp/pull/NNN`
+
 ## Release Checklist
 
 When bumping a version for release:
@@ -106,12 +113,13 @@ When bumping a version for release:
    - `pyproject.toml` → `version = "x.y.z"`
    - `src/read_no_evil_mcp/__init__.py` → `__version__ = "x.y.z"`
    - `uv.lock` → run `uv lock` after updating `pyproject.toml`
-2. **Update `CHANGELOG.md`:**
-   - Add a new `## [x.y.z] - YYYY-MM-DD` section at the top
+2. **Finalize `CHANGELOG.md`:**
+   - Rename `## [Unreleased]` to `## [x.y.z] - YYYY-MM-DD`
+   - Add a new empty `## [Unreleased]` section above it
    - Add a comparison link at the bottom: `[x.y.z]: https://github.com/thekie/read-no-evil-mcp/compare/vPREV...vx.y.z`
-   - Reference PRs/issues with `[#NNN]` and add link definitions
 3. **Commit** with `chore: Bump version to x.y.z and update changelog`
 4. **Hotfix PRs target `main`**, feature PRs target `development`
+5. **After release**, merge `main` back into `development` immediately and bump to next `dev0` version
 
 ## Dependencies
 

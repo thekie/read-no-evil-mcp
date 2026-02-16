@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "read-no-evil-mcp"
-version = "0.3.3"
+version = "0.4.0.dev0"
 description = "A secure email gateway MCP server that protects AI agents from prompt injection attacks in emails"
 readme = "README.md"
 license = "Apache-2.0"
