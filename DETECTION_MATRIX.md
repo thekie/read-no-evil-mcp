@@ -1,6 +1,6 @@
 # 🛡️ Detection Matrix
 
-**Last updated:** 2026-02-17 10:57 UTC
+**Last updated:** 2026-02-17 11:20 UTC
 
 These results come from an **adversarial test suite** — payloads specifically crafted to bypass detection. The 71.6% rate reflects worst-case performance against targeted, research-grade attacks.
 
