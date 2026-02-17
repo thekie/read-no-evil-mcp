@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Support email addresses as account IDs with automatic env var normalization ([#259])
 - `skip_protection` option on sender and subject rules to disable prompt injection scanning for specific senders ([#258])
 - `unscanned_list_prompt` and `unscanned_read_prompt` account settings for custom agent prompts on unscanned emails ([#258])
 - `[UNSCANNED]` marker in `list_emails` output for emails where scanning was skipped ([#258])
@@ -126,6 +127,7 @@ Initial public release with core email gateway functionality:
 [0.3.0]: https://github.com/thekie/read-no-evil-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/thekie/read-no-evil-mcp/releases/tag/v0.2.0
 
+[#259]: https://github.com/thekie/read-no-evil-mcp/issues/259
 [#258]: https://github.com/thekie/read-no-evil-mcp/issues/258
 [#269]: https://github.com/thekie/read-no-evil-mcp/issues/269
 [#270]: https://github.com/thekie/read-no-evil-mcp/issues/270

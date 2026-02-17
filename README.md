@@ -202,9 +202,18 @@ accounts:
 Passwords are provided via environment variables for security:
 
 ```bash
-# Pattern: RNOE_ACCOUNT_<ID>_PASSWORD (uppercase)
+# Pattern: RNOE_ACCOUNT_<ID>_PASSWORD (uppercase, non-alphanumeric replaced with _)
 export RNOE_ACCOUNT_WORK_PASSWORD="your-work-password"
 export RNOE_ACCOUNT_PERSONAL_PASSWORD="your-gmail-app-password"
+```
+
+Email addresses are valid account IDs. Non-alphanumeric characters are replaced with `_` in the variable name:
+
+```yaml
+  - id: "user@example.com"
+```
+```bash
+export RNOE_ACCOUNT_USER_EXAMPLE_COM_PASSWORD="your-password"
 ```
 
 ### Permissions

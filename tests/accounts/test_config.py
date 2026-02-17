@@ -59,6 +59,33 @@ class TestAccountConfig:
         )
         assert config.id == "my-work_email"
 
+    def test_id_validation_allows_email_address(self) -> None:
+        """Test that ID accepts an email address like user@example.com."""
+        config = AccountConfig(
+            id="user@example.com",
+            host="mail.example.com",
+            username="user@example.com",
+        )
+        assert config.id == "user@example.com"
+
+    def test_id_validation_allows_email_with_dots(self) -> None:
+        """Test that ID accepts an email with dots in local part."""
+        config = AccountConfig(
+            id="john.doe@example.com",
+            host="mail.example.com",
+            username="john.doe@example.com",
+        )
+        assert config.id == "john.doe@example.com"
+
+    def test_id_validation_allows_email_with_subdomains(self) -> None:
+        """Test that ID accepts an email with subdomains."""
+        config = AccountConfig(
+            id="user@mail.company.co.uk",
+            host="mail.company.co.uk",
+            username="user@mail.company.co.uk",
+        )
+        assert config.id == "user@mail.company.co.uk"
+
     def test_id_validation_empty(self) -> None:
         """Test that ID cannot be empty."""
         with pytest.raises(ValidationError):
