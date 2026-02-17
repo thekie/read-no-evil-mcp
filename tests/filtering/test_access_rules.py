@@ -6,10 +6,14 @@ from read_no_evil_mcp.accounts.config import AccessLevel, SenderRule, SubjectRul
 from read_no_evil_mcp.filtering.access_rules import (
     DEFAULT_LIST_PROMPTS,
     DEFAULT_READ_PROMPTS,
+    DEFAULT_UNSCANNED_LIST_PROMPT,
+    DEFAULT_UNSCANNED_READ_PROMPT,
     AccessRuleMatcher,
     get_access_level,
     get_list_prompt,
     get_read_prompt,
+    get_unscanned_list_prompt,
+    get_unscanned_read_prompt,
 )
 
 
@@ -318,6 +322,30 @@ class TestRuleModels:
         assert rule.pattern == r"\[URGENT\]"
         assert rule.access == AccessLevel.ASK_BEFORE_READ
 
+    def test_sender_rule_skip_protection_true(self) -> None:
+        """Test SenderRule with skip_protection=True."""
+        rule = SenderRule(
+            pattern=r".*@trusted\.com", access=AccessLevel.TRUSTED, skip_protection=True
+        )
+        assert rule.skip_protection is True
+
+    def test_sender_rule_skip_protection_default(self) -> None:
+        """Test SenderRule skip_protection defaults to False."""
+        rule = SenderRule(pattern=r".*@example\.com", access=AccessLevel.TRUSTED)
+        assert rule.skip_protection is False
+
+    def test_subject_rule_skip_protection_true(self) -> None:
+        """Test SubjectRule with skip_protection=True."""
+        rule = SubjectRule(
+            pattern=r"\[INTERNAL\]", access=AccessLevel.TRUSTED, skip_protection=True
+        )
+        assert rule.skip_protection is True
+
+    def test_subject_rule_skip_protection_default(self) -> None:
+        """Test SubjectRule skip_protection defaults to False."""
+        rule = SubjectRule(pattern=r"\[URGENT\]", access=AccessLevel.ASK_BEFORE_READ)
+        assert rule.skip_protection is False
+
     def test_rule_pattern_not_empty(self) -> None:
         """Test that rule pattern cannot be empty."""
         with pytest.raises(ValueError):
@@ -325,3 +353,135 @@ class TestRuleModels:
 
         with pytest.raises(ValueError):
             SubjectRule(pattern="", access=AccessLevel.TRUSTED)
+
+
+class TestShouldSkipProtection:
+    """Tests for AccessRuleMatcher.should_skip_protection method."""
+
+    def test_no_rules_match_returns_false(self) -> None:
+        """Test that no matching rules returns False (scan by default)."""
+        matcher = AccessRuleMatcher()
+        assert matcher.should_skip_protection("anyone@example.com", "Any subject") is False
+
+    def test_sender_rule_skip_true_matches(self) -> None:
+        """Test single sender rule with skip_protection=True returns True."""
+        rules = [
+            SenderRule(pattern=r".*@trusted\.com", access=AccessLevel.TRUSTED, skip_protection=True)
+        ]
+        matcher = AccessRuleMatcher(sender_rules=rules)
+        assert matcher.should_skip_protection("user@trusted.com", "Hello") is True
+
+    def test_sender_rule_skip_false_matches(self) -> None:
+        """Test single sender rule with skip_protection=False returns False."""
+        rules = [
+            SenderRule(
+                pattern=r".*@trusted\.com", access=AccessLevel.TRUSTED, skip_protection=False
+            )
+        ]
+        matcher = AccessRuleMatcher(sender_rules=rules)
+        assert matcher.should_skip_protection("user@trusted.com", "Hello") is False
+
+    def test_sender_rule_skip_default_matches(self) -> None:
+        """Test single sender rule with default skip_protection returns False."""
+        rules = [SenderRule(pattern=r".*@trusted\.com", access=AccessLevel.TRUSTED)]
+        matcher = AccessRuleMatcher(sender_rules=rules)
+        assert matcher.should_skip_protection("user@trusted.com", "Hello") is False
+
+    def test_subject_rule_skip_true_matches(self) -> None:
+        """Test subject rule with skip_protection=True returns True."""
+        rules = [
+            SubjectRule(
+                pattern=r"(?i)\[INTERNAL\]", access=AccessLevel.TRUSTED, skip_protection=True
+            )
+        ]
+        matcher = AccessRuleMatcher(subject_rules=rules)
+        assert matcher.should_skip_protection("anyone@example.com", "[Internal] Report") is True
+
+    def test_multiple_rules_all_skip_true(self) -> None:
+        """Test multiple matching rules all with skip_protection=True returns True."""
+        sender_rules = [
+            SenderRule(pattern=r".*@trusted\.com", access=AccessLevel.TRUSTED, skip_protection=True)
+        ]
+        subject_rules = [
+            SubjectRule(
+                pattern=r"(?i)\[INTERNAL\]", access=AccessLevel.TRUSTED, skip_protection=True
+            )
+        ]
+        matcher = AccessRuleMatcher(sender_rules=sender_rules, subject_rules=subject_rules)
+        assert matcher.should_skip_protection("user@trusted.com", "[Internal] Report") is True
+
+    def test_multiple_rules_mixed_skip_returns_false(self) -> None:
+        """Test multiple matching rules with mixed skip_protection returns False."""
+        sender_rules = [
+            SenderRule(
+                pattern=r".*@trusted\.com", access=AccessLevel.TRUSTED, skip_protection=True
+            ),
+            SenderRule(pattern=r".*@trusted\.com", access=AccessLevel.SHOW, skip_protection=False),
+        ]
+        matcher = AccessRuleMatcher(sender_rules=sender_rules)
+        assert matcher.should_skip_protection("user@trusted.com", "Hello") is False
+
+    def test_sender_skip_true_subject_skip_false_returns_false(self) -> None:
+        """Test sender skip=True + subject skip=False both match returns False."""
+        sender_rules = [
+            SenderRule(pattern=r".*@trusted\.com", access=AccessLevel.TRUSTED, skip_protection=True)
+        ]
+        subject_rules = [
+            SubjectRule(
+                pattern=r"(?i)\[URGENT\]",
+                access=AccessLevel.ASK_BEFORE_READ,
+                skip_protection=False,
+            )
+        ]
+        matcher = AccessRuleMatcher(sender_rules=sender_rules, subject_rules=subject_rules)
+        assert matcher.should_skip_protection("user@trusted.com", "[Urgent] Action") is False
+
+    def test_non_matching_rules_dont_affect_result(self) -> None:
+        """Test that non-matching rules don't affect the result."""
+        sender_rules = [
+            SenderRule(
+                pattern=r".*@trusted\.com", access=AccessLevel.TRUSTED, skip_protection=True
+            ),
+            SenderRule(pattern=r".*@other\.com", access=AccessLevel.SHOW, skip_protection=False),
+        ]
+        matcher = AccessRuleMatcher(sender_rules=sender_rules)
+        # Only the trusted.com rule matches, other.com does not
+        assert matcher.should_skip_protection("user@trusted.com", "Hello") is True
+
+
+class TestGetUnscannedListPrompt:
+    """Tests for get_unscanned_list_prompt function."""
+
+    def test_default_prompt(self) -> None:
+        """Test default unscanned list prompt."""
+        prompt = get_unscanned_list_prompt()
+        assert prompt == DEFAULT_UNSCANNED_LIST_PROMPT
+
+    def test_custom_prompt_overrides_default(self) -> None:
+        """Test custom prompt overrides default."""
+        prompt = get_unscanned_list_prompt("Custom unscanned list warning")
+        assert prompt == "Custom unscanned list warning"
+
+    def test_none_returns_default(self) -> None:
+        """Test None returns default prompt."""
+        prompt = get_unscanned_list_prompt(None)
+        assert prompt == DEFAULT_UNSCANNED_LIST_PROMPT
+
+
+class TestGetUnscannedReadPrompt:
+    """Tests for get_unscanned_read_prompt function."""
+
+    def test_default_prompt(self) -> None:
+        """Test default unscanned read prompt."""
+        prompt = get_unscanned_read_prompt()
+        assert prompt == DEFAULT_UNSCANNED_READ_PROMPT
+
+    def test_custom_prompt_overrides_default(self) -> None:
+        """Test custom prompt overrides default."""
+        prompt = get_unscanned_read_prompt("Custom unscanned read warning")
+        assert prompt == "Custom unscanned read warning"
+
+    def test_none_returns_default(self) -> None:
+        """Test None returns default prompt."""
+        prompt = get_unscanned_read_prompt(None)
+        assert prompt == DEFAULT_UNSCANNED_READ_PROMPT

@@ -65,11 +65,13 @@ def list_emails(
 
             # Get access marker from the enriched model
             access_marker = ACCESS_MARKERS.get(secure_email.access_level, "")
+            unscanned_marker = " [UNSCANNED]" if secure_email.protection_skipped else ""
 
             # Build email line
             email_line = (
                 f"[{email.uid}] {date_str} | {email.sender.address} | "
                 f"{email.subject}{attachment_marker}{seen_marker}{access_marker}"
+                f"{unscanned_marker}"
             )
             lines.append(email_line)
 

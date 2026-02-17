@@ -59,6 +59,9 @@ def get_email(account: str, folder: str, uid: int) -> str:
             if secure_email.prompt:
                 lines.append(f"-> {secure_email.prompt}")
 
+        if secure_email.protection_skipped:
+            lines.append("Protection: SKIPPED")
+
         if email.cc:
             lines.append(f"CC: {', '.join(str(addr) for addr in email.cc)}")
 

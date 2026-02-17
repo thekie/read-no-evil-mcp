@@ -38,10 +38,15 @@ class SenderRule(BaseModel):
     Attributes:
         pattern: Regex pattern to match against sender email address.
         access: Access level to assign when pattern matches.
+        skip_protection: If True, skip prompt injection scanning for matching emails.
     """
 
     pattern: str = Field(..., min_length=1, description="Regex pattern for sender email")
     access: AccessLevel = Field(..., description="Access level when pattern matches")
+    skip_protection: bool = Field(
+        default=False,
+        description="Skip prompt injection scanning for matching emails",
+    )
 
     @field_validator("pattern")
     @classmethod
@@ -56,10 +61,15 @@ class SubjectRule(BaseModel):
     Attributes:
         pattern: Regex pattern to match against email subject.
         access: Access level to assign when pattern matches.
+        skip_protection: If True, skip prompt injection scanning for matching emails.
     """
 
     pattern: str = Field(..., min_length=1, description="Regex pattern for subject line")
     access: AccessLevel = Field(..., description="Access level when pattern matches")
+    skip_protection: bool = Field(
+        default=False,
+        description="Skip prompt injection scanning for matching emails",
+    )
 
     @field_validator("pattern")
     @classmethod
@@ -161,6 +171,14 @@ class IMAPAccountConfig(BaseAccountConfig):
     read_prompts: dict[AccessLevel, str | None] = Field(
         default_factory=dict,
         description="Agent prompts shown in get_email per access level",
+    )
+    unscanned_list_prompt: str | None = Field(
+        default=None,
+        description="Agent prompt shown in list_emails for unscanned emails (skip_protection)",
+    )
+    unscanned_read_prompt: str | None = Field(
+        default=None,
+        description="Agent prompt shown in get_email for unscanned emails (skip_protection)",
     )
 
 
