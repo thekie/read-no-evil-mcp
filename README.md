@@ -426,7 +426,7 @@ The `send_email` tool supports:
 |------|-------------|------------|
 | `list_accounts` | List configured email accounts | — |
 | `list_folders` | List folders/mailboxes | `read` |
-| `list_emails` | List emails in a folder (supports `limit`/`offset` pagination) | `read` |
+| `list_emails` | List emails in a folder (supports `limit`/`offset` pagination, `unread_only` filter) | `read` |
 | `get_email` | Get full email content by UID | `read` |
 | `send_email` | Send an email via SMTP | `send` |
 | `move_email` | Move email to another folder | `move` |
