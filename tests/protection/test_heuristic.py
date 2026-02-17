@@ -1,9 +1,10 @@
 """Tests for HeuristicScanner using ProtectAI's prompt injection model."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+import read_no_evil_mcp.protection.heuristic as heuristic_mod
 from read_no_evil_mcp.protection.heuristic import (
     INJECTION_LABEL,
     HeuristicScanner,
@@ -129,18 +130,26 @@ class TestExtractInjectionScore:
 class TestHeuristicScannerUnit:
     """Unit tests for HeuristicScanner with mocked classifier."""
 
+    @pytest.fixture(autouse=True)
+    def _reset_shared_classifier(self) -> None:  # type: ignore[misc]
+        """Reset the module-level shared classifier before each test."""
+        original = heuristic_mod._shared_classifier
+        heuristic_mod._shared_classifier = None
+        yield  # type: ignore[misc]
+        heuristic_mod._shared_classifier = original
+
     def _make_scanner_with_mock(
         self, mock_results: list[dict[str, float | str]], threshold: float = 0.5
-    ) -> HeuristicScanner:
-        """Create a scanner with a mocked classifier returning given results."""
+    ) -> tuple[HeuristicScanner, MagicMock]:
+        """Create a scanner with a mocked shared classifier returning given results."""
         scanner = HeuristicScanner(threshold=threshold)
         mock_classifier = MagicMock()
         mock_classifier.return_value = mock_results
-        scanner._classifier = mock_classifier
-        return scanner
+        heuristic_mod._shared_classifier = mock_classifier
+        return scanner, mock_classifier
 
     def test_scan_detects_injection_above_threshold(self) -> None:
-        scanner = self._make_scanner_with_mock(
+        scanner, _ = self._make_scanner_with_mock(
             [
                 {"label": "SAFE", "score": 0.1},
                 {"label": INJECTION_LABEL, "score": 0.9},
@@ -152,7 +161,7 @@ class TestHeuristicScannerUnit:
         assert "prompt_injection" in result.detected_patterns
 
     def test_scan_safe_below_threshold(self) -> None:
-        scanner = self._make_scanner_with_mock(
+        scanner, _ = self._make_scanner_with_mock(
             [
                 {"label": "SAFE", "score": 0.8},
                 {"label": INJECTION_LABEL, "score": 0.2},
@@ -164,7 +173,7 @@ class TestHeuristicScannerUnit:
         assert result.detected_patterns == []
 
     def test_scan_at_exact_threshold_is_safe(self) -> None:
-        scanner = self._make_scanner_with_mock(
+        scanner, _ = self._make_scanner_with_mock(
             [{"label": INJECTION_LABEL, "score": 0.5}],
             threshold=0.5,
         )
@@ -173,7 +182,7 @@ class TestHeuristicScannerUnit:
         assert not result.is_safe
 
     def test_scan_just_below_threshold_is_safe(self) -> None:
-        scanner = self._make_scanner_with_mock(
+        scanner, _ = self._make_scanner_with_mock(
             [
                 {"label": "SAFE", "score": 0.5001},
                 {"label": INJECTION_LABEL, "score": 0.4999},
@@ -185,19 +194,26 @@ class TestHeuristicScannerUnit:
         assert result.score == 0.4999
 
     def test_scan_empty_content_skips_classifier(self) -> None:
-        scanner = self._make_scanner_with_mock([])
+        _, mock_classifier = self._make_scanner_with_mock([])
+        scanner = HeuristicScanner()
         result = scanner.scan("")
         assert result.is_safe
         assert result.score == 0.0
         # Classifier should not have been called
-        scanner._classifier.assert_not_called()  # type: ignore[union-attr]
+        mock_classifier.assert_not_called()
 
     def test_scan_calls_classifier_with_top_k_none(self) -> None:
-        scanner = self._make_scanner_with_mock(
+        scanner, mock_classifier = self._make_scanner_with_mock(
             [
                 {"label": "SAFE", "score": 0.7},
                 {"label": INJECTION_LABEL, "score": 0.3},
             ]
         )
         scanner.scan("some content")
-        scanner._classifier.assert_called_once_with("some content", top_k=None)  # type: ignore[union-attr]
+        mock_classifier.assert_called_once_with("some content", top_k=None)
+
+    def test_warmup_loads_classifier(self) -> None:
+        scanner = HeuristicScanner()
+        with patch("read_no_evil_mcp.protection.heuristic._get_shared_classifier") as mock_get:
+            scanner.warmup()
+        mock_get.assert_called_once()

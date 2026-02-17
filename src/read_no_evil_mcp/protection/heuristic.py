@@ -17,6 +17,25 @@ logger = logging.getLogger(__name__)
 MODEL_ID = "protectai/deberta-v3-base-prompt-injection-v2"
 INJECTION_LABEL = "INJECTION"
 
+# Shared classifier singleton — the model is stateless so all scanner
+# instances can safely reuse the same loaded pipeline.
+_shared_classifier: Pipeline | None = None
+
+
+def _get_shared_classifier() -> Pipeline:
+    """Return the shared classifier, loading it on first call."""
+    global _shared_classifier  # noqa: PLW0603
+    if _shared_classifier is None:
+        logger.debug("Loading prompt injection model (model=%s)", MODEL_ID)
+        _shared_classifier = pipeline(
+            "text-classification",
+            model=MODEL_ID,
+            truncation=True,
+            max_length=512,
+        )
+        logger.debug("Model loaded successfully")
+    return _shared_classifier
+
 
 def _extract_injection_score(results: list[dict[str, Any]]) -> float:
     """Extract the INJECTION class probability from classifier results."""
@@ -37,20 +56,10 @@ class HeuristicScanner:
                 considered prompt injection. Defaults to 0.5.
         """
         self._threshold = threshold
-        self._classifier: Pipeline | None = None  # Lazy load
 
-    def _get_classifier(self) -> Any:
-        """Lazy load the classifier to avoid slow startup."""
-        if self._classifier is None:
-            logger.debug("Loading prompt injection model (model=%s)", MODEL_ID)
-            self._classifier = pipeline(
-                "text-classification",
-                model=MODEL_ID,
-                truncation=True,
-                max_length=512,
-            )
-            logger.debug("Model loaded successfully")
-        return self._classifier
+    def warmup(self) -> None:
+        """Eagerly load the shared classifier model."""
+        _get_shared_classifier()
 
     def scan(self, content: str) -> ScanResult:
         """Scan content for prompt injection patterns.
@@ -68,7 +77,7 @@ class HeuristicScanner:
                 detected_patterns=[],
             )
 
-        classifier = self._get_classifier()
+        classifier = _get_shared_classifier()
         results = classifier(content, top_k=None)
 
         score = _extract_injection_score(results)

@@ -134,6 +134,7 @@ The HTTP server listens on `0.0.0.0:8000` by default. Customize with:
 | `RNOE_TRANSPORT` | `stdio` | Transport protocol (`stdio` or `http`) |
 | `RNOE_HTTP_HOST` | `0.0.0.0` | Bind address for HTTP transport |
 | `RNOE_HTTP_PORT` | `8000` | Port for HTTP transport |
+| `RNOE_LAZY_LOAD` | `false` | Skip model preloading at startup (`true`, `1`, or `yes`) |
 
 For local-only access, set `RNOE_HTTP_HOST=127.0.0.1`. The default `0.0.0.0` binds to all interfaces, which is appropriate for containerized deployments.
 
@@ -466,11 +467,13 @@ The email-specific gap (9%) is a known limitation — these attacks exploit HTML
 | Metric | Value |
 |--------|-------|
 | First startup | ~30s (one-time model download, ~500 MB) |
-| Subsequent starts | ~2–3s (model cached locally) |
+| Subsequent starts | ~2-3s (model cached locally) |
 | Per-email scan | <100 ms typical |
 | Memory footprint | ~500 MB (CPU-only PyTorch + model) |
 
-First startup downloads the [DeBERTa prompt-injection model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2) from Hugging Face. After that, the model is cached in `~/.cache/huggingface/` and subsequent starts are fast. See [#91](https://github.com/thekie/read-no-evil-mcp/issues/91) for startup optimization plans.
+The ML model loads during startup, before the server accepts connections. This means the first email scan completes in under 100 ms with no cold-start delay. First startup downloads the [DeBERTa prompt-injection model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2) from Hugging Face. After that, the model is cached in `~/.cache/huggingface/` and subsequent starts are fast.
+
+To defer model loading to the first scan instead, set `RNOE_LAZY_LOAD=true`.
 
 ## Roadmap
 

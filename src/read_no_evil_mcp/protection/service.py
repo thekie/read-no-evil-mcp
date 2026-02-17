@@ -55,6 +55,10 @@ class ProtectionService:
         """
         self._scanner = scanner or HeuristicScanner()
 
+    def warmup(self) -> None:
+        """Eagerly load the ML model so the first scan is fast."""
+        self._scanner.warmup()
+
     def scan(self, content: str) -> ScanResult:
         """Scan content for prompt injection attacks.
 
