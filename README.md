@@ -17,7 +17,7 @@ A secure email gateway MCP server that protects AI agents from prompt injection 
      ↓
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   Mailbox   │ ──► │ read-no-evil│ ──► │  AI Agent   │
-│  (IMAP)     │     │     -mcp    │     │  (Claude,   │
+│ (IMAP/Gmail)│     │     -mcp    │     │  (Claude,   │
 │             │     │   🛡️ scan   │     │   GPT, ...) │
 └─────────────┘     └─────────────┘     └─────────────┘
 ```
@@ -44,7 +44,7 @@ The AI reads this, follows the hidden instruction, and your data is compromised.
 
 - 🛡️ **Prompt Injection Detection** — Scans emails using [ProtectAI's DeBERTa model](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2)
 - 🔐 **Per-Account Permissions** — Read-only by default, restrict folders, control delete/send per account
-- 📧 **Multi-Account Support** — Configure multiple IMAP accounts with different permissions
+- 📧 **Multi-Account Support** — Configure multiple email accounts with different permissions (IMAP and Gmail API)
 - 🔌 **MCP Integration** — Exposes email tools via [Model Context Protocol](https://modelcontextprotocol.io/)
 - 🏠 **Local** — Model runs on your machine, no data sent to external APIs
 - 🪶 **CPU-only PyTorch** (~200MB) — No GPU required
@@ -502,7 +502,7 @@ To defer model loading to the first scan instead, set `RNOE_LAZY_LOAD=true`.
 ### v0.4 (Later)
 - [ ] Keyring credential backend ([#45](https://github.com/thekie/read-no-evil-mcp/issues/45))
 - [ ] Attachment scanning
-- [ ] Gmail API connector
+- [x] Gmail API connector ([#285](https://github.com/thekie/read-no-evil-mcp/issues/285))
 - [ ] Microsoft Graph connector
 - [ ] Improved obfuscation detection
 
@@ -514,7 +514,7 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for dev setup, testing, and PR workfl
 
 - **Add test cases** — Edit a YAML file, no Python required! See [payloads/README.md](tests/integration/prompt_injection/payloads/README.md)
 - **Improve detection** — Check [DETECTION_MATRIX.md](DETECTION_MATRIX.md) for techniques we miss (❌)
-- **Add connectors** — Gmail API, Microsoft Graph — PRs welcome!
+- **Add connectors** — Microsoft Graph, other providers — PRs welcome!
 
 ## Security
 

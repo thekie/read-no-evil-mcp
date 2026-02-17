@@ -35,6 +35,8 @@ dependencies = [
     "transformers>=4.30,<6.0",
     "torch>=2.0,<3.0",
     "imap-tools",
+    "google-api-python-client>=2.0",
+    "google-auth-oauthlib>=1.0",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
     "pyyaml>=6.0",
@@ -76,6 +78,10 @@ module = [
     "transformers.*",
     "optimum.*",
     "pydantic_settings.*",
+    "googleapiclient.*",
+    "google.oauth2.*",
+    "google.auth.*",
+    "google_auth_oauthlib.*",
 ]
 ignore_missing_imports = true
 

@@ -3,6 +3,7 @@
 from read_no_evil_mcp.accounts.config import (
     AccountConfig,
     BaseAccountConfig,
+    GmailAccountConfig,
     IMAPAccountConfig,
 )
 from read_no_evil_mcp.accounts.credentials import CredentialBackend, EnvCredentialBackend
@@ -16,5 +17,6 @@ __all__ = [
     "BaseAccountConfig",
     "CredentialBackend",
     "EnvCredentialBackend",
+    "GmailAccountConfig",
     "IMAPAccountConfig",
 ]

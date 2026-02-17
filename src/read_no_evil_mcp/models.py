@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from read_no_evil_mcp.accounts.config import AccessLevel
 
 # Re-export for backwards compatibility
-from read_no_evil_mcp.email.connectors.config import IMAPConfig, SMTPConfig
+from read_no_evil_mcp.email.connectors.config import GmailConfig, IMAPConfig, SMTPConfig
 from read_no_evil_mcp.email.models import (
     Attachment,
     Email,
@@ -31,6 +31,7 @@ __all__ = [
     "EmailAddress",
     "EmailSummary",
     "Folder",
+    "GmailConfig",
     "IMAPConfig",
     "OutgoingAttachment",
     "ScanResult",

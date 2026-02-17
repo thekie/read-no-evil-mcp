@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Gmail API connector for reading emails via Google OAuth2 ([#285])
 - Eager ML model preloading at server startup for predictable first-request latency ([#260])
 - `RNOE_LAZY_LOAD` environment variable to opt into lazy model loading ([#260])
 - Support email addresses as account IDs with automatic env var normalization ([#259])
@@ -135,6 +136,7 @@ Initial public release with core email gateway functionality:
 [0.3.0]: https://github.com/thekie/read-no-evil-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/thekie/read-no-evil-mcp/releases/tag/v0.2.0
 
+[#285]: https://github.com/thekie/read-no-evil-mcp/issues/285
 [#260]: https://github.com/thekie/read-no-evil-mcp/issues/260
 [#259]: https://github.com/thekie/read-no-evil-mcp/issues/259
 [#258]: https://github.com/thekie/read-no-evil-mcp/issues/258
