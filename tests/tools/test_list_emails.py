@@ -328,6 +328,32 @@ class TestListEmailsPagination:
         call_args = mock_mailbox.fetch_emails.call_args
         assert call_args.kwargs["offset"] == 10
 
+    def test_unread_only_passed_to_fetch_emails(self) -> None:
+        """Test that unread_only is passed to fetch_emails."""
+        mock_mailbox = _create_mock_mailbox(secure_emails=[])
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            list_emails.fn(account="work", unread_only=True)
+
+        call_args = mock_mailbox.fetch_emails.call_args
+        assert call_args.kwargs["unread_only"] is True
+
+    def test_unread_only_defaults_to_false(self) -> None:
+        """Test that unread_only defaults to False."""
+        mock_mailbox = _create_mock_mailbox(secure_emails=[])
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            list_emails.fn(account="work")
+
+        call_args = mock_mailbox.fetch_emails.call_args
+        assert call_args.kwargs["unread_only"] is False
+
 
 class TestListEmailsValidation:
     def test_days_back_zero_rejected(self) -> None:

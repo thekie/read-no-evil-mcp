@@ -165,6 +165,59 @@ class TestIMAPConnector:
 
         assert len(emails) == 3
 
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_fetch_emails_unread_only(
+        self, mock_mailbox_class: MagicMock, config: IMAPConfig
+    ) -> None:
+        """Test fetch_emails adds UNSEEN criteria when unread_only=True."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+
+        mock_from = MagicMock()
+        mock_from.name = "Sender"
+        mock_from.email = "sender@example.com"
+
+        mock_msg = MagicMock()
+        mock_msg.uid = "123"
+        mock_msg.subject = "Unread Email"
+        mock_msg.from_values = mock_from
+        mock_msg.date = datetime(2026, 2, 3, 12, 0, 0)
+        mock_msg.attachments = []
+        mock_msg.flags = ()
+        mock_mailbox.fetch.return_value = [mock_msg]
+
+        connector = IMAPConnector(config)
+        connector.connect()
+        emails = connector.fetch_emails("INBOX", lookback=timedelta(days=7), unread_only=True)
+
+        assert len(emails) == 1
+        assert emails[0].is_seen is False
+
+        # Verify the IMAP criteria includes seen=False
+        call_args = mock_mailbox.fetch.call_args
+        criteria = call_args.args[0] if call_args.args else call_args.kwargs.get("criteria")
+        # The AND criteria should contain the unseen filter
+        criteria_str = str(criteria)
+        assert "UNSEEN" in criteria_str
+
+    @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
+    def test_fetch_emails_unread_only_false_no_seen_filter(
+        self, mock_mailbox_class: MagicMock, config: IMAPConfig
+    ) -> None:
+        """Test fetch_emails does not add UNSEEN criteria when unread_only=False."""
+        mock_mailbox = MagicMock()
+        mock_mailbox_class.return_value = mock_mailbox
+        mock_mailbox.fetch.return_value = []
+
+        connector = IMAPConnector(config)
+        connector.connect()
+        connector.fetch_emails("INBOX", lookback=timedelta(days=7), unread_only=False)
+
+        call_args = mock_mailbox.fetch.call_args
+        criteria = call_args.args[0] if call_args.args else call_args.kwargs.get("criteria")
+        criteria_str = str(criteria)
+        assert "UNSEEN" not in criteria_str
+
     def test_fetch_emails_not_connected(self, config: IMAPConfig) -> None:
         connector = IMAPConnector(config)
         with pytest.raises(RuntimeError, match="Not connected"):

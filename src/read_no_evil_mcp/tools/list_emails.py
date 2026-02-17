@@ -23,6 +23,7 @@ def list_emails(
     days_back: int = 7,
     limit: int | None = None,
     offset: int = 0,
+    unread_only: bool = False,
 ) -> str:
     """List email summaries from a folder.
 
@@ -32,6 +33,7 @@ def list_emails(
         days_back: Number of days to look back (default: 7).
         limit: Maximum number of emails to return.
         offset: Number of emails to skip for pagination (default: 0).
+        unread_only: Only return unread emails (default: False).
     """
     if days_back < 1:
         return "Invalid parameter: days_back must be a positive integer"
@@ -48,6 +50,7 @@ def list_emails(
             lookback=timedelta(days=days_back),
             limit=limit,
             offset=offset,
+            unread_only=unread_only,
         )
 
         if not result.items:

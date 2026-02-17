@@ -205,6 +205,7 @@ class SecureMailbox:
         from_date: date | None = None,
         limit: int | None = None,
         offset: int = 0,
+        unread_only: bool = False,
     ) -> FetchResult:
         """Fetch email summaries from a folder with protection scanning.
 
@@ -218,6 +219,7 @@ class SecureMailbox:
             from_date: Starting point for lookback (default: today)
             limit: Maximum number of emails to return
             offset: Number of emails to skip (default: 0)
+            unread_only: Only return unread (unseen) emails
 
         Returns:
             FetchResult with paginated items and total count.
@@ -232,6 +234,7 @@ class SecureMailbox:
             folder,
             lookback=lookback,
             from_date=from_date,
+            unread_only=unread_only,
         )
 
         secure_summaries: list[SecureEmailSummary] = []

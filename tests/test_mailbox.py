@@ -144,6 +144,7 @@ class TestSecureMailbox:
             "INBOX",
             lookback=timedelta(days=7),
             from_date=None,
+            unread_only=False,
         )
         mock_protection.scan.assert_called_once()
 
@@ -2077,6 +2078,26 @@ class TestSecureMailboxPagination:
             "INBOX",
             lookback=timedelta(days=7),
             from_date=None,
+            unread_only=False,
+        )
+
+    def test_unread_only_passed_to_connector(
+        self,
+        mock_connector: MagicMock,
+        mock_protection: MagicMock,
+        default_permissions: AccountPermissions,
+    ) -> None:
+        """Test that unread_only is forwarded to the connector."""
+        mailbox = SecureMailbox(mock_connector, default_permissions, mock_protection)
+        mock_connector.fetch_emails.return_value = []
+
+        mailbox.fetch_emails("INBOX", lookback=timedelta(days=7), unread_only=True)
+
+        mock_connector.fetch_emails.assert_called_once_with(
+            "INBOX",
+            lookback=timedelta(days=7),
+            from_date=None,
+            unread_only=True,
         )
 
     def test_blocked_count_tracks_injection_filtered_emails(
