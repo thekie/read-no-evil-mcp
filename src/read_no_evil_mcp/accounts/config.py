@@ -88,8 +88,8 @@ class BaseAccountConfig(BaseModel):
     id: str = Field(
         ...,
         min_length=1,
-        pattern=r"^[a-zA-Z][a-zA-Z0-9_-]*$",
-        description="Unique account identifier (alphanumeric, hyphens, underscores)",
+        pattern=r"^[a-zA-Z][a-zA-Z0-9@._-]*$",
+        description="Unique account identifier (alphanumeric, hyphens, underscores, or email address)",
     )
 
 

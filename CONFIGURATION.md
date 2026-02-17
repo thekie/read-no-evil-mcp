@@ -318,6 +318,34 @@ accounts:
         access: trusted
 ```
 
+## Account IDs
+
+The `id` field identifies each account and determines the environment variable name for the password.
+
+Short names like `work` or `personal` are the simplest option:
+
+```yaml
+accounts:
+  - id: "work"
+    # Password env var: RNOE_ACCOUNT_WORK_PASSWORD
+```
+
+You can also use your email address as the account ID:
+
+```yaml
+accounts:
+  - id: "user@example.com"
+    # Password env var: RNOE_ACCOUNT_USER_EXAMPLE_COM_PASSWORD
+```
+
+The environment variable is derived by uppercasing the ID and replacing all non-alphanumeric characters with `_`. Examples:
+
+| Account ID | Environment Variable |
+|---|---|
+| `work` | `RNOE_ACCOUNT_WORK_PASSWORD` |
+| `user@example.com` | `RNOE_ACCOUNT_USER_EXAMPLE_COM_PASSWORD` |
+| `alice+work@company.co.uk` | `RNOE_ACCOUNT_ALICE_WORK_COMPANY_CO_UK_PASSWORD` |
+
 ## Complete Annotated Example
 
 ```yaml

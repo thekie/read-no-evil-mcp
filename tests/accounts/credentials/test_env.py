@@ -5,7 +5,10 @@ from unittest.mock import patch
 
 import pytest
 
-from read_no_evil_mcp.accounts.credentials.env import EnvCredentialBackend
+from read_no_evil_mcp.accounts.credentials.env import (
+    EnvCredentialBackend,
+    normalize_account_id,
+)
 from read_no_evil_mcp.exceptions import CredentialNotFoundError
 
 
@@ -49,3 +52,42 @@ class TestEnvCredentialBackend:
             password = backend.get_password("Work-Account")
 
         assert password.get_secret_value() == "work-secret"
+
+    def test_get_password_with_email_id(self) -> None:
+        """Test email address ID maps to correct env var."""
+        backend = EnvCredentialBackend()
+
+        with patch.dict(os.environ, {"RNOE_ACCOUNT_USER_EXAMPLE_COM_PASSWORD": "email-secret"}):
+            password = backend.get_password("user@example.com")
+
+        assert password.get_secret_value() == "email-secret"
+
+    def test_get_password_with_dotted_email(self) -> None:
+        """Test dotted email local part maps to correct env var."""
+        backend = EnvCredentialBackend()
+
+        with patch.dict(
+            os.environ,
+            {"RNOE_ACCOUNT_JOHN_DOE_EXAMPLE_COM_PASSWORD": "dotted-secret"},
+        ):
+            password = backend.get_password("john.doe@example.com")
+
+        assert password.get_secret_value() == "dotted-secret"
+
+
+class TestNormalizeAccountId:
+    def test_simple_id(self) -> None:
+        """Test simple ID is uppercased."""
+        assert normalize_account_id("work") == "WORK"
+
+    def test_hyphen_replaced(self) -> None:
+        """Test hyphens are replaced with underscores."""
+        assert normalize_account_id("my-gmail") == "MY_GMAIL"
+
+    def test_email_address(self) -> None:
+        """Test email address normalization."""
+        assert normalize_account_id("user@example.com") == "USER_EXAMPLE_COM"
+
+    def test_complex_email(self) -> None:
+        """Test complex email with dots and subdomains."""
+        assert normalize_account_id("john.doe@company.co.uk") == "JOHN_DOE_COMPANY_CO_UK"
