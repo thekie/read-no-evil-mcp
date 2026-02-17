@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Extracted shared account fields into `BaseAccountConfig` to prepare for multi-connector support ([#283])
+- Changed email UID type from `int` to `str` to support non-numeric message IDs ([#284])
 
 ### Fixed
 
@@ -141,6 +142,7 @@ Initial public release with core email gateway functionality:
 [#269]: https://github.com/thekie/read-no-evil-mcp/issues/269
 [#270]: https://github.com/thekie/read-no-evil-mcp/issues/270
 [#283]: https://github.com/thekie/read-no-evil-mcp/issues/283
+[#284]: https://github.com/thekie/read-no-evil-mcp/issues/284
 
 [#245]: https://github.com/thekie/read-no-evil-mcp/issues/245
 [#251]: https://github.com/thekie/read-no-evil-mcp/issues/251

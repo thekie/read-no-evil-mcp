@@ -89,7 +89,7 @@ class OutgoingAttachment(BaseModel):
 class EmailSummary(BaseModel):
     """Lightweight email representation for list views."""
 
-    uid: int
+    uid: str
     folder: str
     subject: str
     sender: EmailAddress

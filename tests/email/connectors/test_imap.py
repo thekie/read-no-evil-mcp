@@ -105,7 +105,7 @@ class TestIMAPConnector:
         emails = connector.fetch_emails("INBOX", lookback=timedelta(days=7))
 
         assert len(emails) == 1
-        assert emails[0].uid == 123
+        assert emails[0].uid == "123"
         assert emails[0].subject == "Test Subject"
         assert emails[0].sender.address == "sender@example.com"
         assert emails[0].is_seen is True
@@ -258,10 +258,10 @@ class TestIMAPConnector:
 
         connector = IMAPConnector(config)
         connector.connect()
-        email = connector.get_email("INBOX", 123)
+        email = connector.get_email("INBOX", "123")
 
         assert email is not None
-        assert email.uid == 123
+        assert email.uid == "123"
         assert email.body_plain == "Plain text body"
         assert email.body_html == "<p>HTML body</p>"
         assert len(email.to) == 1
@@ -296,7 +296,7 @@ class TestIMAPConnector:
 
         connector = IMAPConnector(config)
         connector.connect()
-        email = connector.get_email("INBOX", 123)
+        email = connector.get_email("INBOX", "123")
 
         assert email is not None
         assert email.is_seen is False
@@ -309,14 +309,14 @@ class TestIMAPConnector:
 
         connector = IMAPConnector(config)
         connector.connect()
-        email = connector.get_email("INBOX", 999)
+        email = connector.get_email("INBOX", "999")
 
         assert email is None
 
     def test_get_email_not_connected(self, config: IMAPConfig) -> None:
         connector = IMAPConnector(config)
         with pytest.raises(RuntimeError, match="Not connected"):
-            connector.get_email("INBOX", 123)
+            connector.get_email("INBOX", "123")
 
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
     def test_fetch_emails_skips_none_uid(
@@ -354,7 +354,7 @@ class TestIMAPConnector:
             emails = connector.fetch_emails("INBOX", lookback=timedelta(days=7))
 
         assert len(emails) == 1
-        assert emails[0].uid == 456
+        assert emails[0].uid == "456"
         assert emails[0].subject == "Valid Email"
         assert "Skipping email with missing UID" in caplog.text
 
@@ -423,7 +423,7 @@ class TestIMAPConnector:
         connector = IMAPConnector(config)
         connector.connect()
         with caplog.at_level(logging.WARNING, logger="read_no_evil_mcp.email.connectors.imap"):
-            email = connector.get_email("INBOX", 123)
+            email = connector.get_email("INBOX", "123")
 
         assert email is None
         assert "Skipping email with missing UID" in caplog.text
@@ -441,7 +441,7 @@ class TestIMAPConnector:
 
         connector = IMAPConnector(config)
         connector.connect()
-        result = connector.move_email("INBOX", 123, "Archive")
+        result = connector.move_email("INBOX", "123", "Archive")
 
         assert result is True
         mock_mailbox.folder.set.assert_called_with("INBOX")
@@ -463,7 +463,7 @@ class TestIMAPConnector:
 
         connector = IMAPConnector(config)
         connector.connect()
-        result = connector.move_email("INBOX", 456, "Spam")
+        result = connector.move_email("INBOX", "456", "Spam")
 
         assert result is True
         mock_mailbox.move.assert_called_once_with("456", "Spam")
@@ -483,7 +483,7 @@ class TestIMAPConnector:
 
         connector = IMAPConnector(config)
         connector.connect()
-        result = connector.move_email("INBOX", 789, "Important")
+        result = connector.move_email("INBOX", "789", "Important")
 
         assert result is True
         mock_mailbox.move.assert_called_once_with("789", "Important")
@@ -499,7 +499,7 @@ class TestIMAPConnector:
 
         connector = IMAPConnector(config)
         connector.connect()
-        result = connector.move_email("INBOX", 999, "Archive")
+        result = connector.move_email("INBOX", "999", "Archive")
 
         assert result is False
         mock_mailbox.move.assert_not_called()
@@ -508,7 +508,7 @@ class TestIMAPConnector:
         """Test move_email raises RuntimeError when not connected."""
         connector = IMAPConnector(config)
         with pytest.raises(RuntimeError, match="Not connected"):
-            connector.move_email("INBOX", 123, "Archive")
+            connector.move_email("INBOX", "123", "Archive")
 
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
     def test_delete_email(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
@@ -517,7 +517,7 @@ class TestIMAPConnector:
 
         connector = IMAPConnector(config)
         connector.connect()
-        result = connector.delete_email("INBOX", 123)
+        result = connector.delete_email("INBOX", "123")
 
         assert result is True
         mock_mailbox.folder.set.assert_called_with("INBOX")
@@ -533,7 +533,7 @@ class TestIMAPConnector:
 
         connector = IMAPConnector(config)
         connector.connect()
-        result = connector.delete_email("Sent", 456)
+        result = connector.delete_email("Sent", "456")
 
         assert result is True
         mock_mailbox.folder.set.assert_called_with("Sent")
@@ -543,7 +543,7 @@ class TestIMAPConnector:
     def test_delete_email_not_connected(self, config: IMAPConfig) -> None:
         connector = IMAPConnector(config)
         with pytest.raises(RuntimeError, match="Not connected"):
-            connector.delete_email("INBOX", 123)
+            connector.delete_email("INBOX", "123")
 
 
 class TestIMAPConnectorWithSMTP:

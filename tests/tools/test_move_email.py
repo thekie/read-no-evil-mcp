@@ -18,10 +18,12 @@ class TestMoveEmail:
             "read_no_evil_mcp.tools.move_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = move_email.fn(account="work", folder="INBOX", uid=123, target_folder="Archive")
+            result = move_email.fn(
+                account="work", folder="INBOX", uid="123", target_folder="Archive"
+            )
 
         assert result == "Email INBOX/123 moved to Archive."
-        mock_mailbox.move_email.assert_called_once_with("INBOX", 123, "Archive")
+        mock_mailbox.move_email.assert_called_once_with("INBOX", "123", "Archive")
 
     def test_moves_email_to_spam(self) -> None:
         """Test move_email tool can move email to Spam folder."""
@@ -34,10 +36,10 @@ class TestMoveEmail:
             "read_no_evil_mcp.tools.move_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = move_email.fn(account="work", folder="INBOX", uid=456, target_folder="Spam")
+            result = move_email.fn(account="work", folder="INBOX", uid="456", target_folder="Spam")
 
         assert result == "Email INBOX/456 moved to Spam."
-        mock_mailbox.move_email.assert_called_once_with("INBOX", 456, "Spam")
+        mock_mailbox.move_email.assert_called_once_with("INBOX", "456", "Spam")
 
     def test_email_not_found(self) -> None:
         """Test move_email with non-existent email."""
@@ -50,7 +52,9 @@ class TestMoveEmail:
             "read_no_evil_mcp.tools.move_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = move_email.fn(account="work", folder="INBOX", uid=999, target_folder="Archive")
+            result = move_email.fn(
+                account="work", folder="INBOX", uid="999", target_folder="Archive"
+            )
 
         assert result == "Email not found: INBOX/999"
 
@@ -68,7 +72,7 @@ class TestMoveEmail:
             return_value=mock_mailbox,
         ):
             result = move_email.fn(
-                account="restricted", folder="INBOX", uid=1, target_folder="Archive"
+                account="restricted", folder="INBOX", uid="1", target_folder="Archive"
             )
 
         assert result == "Permission denied: Move access denied for this account"
@@ -87,7 +91,7 @@ class TestMoveEmail:
             return_value=mock_mailbox,
         ):
             result = move_email.fn(
-                account="restricted", folder="Secret", uid=1, target_folder="Archive"
+                account="restricted", folder="Secret", uid="1", target_folder="Archive"
             )
 
         assert result == "Permission denied: Access to folder 'Secret' denied"
@@ -106,7 +110,7 @@ class TestMoveEmail:
             return_value=mock_mailbox,
         ):
             result = move_email.fn(
-                account="work", folder="INBOX", uid=1, target_folder="Restricted"
+                account="work", folder="INBOX", uid="1", target_folder="Restricted"
             )
 
         assert result == "Permission denied: Access to folder 'Restricted' denied"
@@ -122,7 +126,7 @@ class TestMoveEmail:
             "read_no_evil_mcp.tools.move_email.create_securemailbox",
             return_value=mock_mailbox,
         ) as mock_create:
-            move_email.fn(account="personal", folder="INBOX", uid=1, target_folder="Archive")
+            move_email.fn(account="personal", folder="INBOX", uid="1", target_folder="Archive")
 
         mock_create.assert_called_once_with("personal")
 
@@ -137,24 +141,28 @@ class TestMoveEmail:
             "read_no_evil_mcp.tools.move_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = move_email.fn(account="work", folder="INBOX", uid=1, target_folder="Archive")
+            result = move_email.fn(account="work", folder="INBOX", uid="1", target_folder="Archive")
 
         assert result == "Error: Connection lost"
 
 
 class TestMoveEmailValidation:
-    def test_uid_zero_rejected(self) -> None:
-        result = move_email.fn(account="work", folder="INBOX", uid=0, target_folder="Archive")
-        assert result == "Invalid parameter: uid must be a positive integer"
+    def test_empty_uid_rejected(self) -> None:
+        result = move_email.fn(account="work", folder="INBOX", uid="", target_folder="Archive")
+        assert result == "Invalid parameter: uid must not be empty"
+
+    def test_whitespace_uid_rejected(self) -> None:
+        result = move_email.fn(account="work", folder="INBOX", uid="   ", target_folder="Archive")
+        assert result == "Invalid parameter: uid must not be empty"
 
     def test_empty_folder_rejected(self) -> None:
-        result = move_email.fn(account="work", folder="", uid=1, target_folder="Archive")
+        result = move_email.fn(account="work", folder="", uid="1", target_folder="Archive")
         assert result == "Invalid parameter: folder must not be empty"
 
     def test_empty_target_folder_rejected(self) -> None:
-        result = move_email.fn(account="work", folder="INBOX", uid=1, target_folder="")
+        result = move_email.fn(account="work", folder="INBOX", uid="1", target_folder="")
         assert result == "Invalid parameter: target_folder must not be empty"
 
     def test_whitespace_target_folder_rejected(self) -> None:
-        result = move_email.fn(account="work", folder="INBOX", uid=1, target_folder="   ")
+        result = move_email.fn(account="work", folder="INBOX", uid="1", target_folder="   ")
         assert result == "Invalid parameter: target_folder must not be empty"

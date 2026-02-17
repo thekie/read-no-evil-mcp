@@ -18,10 +18,10 @@ class TestDeleteEmail:
             "read_no_evil_mcp.tools.delete_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = delete_email.fn(account="work", folder="INBOX", uid=123)
+            result = delete_email.fn(account="work", folder="INBOX", uid="123")
 
         assert result == "Successfully deleted email INBOX/123"
-        mock_mailbox.delete_email.assert_called_once_with("INBOX", 123)
+        mock_mailbox.delete_email.assert_called_once_with("INBOX", "123")
 
     def test_delete_fails(self) -> None:
         """Test delete_email returns failure message when deletion fails."""
@@ -34,7 +34,7 @@ class TestDeleteEmail:
             "read_no_evil_mcp.tools.delete_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = delete_email.fn(account="work", folder="INBOX", uid=123)
+            result = delete_email.fn(account="work", folder="INBOX", uid="123")
 
         assert result == "Failed to delete email INBOX/123"
 
@@ -49,7 +49,7 @@ class TestDeleteEmail:
             "read_no_evil_mcp.tools.delete_email.create_securemailbox",
             return_value=mock_mailbox,
         ) as mock_create:
-            delete_email.fn(account="personal", folder="INBOX", uid=1)
+            delete_email.fn(account="personal", folder="INBOX", uid="1")
 
         mock_create.assert_called_once_with("personal")
 
@@ -66,7 +66,7 @@ class TestDeleteEmail:
             "read_no_evil_mcp.tools.delete_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = delete_email.fn(account="restricted", folder="INBOX", uid=1)
+            result = delete_email.fn(account="restricted", folder="INBOX", uid="1")
 
         assert result == "Permission denied: Delete access denied for this account"
 
@@ -83,7 +83,7 @@ class TestDeleteEmail:
             "read_no_evil_mcp.tools.delete_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = delete_email.fn(account="restricted", folder="Secret", uid=1)
+            result = delete_email.fn(account="restricted", folder="Secret", uid="1")
 
         assert result == "Permission denied: Access to folder 'Secret' denied"
 
@@ -98,25 +98,25 @@ class TestDeleteEmail:
             "read_no_evil_mcp.tools.delete_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = delete_email.fn(account="work", folder="Sent", uid=456)
+            result = delete_email.fn(account="work", folder="Sent", uid="456")
 
         assert result == "Successfully deleted email Sent/456"
-        mock_mailbox.delete_email.assert_called_once_with("Sent", 456)
+        mock_mailbox.delete_email.assert_called_once_with("Sent", "456")
 
 
 class TestDeleteEmailValidation:
-    def test_uid_zero_rejected(self) -> None:
-        result = delete_email.fn(account="work", folder="INBOX", uid=0)
-        assert result == "Invalid parameter: uid must be a positive integer"
+    def test_empty_uid_rejected(self) -> None:
+        result = delete_email.fn(account="work", folder="INBOX", uid="")
+        assert result == "Invalid parameter: uid must not be empty"
 
-    def test_uid_negative_rejected(self) -> None:
-        result = delete_email.fn(account="work", folder="INBOX", uid=-5)
-        assert result == "Invalid parameter: uid must be a positive integer"
+    def test_whitespace_uid_rejected(self) -> None:
+        result = delete_email.fn(account="work", folder="INBOX", uid="   ")
+        assert result == "Invalid parameter: uid must not be empty"
 
     def test_empty_folder_rejected(self) -> None:
-        result = delete_email.fn(account="work", folder="", uid=1)
+        result = delete_email.fn(account="work", folder="", uid="1")
         assert result == "Invalid parameter: folder must not be empty"
 
     def test_whitespace_folder_rejected(self) -> None:
-        result = delete_email.fn(account="work", folder="  ", uid=1)
+        result = delete_email.fn(account="work", folder="  ", uid="1")
         assert result == "Invalid parameter: folder must not be empty"

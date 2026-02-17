@@ -147,7 +147,7 @@ class IMAPConnector(BaseConnector):
 
             summaries.append(
                 EmailSummary(
-                    uid=int(msg.uid),
+                    uid=msg.uid,
                     folder=folder,
                     subject=msg.subject or "(no subject)",
                     sender=sender,
@@ -162,14 +162,14 @@ class IMAPConnector(BaseConnector):
 
         return summaries
 
-    def get_email(self, folder: str, uid: int) -> Email | None:
+    def get_email(self, folder: str, uid: str) -> Email | None:
         """Fetch full email content by UID."""
         if not self._mailbox:
             raise RuntimeError("Not connected. Call connect() first.")
 
         self._mailbox.folder.set(folder)
 
-        for msg in self._mailbox.fetch(AND(uid=str(uid))):
+        for msg in self._mailbox.fetch(AND(uid=uid)):
             if not msg.uid:
                 logger.warning("Skipping email with missing UID (subject=%r)", msg.subject)
                 continue
@@ -186,7 +186,7 @@ class IMAPConnector(BaseConnector):
             ]
 
             return Email(
-                uid=int(msg.uid),
+                uid=msg.uid,
                 folder=folder,
                 subject=msg.subject or "(no subject)",
                 sender=sender,
@@ -203,7 +203,7 @@ class IMAPConnector(BaseConnector):
 
         return None
 
-    def move_email(self, folder: str, uid: int, target_folder: str) -> bool:
+    def move_email(self, folder: str, uid: str, target_folder: str) -> bool:
         """Move an email to a target folder.
 
         Args:
@@ -220,15 +220,15 @@ class IMAPConnector(BaseConnector):
         self._mailbox.folder.set(folder)
 
         # Check if email exists
-        emails = list(self._mailbox.fetch(AND(uid=str(uid)), mark_seen=False))
+        emails = list(self._mailbox.fetch(AND(uid=uid), mark_seen=False))
         if not emails:
             return False
 
         # Move email to target folder
-        self._mailbox.move(str(uid), target_folder)
+        self._mailbox.move(uid, target_folder)
         return True
 
-    def delete_email(self, folder: str, uid: int) -> bool:
+    def delete_email(self, folder: str, uid: str) -> bool:
         """Delete an email by UID.
 
         Args:
@@ -243,7 +243,7 @@ class IMAPConnector(BaseConnector):
 
         self._mailbox.folder.set(folder)
 
-        self._mailbox.delete(str(uid))
+        self._mailbox.delete(uid)
         self._mailbox.expunge()
 
         return True

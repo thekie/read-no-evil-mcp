@@ -16,7 +16,7 @@ from read_no_evil_mcp.email.models import (
 class TestEmailSummaryGetScannableContent:
     def test_returns_subject_and_sender_address(self) -> None:
         summary = EmailSummary(
-            uid=1,
+            uid="1",
             folder="INBOX",
             subject="Hello world",
             sender=EmailAddress(address="alice@example.com"),
@@ -32,7 +32,7 @@ class TestEmailSummaryGetScannableContent:
 
     def test_includes_sender_name_when_present(self) -> None:
         summary = EmailSummary(
-            uid=1,
+            uid="1",
             folder="INBOX",
             subject="Hello",
             sender=EmailAddress(name="Alice Smith", address="alice@example.com"),
@@ -49,7 +49,7 @@ class TestEmailSummaryGetScannableContent:
 
     def test_excludes_sender_name_when_none(self) -> None:
         summary = EmailSummary(
-            uid=1,
+            uid="1",
             folder="INBOX",
             subject="Test",
             sender=EmailAddress(name=None, address="bob@example.com"),
@@ -64,7 +64,7 @@ class TestEmailSummaryGetScannableContent:
 class TestEmailGetScannableContent:
     def test_includes_summary_fields_and_body_plain(self) -> None:
         email = Email(
-            uid=1,
+            uid="1",
             folder="INBOX",
             subject="Meeting",
             sender=EmailAddress(name="Boss", address="boss@example.com"),
@@ -83,7 +83,7 @@ class TestEmailGetScannableContent:
 
     def test_includes_body_html_when_present(self) -> None:
         email = Email(
-            uid=1,
+            uid="1",
             folder="INBOX",
             subject="Newsletter",
             sender=EmailAddress(address="news@example.com"),
@@ -101,7 +101,7 @@ class TestEmailGetScannableContent:
 
     def test_includes_attachment_filenames(self) -> None:
         email = Email(
-            uid=1,
+            uid="1",
             folder="INBOX",
             subject="Files",
             sender=EmailAddress(address="sender@example.com"),
@@ -123,7 +123,7 @@ class TestEmailGetScannableContent:
 
     def test_no_body_keys_when_body_is_none(self) -> None:
         email = Email(
-            uid=1,
+            uid="1",
             folder="INBOX",
             subject="Empty",
             sender=EmailAddress(address="sender@example.com"),
@@ -139,7 +139,7 @@ class TestEmailGetScannableContent:
 
     def test_no_attachment_keys_when_no_attachments(self) -> None:
         email = Email(
-            uid=1,
+            uid="1",
             folder="INBOX",
             subject="Plain",
             sender=EmailAddress(address="sender@example.com"),

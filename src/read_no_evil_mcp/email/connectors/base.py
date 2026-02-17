@@ -54,7 +54,7 @@ class BaseConnector(ABC):
         ...
 
     @abstractmethod
-    def get_email(self, folder: str, uid: int) -> Email | None:
+    def get_email(self, folder: str, uid: str) -> Email | None:
         """Fetch full email content by UID.
 
         Args:
@@ -67,7 +67,7 @@ class BaseConnector(ABC):
         ...
 
     @abstractmethod
-    def move_email(self, folder: str, uid: int, target_folder: str) -> bool:
+    def move_email(self, folder: str, uid: str, target_folder: str) -> bool:
         """Move an email to a target folder.
 
         Args:
@@ -81,7 +81,7 @@ class BaseConnector(ABC):
         ...
 
     @abstractmethod
-    def delete_email(self, folder: str, uid: int) -> bool:
+    def delete_email(self, folder: str, uid: str) -> bool:
         """Delete an email by UID.
 
         Args:

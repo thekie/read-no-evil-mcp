@@ -17,7 +17,7 @@ ACCESS_DISPLAY: dict[AccessLevel, str] = {
 @mcp.tool
 @append_update_notice
 @handle_tool_errors
-def get_email(account: str, folder: str, uid: int) -> str:
+def get_email(account: str, folder: str, uid: str) -> str:
     """Get full email content by UID.
 
     Args:
@@ -25,8 +25,8 @@ def get_email(account: str, folder: str, uid: int) -> str:
         folder: Folder containing the email.
         uid: Unique identifier of the email.
     """
-    if uid < 1:
-        return "Invalid parameter: uid must be a positive integer"
+    if not uid or not uid.strip():
+        return "Invalid parameter: uid must not be empty"
     if not folder or not folder.strip():
         return "Invalid parameter: folder must not be empty"
 
