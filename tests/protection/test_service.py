@@ -110,6 +110,12 @@ class TestProtectionService:
         )
         assert result.is_safe
 
+    def test_warmup_delegates_to_scanner(self) -> None:
+        mock_scanner = MagicMock(spec=HeuristicScanner)
+        service = ProtectionService(scanner=mock_scanner)
+        service.warmup()
+        mock_scanner.warmup.assert_called_once()
+
     def test_custom_scanner(self) -> None:
         mock_scanner = MagicMock(spec=HeuristicScanner)
         mock_scanner.scan.return_value = ScanResult(

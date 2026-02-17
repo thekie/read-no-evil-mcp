@@ -434,6 +434,34 @@ export RNOE_ACCOUNT_WORK_PASSWORD="your-work-password"
 export RNOE_ACCOUNT_PERSONAL_PASSWORD="your-gmail-app-password"
 ```
 
+## Environment Variables
+
+### Server settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RNOE_CONFIG_FILE` | *(none)* | Path to config file (overrides default search) |
+| `RNOE_TRANSPORT` | `stdio` | Transport protocol (`stdio` or `http`) |
+| `RNOE_HTTP_HOST` | `0.0.0.0` | Bind address for HTTP transport |
+| `RNOE_HTTP_PORT` | `8000` | Port for HTTP transport |
+| `RNOE_LAZY_LOAD` | `false` | Set to `true`, `1`, or `yes` to skip model preloading at startup |
+
+### Model preloading
+
+The ML model loads during server startup, before the server accepts connections. This means the first email scan is fast, but startup takes longer (~2-3 seconds with a cached model, ~30 seconds on first run when the model downloads).
+
+If you prefer the old behavior where the model loads on first scan, set:
+
+```bash
+export RNOE_LAZY_LOAD=true
+```
+
+This is useful during development or when fast startup matters more than first-request latency.
+
+### Account passwords
+
+Passwords use the pattern `RNOE_ACCOUNT_<ID>_PASSWORD`, where `<ID>` is the account ID uppercased with non-alphanumeric characters replaced by `_`. See [Account IDs](#account-ids) for examples.
+
 ## Config File Locations
 
 read-no-evil-mcp searches for configuration in this order:

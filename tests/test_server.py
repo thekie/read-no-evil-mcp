@@ -1,5 +1,6 @@
 """Tests for MCP server protocol flow."""
 
+import logging
 from collections.abc import AsyncIterator
 from unittest.mock import MagicMock, patch
 
@@ -15,6 +16,7 @@ from read_no_evil_mcp.exceptions import (
 )
 from read_no_evil_mcp.server import main
 from read_no_evil_mcp.tools import mcp
+from read_no_evil_mcp.tools._app import _lifespan
 
 EXPECTED_TOOLS = {
     "delete_email",
@@ -237,3 +239,49 @@ class TestTransportSelection:
         monkeypatch.setenv("RNOE_HTTP_PORT", "not-a-number")
         with pytest.raises(ValueError, match="invalid literal for int()"):
             main()
+
+
+@pytest.mark.asyncio
+class TestLifespan:
+    async def test_lifespan_preloads_model(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        monkeypatch.delenv("RNOE_LAZY_LOAD", raising=False)
+        mock_service_instance = MagicMock()
+        with (
+            patch(
+                "read_no_evil_mcp.protection.service.ProtectionService",
+                return_value=mock_service_instance,
+            ) as mock_cls,
+            caplog.at_level(logging.INFO, logger="read_no_evil_mcp.tools._app"),
+        ):
+            async with _lifespan(MagicMock()):
+                mock_cls.assert_called_once()
+                mock_service_instance.warmup.assert_called_once()
+        assert caplog.records[0].message == "Preloading prompt injection model"
+        assert caplog.records[1].message == "Model preloaded successfully"
+
+    @pytest.mark.parametrize("value", ["1", "true", "yes", "TRUE", "True", "YES"])
+    async def test_lifespan_skips_preload_when_lazy(
+        self,
+        value: str,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        monkeypatch.setenv("RNOE_LAZY_LOAD", value)
+        with caplog.at_level(logging.INFO, logger="read_no_evil_mcp.tools._app"):
+            async with _lifespan(MagicMock()):
+                pass
+        assert caplog.records[0].message == "Lazy loading enabled, skipping model preload"
+
+    async def test_lifespan_does_not_skip_for_non_truthy_values(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RNOE_LAZY_LOAD", "false")
+        mock_service_instance = MagicMock()
+        with patch(
+            "read_no_evil_mcp.protection.service.ProtectionService",
+            return_value=mock_service_instance,
+        ):
+            async with _lifespan(MagicMock()):
+                mock_service_instance.warmup.assert_called_once()
