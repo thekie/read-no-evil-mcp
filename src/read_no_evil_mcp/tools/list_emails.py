@@ -6,6 +6,7 @@ from read_no_evil_mcp.accounts.config import AccessLevel
 from read_no_evil_mcp.tools._app import mcp
 from read_no_evil_mcp.tools._error_handler import handle_tool_errors
 from read_no_evil_mcp.tools._service import create_securemailbox
+from read_no_evil_mcp.tools._update_notice import append_update_notice
 
 # Mapping of access levels to markers shown in list output
 ACCESS_MARKERS: dict[AccessLevel, str] = {
@@ -16,6 +17,7 @@ ACCESS_MARKERS: dict[AccessLevel, str] = {
 
 
 @mcp.tool
+@append_update_notice
 @handle_tool_errors
 def list_emails(
     account: str,

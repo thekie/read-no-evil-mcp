@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `unscanned_list_prompt` and `unscanned_read_prompt` account settings for custom agent prompts on unscanned emails ([#258])
 - `[UNSCANNED]` marker in `list_emails` output for emails where scanning was skipped ([#258])
 - `unread_only` filter parameter for `list_emails` tool with server-side IMAP filtering ([#269])
+- Version update check that notifies the agent when a newer release is available ([#264])
 
 ### Fixed
 
@@ -132,6 +133,7 @@ Initial public release with core email gateway functionality:
 [#260]: https://github.com/thekie/read-no-evil-mcp/issues/260
 [#259]: https://github.com/thekie/read-no-evil-mcp/issues/259
 [#258]: https://github.com/thekie/read-no-evil-mcp/issues/258
+[#264]: https://github.com/thekie/read-no-evil-mcp/issues/264
 [#269]: https://github.com/thekie/read-no-evil-mcp/issues/269
 [#270]: https://github.com/thekie/read-no-evil-mcp/issues/270
 

@@ -3,9 +3,11 @@
 from read_no_evil_mcp.tools._app import mcp
 from read_no_evil_mcp.tools._error_handler import handle_tool_errors
 from read_no_evil_mcp.tools._service import create_securemailbox
+from read_no_evil_mcp.tools._update_notice import append_update_notice
 
 
 @mcp.tool
+@append_update_notice
 @handle_tool_errors
 def delete_email(account: str, folder: str, uid: int) -> str:
     """Delete an email by UID.
