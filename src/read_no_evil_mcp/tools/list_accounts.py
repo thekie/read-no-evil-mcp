@@ -2,9 +2,11 @@
 
 from read_no_evil_mcp.tools._app import mcp
 from read_no_evil_mcp.tools._service import list_configured_accounts
+from read_no_evil_mcp.tools._update_notice import append_update_notice
 
 
 @mcp.tool
+@append_update_notice
 def list_accounts() -> str:
     """List all configured email account IDs.
 

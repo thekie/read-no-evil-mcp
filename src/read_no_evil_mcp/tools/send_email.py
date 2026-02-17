@@ -8,6 +8,7 @@ from read_no_evil_mcp.email.models import OutgoingAttachment
 from read_no_evil_mcp.tools._app import mcp
 from read_no_evil_mcp.tools._error_handler import handle_tool_errors
 from read_no_evil_mcp.tools._service import create_securemailbox
+from read_no_evil_mcp.tools._update_notice import append_update_notice
 from read_no_evil_mcp.tools.models import AttachmentInput
 
 
@@ -57,6 +58,7 @@ def _parse_attachments(
 
 
 @mcp.tool
+@append_update_notice
 @handle_tool_errors
 def send_email(
     account: str,

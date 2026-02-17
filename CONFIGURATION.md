@@ -445,6 +445,7 @@ export RNOE_ACCOUNT_PERSONAL_PASSWORD="your-gmail-app-password"
 | `RNOE_HTTP_HOST` | `0.0.0.0` | Bind address for HTTP transport |
 | `RNOE_HTTP_PORT` | `8000` | Port for HTTP transport |
 | `RNOE_LAZY_LOAD` | `false` | Set to `true`, `1`, or `yes` to skip model preloading at startup |
+| `RNOE_DISABLE_UPDATE_CHECK` | `false` | Set to `true`, `1`, or `yes` to disable the PyPI version check |
 
 ### Model preloading
 
@@ -457,6 +458,16 @@ export RNOE_LAZY_LOAD=true
 ```
 
 This is useful during development or when fast startup matters more than first-request latency.
+
+### Version update check
+
+On the first tool call of each session, the server checks PyPI for a newer version of `read-no-evil-mcp`. If one is available, a one-time notice is appended to the tool response. The check uses a 2-second timeout and fails silently — no notice appears if PyPI is unreachable.
+
+To disable the check:
+
+```bash
+export RNOE_DISABLE_UPDATE_CHECK=true
+```
 
 ### Account passwords
 
