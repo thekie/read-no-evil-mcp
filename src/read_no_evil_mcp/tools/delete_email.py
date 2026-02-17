@@ -9,7 +9,7 @@ from read_no_evil_mcp.tools._update_notice import append_update_notice
 @mcp.tool
 @append_update_notice
 @handle_tool_errors
-def delete_email(account: str, folder: str, uid: int) -> str:
+def delete_email(account: str, folder: str, uid: str) -> str:
     """Delete an email by UID.
 
     Args:
@@ -17,8 +17,8 @@ def delete_email(account: str, folder: str, uid: int) -> str:
         folder: Folder containing the email.
         uid: Unique identifier of the email.
     """
-    if uid < 1:
-        return "Invalid parameter: uid must be a positive integer"
+    if not uid or not uid.strip():
+        return "Invalid parameter: uid must not be empty"
     if not folder or not folder.strip():
         return "Invalid parameter: folder must not be empty"
 

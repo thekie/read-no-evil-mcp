@@ -11,7 +11,7 @@ from read_no_evil_mcp.tools.get_email import get_email
 
 
 def _create_secure_email(
-    uid: int = 123,
+    uid: str = "123",
     subject: str = "Test Email",
     sender: str = "sender@example.com",
     sender_name: str | None = None,
@@ -64,7 +64,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="work", folder="INBOX", uid=123)
+            result = get_email.fn(account="work", folder="INBOX", uid="123")
 
         lines = result.split("\n")
         assert lines[0] == "Subject: Test Email"
@@ -85,7 +85,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="work", folder="INBOX", uid=123)
+            result = get_email.fn(account="work", folder="INBOX", uid="123")
 
         lines = result.split("\n")
         assert lines[4] == "Status: Unread"
@@ -98,7 +98,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="work", folder="INBOX", uid=999)
+            result = get_email.fn(account="work", folder="INBOX", uid="999")
 
         assert result == "Email not found: INBOX/999"
 
@@ -115,7 +115,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="work", folder="INBOX", uid=123)
+            result = get_email.fn(account="work", folder="INBOX", uid="123")
 
         lines = result.split("\n")
         # Body section starts after blank line separator
@@ -132,14 +132,14 @@ class TestGetEmail:
             detected_patterns=["ignore_instructions", "you_are_now"],
         )
         mock_mailbox.get_email.side_effect = PromptInjectionError(
-            scan_result, email_uid=123, folder="INBOX"
+            scan_result, email_uid="123", folder="INBOX"
         )
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="work", folder="INBOX", uid=123)
+            result = get_email.fn(account="work", folder="INBOX", uid="123")
 
         lines = result.split("\n")
         assert lines[0] == "BLOCKED: Email INBOX/123 contains suspected prompt injection."
@@ -155,14 +155,14 @@ class TestGetEmail:
             detected_patterns=["system_tag"],
         )
         mock_mailbox.get_email.side_effect = PromptInjectionError(
-            scan_result, email_uid=456, folder="Sent"
+            scan_result, email_uid="456", folder="Sent"
         )
 
         with patch(
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="work", folder="Sent", uid=456)
+            result = get_email.fn(account="work", folder="Sent", uid="456")
 
         lines = result.split("\n")
         assert lines[0] == "BLOCKED: Email Sent/456 contains suspected prompt injection."
@@ -177,7 +177,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ) as mock_create:
-            get_email.fn(account="personal", folder="INBOX", uid=1)
+            get_email.fn(account="personal", folder="INBOX", uid="1")
 
         mock_create.assert_called_once_with("personal")
 
@@ -192,7 +192,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="restricted", folder="INBOX", uid=1)
+            result = get_email.fn(account="restricted", folder="INBOX", uid="1")
 
         assert result == "Permission denied: Read access denied for this account"
 
@@ -207,7 +207,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="restricted", folder="Secret", uid=1)
+            result = get_email.fn(account="restricted", folder="Secret", uid="1")
 
         assert result == "Permission denied: Access to folder 'Secret' denied"
 
@@ -226,7 +226,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="work", folder="INBOX", uid=123)
+            result = get_email.fn(account="work", folder="INBOX", uid="123")
 
         lines = result.split("\n")
         assert "Access: TRUSTED" in lines
@@ -247,7 +247,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="work", folder="INBOX", uid=123)
+            result = get_email.fn(account="work", folder="INBOX", uid="123")
 
         lines = result.split("\n")
         assert "Access: ASK_BEFORE_READ" in lines
@@ -268,7 +268,7 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="work", folder="INBOX", uid=123)
+            result = get_email.fn(account="work", folder="INBOX", uid="123")
 
         lines = result.split("\n")
         assert not any(line.startswith("Access:") for line in lines)
@@ -289,27 +289,27 @@ class TestGetEmail:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="work", folder="INBOX", uid=123)
+            result = get_email.fn(account="work", folder="INBOX", uid="123")
 
         lines = result.split("\n")
         assert "-> Custom trusted read prompt here" in lines
 
 
 class TestGetEmailValidation:
-    def test_uid_zero_rejected(self) -> None:
-        result = get_email.fn(account="work", folder="INBOX", uid=0)
-        assert result == "Invalid parameter: uid must be a positive integer"
+    def test_empty_uid_rejected(self) -> None:
+        result = get_email.fn(account="work", folder="INBOX", uid="")
+        assert result == "Invalid parameter: uid must not be empty"
 
-    def test_uid_negative_rejected(self) -> None:
-        result = get_email.fn(account="work", folder="INBOX", uid=-1)
-        assert result == "Invalid parameter: uid must be a positive integer"
+    def test_whitespace_uid_rejected(self) -> None:
+        result = get_email.fn(account="work", folder="INBOX", uid="   ")
+        assert result == "Invalid parameter: uid must not be empty"
 
     def test_empty_folder_rejected(self) -> None:
-        result = get_email.fn(account="work", folder="", uid=1)
+        result = get_email.fn(account="work", folder="", uid="1")
         assert result == "Invalid parameter: folder must not be empty"
 
     def test_whitespace_folder_rejected(self) -> None:
-        result = get_email.fn(account="work", folder="   ", uid=1)
+        result = get_email.fn(account="work", folder="   ", uid="1")
         assert result == "Invalid parameter: folder must not be empty"
 
 
@@ -328,7 +328,7 @@ class TestGetEmailProtectionSkipped:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="work", folder="INBOX", uid=123)
+            result = get_email.fn(account="work", folder="INBOX", uid="123")
 
         lines = result.split("\n")
         assert "Protection: SKIPPED" in lines
@@ -347,7 +347,7 @@ class TestGetEmailProtectionSkipped:
             "read_no_evil_mcp.tools.get_email.create_securemailbox",
             return_value=mock_mailbox,
         ):
-            result = get_email.fn(account="work", folder="INBOX", uid=123)
+            result = get_email.fn(account="work", folder="INBOX", uid="123")
 
         lines = result.split("\n")
         assert "Protection: SKIPPED" not in lines

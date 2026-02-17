@@ -131,7 +131,7 @@ class TestGetEmail:
             side_effect=AccountNotFoundError("missing"),
         ):
             result = await client.call_tool(
-                "get_email", {"account": "missing", "folder": "INBOX", "uid": 1}
+                "get_email", {"account": "missing", "folder": "INBOX", "uid": "1"}
             )
         assert "Account not found" in result.data
 
@@ -169,7 +169,7 @@ class TestMoveEmail:
                 {
                     "account": "gone",
                     "folder": "INBOX",
-                    "uid": 1,
+                    "uid": "1",
                     "target_folder": "Archive",
                 },
             )
@@ -184,7 +184,7 @@ class TestDeleteEmail:
             side_effect=AccountNotFoundError("gone"),
         ):
             result = await client.call_tool(
-                "delete_email", {"account": "gone", "folder": "INBOX", "uid": 1}
+                "delete_email", {"account": "gone", "folder": "INBOX", "uid": "1"}
             )
         assert "Account not found" in result.data
 

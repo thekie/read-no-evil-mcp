@@ -39,7 +39,7 @@ def _compile_recipient_pattern(pattern: str) -> re.Pattern[str]:
 class PromptInjectionError(Exception):
     """Raised when prompt injection is detected in email content."""
 
-    def __init__(self, scan_result: ScanResult, email_uid: int, folder: str) -> None:
+    def __init__(self, scan_result: ScanResult, email_uid: str, folder: str) -> None:
         self.scan_result = scan_result
         self.email_uid = email_uid
         self.folder = folder
@@ -336,7 +336,7 @@ class SecureMailbox:
             hidden_count=hidden_count,
         )
 
-    def get_email(self, folder: str, uid: int) -> SecureEmail | None:
+    def get_email(self, folder: str, uid: str) -> SecureEmail | None:
         """Get full email content by UID with protection scanning.
 
         Scans email content for prompt injection attacks before returning.
@@ -472,7 +472,7 @@ class SecureMailbox:
             attachments=attachments,
         )
 
-    def move_email(self, folder: str, uid: int, target_folder: str) -> bool:
+    def move_email(self, folder: str, uid: str, target_folder: str) -> bool:
         """Move an email to a target folder.
 
         Args:
@@ -492,7 +492,7 @@ class SecureMailbox:
 
         return self._connector.move_email(folder, uid, target_folder)
 
-    def delete_email(self, folder: str, uid: int) -> bool:
+    def delete_email(self, folder: str, uid: str) -> bool:
         """Delete an email by UID.
 
         Args:

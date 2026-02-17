@@ -9,7 +9,7 @@ from read_no_evil_mcp.tools._update_notice import append_update_notice
 @mcp.tool
 @append_update_notice
 @handle_tool_errors
-def move_email(account: str, folder: str, uid: int, target_folder: str) -> str:
+def move_email(account: str, folder: str, uid: str, target_folder: str) -> str:
     """Move an email to a target folder.
 
     Args:
@@ -18,8 +18,8 @@ def move_email(account: str, folder: str, uid: int, target_folder: str) -> str:
         uid: Unique identifier of the email.
         target_folder: Destination folder to move the email to.
     """
-    if uid < 1:
-        return "Invalid parameter: uid must be a positive integer"
+    if not uid or not uid.strip():
+        return "Invalid parameter: uid must not be empty"
     if not folder or not folder.strip():
         return "Invalid parameter: folder must not be empty"
     if not target_folder or not target_folder.strip():

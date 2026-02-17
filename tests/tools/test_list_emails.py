@@ -12,7 +12,7 @@ from read_no_evil_mcp.tools.list_emails import list_emails
 
 
 def _create_secure_summary(
-    uid: int = 1,
+    uid: str = "1",
     subject: str = "Test Subject",
     sender: str = "sender@example.com",
     access_level: AccessLevel = AccessLevel.SHOW,
@@ -63,7 +63,7 @@ class TestListEmails:
     def test_returns_email_summaries(self) -> None:
         """Test list_emails tool returns email summaries."""
         secure_emails = [
-            _create_secure_summary(uid=1, subject="Test Subject", has_attachments=True)
+            _create_secure_summary(uid="1", subject="Test Subject", has_attachments=True)
         ]
         mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails)
 
@@ -280,7 +280,7 @@ class TestListEmails:
 class TestListEmailsPagination:
     def test_pagination_message_when_more_results(self) -> None:
         """Test that pagination message shows when there are more results."""
-        secure_emails = [_create_secure_summary(uid=1), _create_secure_summary(uid=2)]
+        secure_emails = [_create_secure_summary(uid="1"), _create_secure_summary(uid="2")]
         mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails, total=5)
 
         with patch(
@@ -293,7 +293,7 @@ class TestListEmailsPagination:
 
     def test_pagination_message_with_offset(self) -> None:
         """Test pagination message with non-zero offset."""
-        secure_emails = [_create_secure_summary(uid=3), _create_secure_summary(uid=4)]
+        secure_emails = [_create_secure_summary(uid="3"), _create_secure_summary(uid="4")]
         mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails, total=5)
 
         with patch(
@@ -306,7 +306,7 @@ class TestListEmailsPagination:
 
     def test_no_pagination_message_when_all_shown(self) -> None:
         """Test no pagination message when all results are shown."""
-        secure_emails = [_create_secure_summary(uid=1), _create_secure_summary(uid=2)]
+        secure_emails = [_create_secure_summary(uid="1"), _create_secure_summary(uid="2")]
         mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails, total=2)
 
         with patch(
@@ -391,7 +391,7 @@ class TestListEmailsValidation:
 class TestListEmailsFilterCounts:
     def test_blocked_count_shown(self) -> None:
         """Test that blocked count note is shown when emails are blocked."""
-        secure_emails = [_create_secure_summary(uid=1)]
+        secure_emails = [_create_secure_summary(uid="1")]
         mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails, blocked_count=3)
 
         with patch(
@@ -404,7 +404,7 @@ class TestListEmailsFilterCounts:
 
     def test_hidden_count_shown(self) -> None:
         """Test that hidden count note is shown with singular noun."""
-        secure_emails = [_create_secure_summary(uid=1)]
+        secure_emails = [_create_secure_summary(uid="1")]
         mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails, hidden_count=1)
 
         with patch(
@@ -417,7 +417,7 @@ class TestListEmailsFilterCounts:
 
     def test_both_counts_shown(self) -> None:
         """Test that both blocked and hidden counts are shown together."""
-        secure_emails = [_create_secure_summary(uid=1)]
+        secure_emails = [_create_secure_summary(uid="1")]
         mock_mailbox = _create_mock_mailbox(
             secure_emails=secure_emails, blocked_count=2, hidden_count=1
         )
@@ -432,7 +432,7 @@ class TestListEmailsFilterCounts:
 
     def test_no_filter_note_when_zero_counts(self) -> None:
         """Test that no filter note is shown when counts are zero."""
-        secure_emails = [_create_secure_summary(uid=1)]
+        secure_emails = [_create_secure_summary(uid="1")]
         mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails)
 
         with patch(
@@ -445,7 +445,7 @@ class TestListEmailsFilterCounts:
 
     def test_filter_note_with_pagination(self) -> None:
         """Test that both filter note and pagination message are shown."""
-        secure_emails = [_create_secure_summary(uid=1), _create_secure_summary(uid=2)]
+        secure_emails = [_create_secure_summary(uid="1"), _create_secure_summary(uid="2")]
         mock_mailbox = _create_mock_mailbox(
             secure_emails=secure_emails, total=5, blocked_count=2, hidden_count=1
         )

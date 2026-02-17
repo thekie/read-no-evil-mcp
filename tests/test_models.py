@@ -195,19 +195,19 @@ class TestOutgoingAttachment:
 class TestEmailSummary:
     def test_basic(self):
         summary = EmailSummary(
-            uid=123,
+            uid="123",
             folder="INBOX",
             subject="Test Email",
             sender=EmailAddress(address="sender@example.com"),
             date=datetime(2026, 2, 3, 12, 0, 0),
         )
-        assert summary.uid == 123
+        assert summary.uid == "123"
         assert summary.has_attachments is False
         assert summary.is_seen is False
 
     def test_with_attachments(self):
         summary = EmailSummary(
-            uid=123,
+            uid="123",
             folder="INBOX",
             subject="Test",
             sender=EmailAddress(address="sender@example.com"),
@@ -218,7 +218,7 @@ class TestEmailSummary:
 
     def test_is_seen_default_false(self):
         summary = EmailSummary(
-            uid=123,
+            uid="123",
             folder="INBOX",
             subject="Test",
             sender=EmailAddress(address="sender@example.com"),
@@ -228,7 +228,7 @@ class TestEmailSummary:
 
     def test_is_seen_explicit_true(self):
         summary = EmailSummary(
-            uid=123,
+            uid="123",
             folder="INBOX",
             subject="Test",
             sender=EmailAddress(address="sender@example.com"),
@@ -241,14 +241,14 @@ class TestEmailSummary:
 class TestEmail:
     def test_extends_summary(self):
         email = Email(
-            uid=123,
+            uid="123",
             folder="INBOX",
             subject="Test Email",
             sender=EmailAddress(address="sender@example.com"),
             date=datetime(2026, 2, 3, 12, 0, 0),
             body_plain="Hello, World!",
         )
-        assert email.uid == 123
+        assert email.uid == "123"
         assert email.body_plain == "Hello, World!"
         assert email.body_html is None
         assert email.attachments == []
@@ -256,7 +256,7 @@ class TestEmail:
 
     def test_full_email(self):
         email = Email(
-            uid=456,
+            uid="456",
             folder="INBOX",
             subject="Full Email",
             sender=EmailAddress(name="Sender", address="sender@example.com"),
@@ -275,7 +275,7 @@ class TestEmail:
 
     def test_is_seen_inherited(self):
         email = Email(
-            uid=123,
+            uid="123",
             folder="INBOX",
             subject="Test",
             sender=EmailAddress(address="sender@example.com"),
