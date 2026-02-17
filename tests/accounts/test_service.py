@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import SecretStr
 
-from read_no_evil_mcp.accounts.config import AccountConfig
+from read_no_evil_mcp.accounts.config import GmailAccountConfig, IMAPAccountConfig
 from read_no_evil_mcp.accounts.credentials.base import CredentialBackend
 from read_no_evil_mcp.accounts.service import AccountService
 from read_no_evil_mcp.exceptions import AccountNotFoundError
@@ -26,8 +26,10 @@ class TestAccountService:
     def test_list_accounts(self) -> None:
         """Test listing account IDs."""
         accounts = [
-            AccountConfig(id="work", host="mail.work.com", username="work@example.com"),
-            AccountConfig(id="personal", host="mail.personal.com", username="personal@example.com"),
+            IMAPAccountConfig(id="work", host="mail.work.com", username="work@example.com"),
+            IMAPAccountConfig(
+                id="personal", host="mail.personal.com", username="personal@example.com"
+            ),
         ]
         service = AccountService(accounts, MockCredentialBackend({}))
 
@@ -46,7 +48,7 @@ class TestAccountService:
     def test_get_mailbox_account_not_found(self) -> None:
         """Test get_mailbox raises AccountNotFoundError."""
         accounts = [
-            AccountConfig(id="work", host="mail.work.com", username="work@example.com"),
+            IMAPAccountConfig(id="work", host="mail.work.com", username="work@example.com"),
         ]
         service = AccountService(accounts, MockCredentialBackend({}))
 
@@ -64,7 +66,7 @@ class TestAccountService:
     ) -> None:
         """Test get_mailbox creates connector with correct config."""
         accounts = [
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.work.com",
                 port=993,
@@ -95,7 +97,7 @@ class TestAccountService:
     ) -> None:
         """Test get_mailbox returns SecureMailbox instance."""
         accounts = [
-            AccountConfig(id="work", host="mail.work.com", username="work@example.com"),
+            IMAPAccountConfig(id="work", host="mail.work.com", username="work@example.com"),
         ]
         service = AccountService(accounts, MockCredentialBackend({}))
 
@@ -115,7 +117,7 @@ class TestAccountService:
         from read_no_evil_mcp.accounts.permissions import AccountPermissions
 
         accounts = [
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.work.com",
                 username="work@example.com",
@@ -143,7 +145,7 @@ class TestAccountService:
         from read_no_evil_mcp.accounts.permissions import AccountPermissions
 
         accounts = [
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.work.com",
                 username="work@example.com",
@@ -179,7 +181,7 @@ class TestAccountService:
         from read_no_evil_mcp.accounts.permissions import AccountPermissions
 
         accounts = [
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.work.com",
                 username="work@example.com",
@@ -206,7 +208,7 @@ class TestAccountService:
         from read_no_evil_mcp.accounts.permissions import AccountPermissions
 
         accounts = [
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.work.com",
                 username="work@example.com",
@@ -233,7 +235,7 @@ class TestAccountService:
     ) -> None:
         """Test get_mailbox passes from_address to SecureMailbox."""
         accounts = [
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.work.com",
                 username="user",
@@ -257,7 +259,7 @@ class TestAccountService:
     ) -> None:
         """Test get_mailbox passes from_address and from_name separately."""
         accounts = [
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.work.com",
                 username="user",
@@ -283,7 +285,7 @@ class TestAccountService:
     ) -> None:
         """Test get_mailbox falls back to username when from_address not configured."""
         accounts = [
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.work.com",
                 username="user@work.com",
@@ -306,7 +308,7 @@ class TestAccountService:
     ) -> None:
         """Test get_mailbox passes sent_folder via IMAPConfig."""
         accounts = [
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.work.com",
                 username="work@example.com",
@@ -329,7 +331,7 @@ class TestAccountService:
     ) -> None:
         """Test get_mailbox passes None sent_folder via IMAPConfig to disable saving."""
         accounts = [
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.work.com",
                 username="work@example.com",
@@ -352,7 +354,7 @@ class TestAccountService:
     ) -> None:
         """Test get_mailbox uses global default threshold when no per-account override."""
         accounts = [
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.work.com",
                 username="work@example.com",
@@ -376,7 +378,7 @@ class TestAccountService:
     ) -> None:
         """Test get_mailbox uses per-account threshold when configured."""
         accounts = [
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.work.com",
                 username="work@example.com",
@@ -403,7 +405,7 @@ class TestAccountService:
         from read_no_evil_mcp.protection.service import ProtectionService
 
         accounts = [
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.work.com",
                 username="work@example.com",
@@ -415,3 +417,123 @@ class TestAccountService:
 
         call_kwargs = mock_mailbox.call_args.kwargs
         assert isinstance(call_kwargs["protection"], ProtectionService)
+
+
+class TestAccountServiceGmail:
+    """Tests for AccountService with Gmail connector."""
+
+    @patch("read_no_evil_mcp.accounts.service.GmailConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_creates_gmail_connector(
+        self,
+        mock_mailbox: MagicMock,
+        mock_gmail_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox creates GmailConnector with correct config."""
+        accounts = [
+            GmailAccountConfig(
+                id="gmail-work",
+                email="user@gmail.com",
+                credentials_file="/path/to/creds.json",
+                token_file="/path/to/token.json",
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}))
+
+        service.get_mailbox("gmail-work")
+
+        call_args = mock_gmail_connector.call_args
+        gmail_config = call_args.args[0]
+        assert gmail_config.credentials_file == "/path/to/creds.json"
+        assert gmail_config.token_file == "/path/to/token.json"
+
+    @patch("read_no_evil_mcp.accounts.service.GmailConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_gmail_no_password_retrieval(
+        self,
+        mock_mailbox: MagicMock,
+        mock_gmail_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox does NOT call credential backend for Gmail accounts."""
+        accounts = [
+            GmailAccountConfig(
+                id="gmail-work",
+                email="user@gmail.com",
+                credentials_file="/path/to/creds.json",
+            ),
+        ]
+        mock_backend = MagicMock(spec=CredentialBackend)
+        service = AccountService(accounts, mock_backend)
+
+        service.get_mailbox("gmail-work")
+
+        mock_backend.get_password.assert_not_called()
+
+    @patch("read_no_evil_mcp.accounts.service.GmailConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_gmail_from_address_defaults_to_email(
+        self,
+        mock_mailbox: MagicMock,
+        mock_gmail_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox falls back to email field when from_address not set."""
+        accounts = [
+            GmailAccountConfig(
+                id="gmail-work",
+                email="user@gmail.com",
+                credentials_file="/path/to/creds.json",
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}))
+
+        service.get_mailbox("gmail-work")
+
+        call_kwargs = mock_mailbox.call_args.kwargs
+        assert call_kwargs["from_address"] == "user@gmail.com"
+
+    @patch("read_no_evil_mcp.accounts.service.GmailConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_gmail_with_custom_from_address(
+        self,
+        mock_mailbox: MagicMock,
+        mock_gmail_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox uses custom from_address when set."""
+        accounts = [
+            GmailAccountConfig(
+                id="gmail-work",
+                email="user@gmail.com",
+                credentials_file="/path/to/creds.json",
+                from_address="alias@gmail.com",
+                from_name="Atlas",
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}))
+
+        service.get_mailbox("gmail-work")
+
+        call_kwargs = mock_mailbox.call_args.kwargs
+        assert call_kwargs["from_address"] == "alias@gmail.com"
+        assert call_kwargs["from_name"] == "Atlas"
+
+    @patch("read_no_evil_mcp.accounts.service.GmailConnector")
+    @patch("read_no_evil_mcp.accounts.service.SecureMailbox")
+    def test_get_mailbox_gmail_returns_secure_mailbox(
+        self,
+        mock_mailbox: MagicMock,
+        mock_gmail_connector: MagicMock,
+    ) -> None:
+        """Test get_mailbox returns SecureMailbox for Gmail accounts."""
+        accounts = [
+            GmailAccountConfig(
+                id="gmail-work",
+                email="user@gmail.com",
+                credentials_file="/path/to/creds.json",
+            ),
+        ]
+        service = AccountService(accounts, MockCredentialBackend({}))
+
+        result = service.get_mailbox("gmail-work")
+
+        mock_mailbox.assert_called_once()
+        assert result == mock_mailbox.return_value

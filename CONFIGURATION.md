@@ -434,6 +434,84 @@ export RNOE_ACCOUNT_WORK_PASSWORD="your-work-password"
 export RNOE_ACCOUNT_PERSONAL_PASSWORD="your-gmail-app-password"
 ```
 
+## Gmail API Connector
+
+Instead of IMAP, you can connect to Gmail using Google's API with OAuth2 authentication. This avoids app passwords and uses Google's official API.
+
+### Prerequisites
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Create a project (or select an existing one).
+3. Enable the **Gmail API** under **APIs & Services > Library**.
+4. Go to **APIs & Services > Credentials** and create an **OAuth 2.0 Client ID** (application type: **Desktop app**).
+5. Download the credentials JSON file and save it (e.g., `~/.config/read-no-evil-mcp/credentials.json`).
+
+### Configuration
+
+```yaml
+accounts:
+  - id: "gmail"
+    type: "gmail"
+    email: "you@gmail.com"
+    credentials_file: "~/.config/read-no-evil-mcp/credentials.json"
+    token_file: "~/.config/read-no-evil-mcp/gmail_token.json"
+```
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `type` | yes | — | Must be `"gmail"` |
+| `email` | yes | — | Your Gmail address |
+| `credentials_file` | yes | — | Path to the OAuth2 client credentials JSON from Google Cloud Console |
+| `token_file` | no | `gmail_token.json` | Path where the OAuth2 token is stored after first login |
+| `from_address` | no | — | Sender address for outgoing emails (defaults to `email`) |
+| `from_name` | no | — | Display name for outgoing emails |
+
+On first run, a browser window opens for you to authorize the application. After that, the token is saved to `token_file` and reused automatically.
+
+### What works
+
+Gmail accounts support the same read operations as IMAP: listing labels (folders), fetching email summaries, and reading full emails. Prompt injection scanning works identically.
+
+Move and delete are not yet supported for Gmail accounts. Attempting them returns a "not implemented" error.
+
+### Gmail with access rules
+
+Gmail accounts support the same sender rules, subject rules, protection settings, and custom prompts as IMAP accounts:
+
+```yaml
+accounts:
+  - id: "gmail"
+    type: "gmail"
+    email: "you@gmail.com"
+    credentials_file: "~/.config/read-no-evil-mcp/credentials.json"
+    token_file: "~/.config/read-no-evil-mcp/gmail_token.json"
+    protection:
+      threshold: 0.4
+    sender_rules:
+      - pattern: "@yourcompany\\.com$"
+        access: trusted
+    permissions:
+      read: true
+      send: false
+```
+
+### IMAP vs Gmail
+
+| | IMAP (`type: "imap"`) | Gmail API (`type: "gmail"`) |
+|---|---|---|
+| Authentication | Password / app password | OAuth2 (browser login) |
+| Read emails | Yes | Yes |
+| Send emails | Yes (SMTP) | No |
+| Move/delete | Yes | No |
+| Works with | Any IMAP provider | Gmail only |
+
+Use IMAP if you need send, move, or delete. Use the Gmail connector if you prefer OAuth2 authentication or want to avoid app passwords.
+
+```bash
+export RNOE_ACCOUNT_WORK_PASSWORD="your-work-password"
+export RNOE_ACCOUNT_PERSONAL_PASSWORD="your-gmail-app-password"
+```
+
 ## Environment Variables
 
 ### Server settings

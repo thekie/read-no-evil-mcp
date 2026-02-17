@@ -22,3 +22,10 @@ class SMTPConfig(BaseModel):
     username: str
     password: SecretStr
     ssl: bool = False  # False = use STARTTLS, True = use SSL
+
+
+class GmailConfig(BaseModel):
+    """Gmail API configuration."""
+
+    credentials_file: str
+    token_file: str
