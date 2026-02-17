@@ -83,6 +83,14 @@ class BaseAccountConfig(BaseModel):
 
     Attributes:
         id: Unique identifier for the account (e.g., "work", "personal").
+        permissions: Account permissions (default: read-only).
+        protection: Per-account protection settings (overrides global threshold).
+        sender_rules: Rules for matching sender email addresses.
+        subject_rules: Rules for matching email subject lines.
+        list_prompts: Agent prompts shown in list_emails per access level.
+        read_prompts: Agent prompts shown in get_email per access level.
+        unscanned_list_prompt: Agent prompt for unscanned emails in list_emails.
+        unscanned_read_prompt: Agent prompt for unscanned emails in get_email.
     """
 
     id: str = Field(
@@ -90,6 +98,38 @@ class BaseAccountConfig(BaseModel):
         min_length=1,
         pattern=r"^[a-zA-Z][a-zA-Z0-9@._-]*$",
         description="Unique account identifier (alphanumeric, hyphens, underscores, or email address)",
+    )
+    permissions: AccountPermissions = Field(
+        default_factory=AccountPermissions,
+        description="Account permissions (default: read-only)",
+    )
+    protection: ProtectionConfig | None = Field(
+        default=None,
+        description="Per-account protection settings (overrides global threshold)",
+    )
+    sender_rules: list[SenderRule] = Field(
+        default_factory=list,
+        description="Rules for matching sender email addresses",
+    )
+    subject_rules: list[SubjectRule] = Field(
+        default_factory=list,
+        description="Rules for matching email subject lines",
+    )
+    list_prompts: dict[AccessLevel, str | None] = Field(
+        default_factory=dict,
+        description="Agent prompts shown in list_emails per access level",
+    )
+    read_prompts: dict[AccessLevel, str | None] = Field(
+        default_factory=dict,
+        description="Agent prompts shown in get_email per access level",
+    )
+    unscanned_list_prompt: str | None = Field(
+        default=None,
+        description="Agent prompt shown in list_emails for unscanned emails (skip_protection)",
+    )
+    unscanned_read_prompt: str | None = Field(
+        default=None,
+        description="Agent prompt shown in get_email for unscanned emails (skip_protection)",
     )
 
 
@@ -102,10 +142,12 @@ class IMAPAccountConfig(BaseAccountConfig):
         port: Email server port (default: 993 for IMAP SSL).
         username: Account username/email address.
         ssl: Whether to use SSL/TLS (default: True).
-        permissions: Account permissions (default: read-only).
         smtp_host: SMTP server hostname (default: same as IMAP host).
         smtp_port: SMTP server port (default: 587 for STARTTLS).
         smtp_ssl: Use SSL instead of STARTTLS for SMTP (default: False).
+        from_address: Sender email address for outgoing emails.
+        from_name: Display name for outgoing emails.
+        sent_folder: IMAP folder to save sent emails to.
     """
 
     type: Literal["imap"] = Field(
@@ -116,10 +158,6 @@ class IMAPAccountConfig(BaseAccountConfig):
     port: int = Field(default=993, ge=1, le=65535, description="Email server port")
     username: str = Field(..., min_length=1, description="Account username/email")
     ssl: bool = Field(default=True, description="Use SSL/TLS connection")
-    permissions: AccountPermissions = Field(
-        default_factory=AccountPermissions,
-        description="Account permissions (default: read-only)",
-    )
     smtp_host: str | None = Field(
         default=None,
         description="SMTP server hostname (defaults to IMAP host)",
@@ -149,38 +187,14 @@ class IMAPAccountConfig(BaseAccountConfig):
         "Set to null to disable saving sent emails.",
     )
 
-    # Protection settings (overrides global threshold)
-    protection: ProtectionConfig | None = Field(
-        default=None,
-        description="Per-account protection settings (overrides global threshold)",
-    )
 
-    # Access rules
-    sender_rules: list[SenderRule] = Field(
-        default_factory=list,
-        description="Rules for matching sender email addresses",
-    )
-    subject_rules: list[SubjectRule] = Field(
-        default_factory=list,
-        description="Rules for matching email subject lines",
-    )
-    list_prompts: dict[AccessLevel, str | None] = Field(
-        default_factory=dict,
-        description="Agent prompts shown in list_emails per access level",
-    )
-    read_prompts: dict[AccessLevel, str | None] = Field(
-        default_factory=dict,
-        description="Agent prompts shown in get_email per access level",
-    )
-    unscanned_list_prompt: str | None = Field(
-        default=None,
-        description="Agent prompt shown in list_emails for unscanned emails (skip_protection)",
-    )
-    unscanned_read_prompt: str | None = Field(
-        default=None,
-        description="Agent prompt shown in get_email for unscanned emails (skip_protection)",
-    )
-
-
-# When adding new connector types, convert this to a discriminated union on "type".
+# Discriminated union on the "type" field.
+# Python's Union collapses single-member unions, so this is a plain alias for now.
+# When adding a second connector type, change to:
+#   from typing import Annotated, Union
+#   from pydantic import Field
+#   AccountConfig = Annotated[
+#       Union[IMAPAccountConfig, GmailAccountConfig],
+#       Field(discriminator="type"),
+#   ]
 AccountConfig = IMAPAccountConfig

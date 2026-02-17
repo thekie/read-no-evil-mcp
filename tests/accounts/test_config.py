@@ -7,6 +7,8 @@ from read_no_evil_mcp.accounts._validators import _has_nested_quantifiers
 from read_no_evil_mcp.accounts.config import (
     AccessLevel,
     AccountConfig,
+    BaseAccountConfig,
+    IMAPAccountConfig,
     SenderRule,
     SubjectRule,
 )
@@ -385,3 +387,42 @@ class TestSubjectRuleReDoS:
     def test_accepts_safe_pattern(self) -> None:
         rule = SubjectRule(pattern=r"(?i)\[URGENT\]", access=AccessLevel.ASK_BEFORE_READ)
         assert rule.pattern == r"(?i)\[URGENT\]"
+
+
+class TestBaseAccountConfig:
+    """Tests for BaseAccountConfig."""
+
+    def test_imap_config_is_instance_of_base(self) -> None:
+        """IMAPAccountConfig inherits from BaseAccountConfig."""
+        config = IMAPAccountConfig(
+            id="work",
+            host="mail.example.com",
+            username="user@example.com",
+        )
+        assert isinstance(config, BaseAccountConfig)
+
+    def test_account_config_alias_is_imap(self) -> None:
+        """AccountConfig type alias resolves to IMAPAccountConfig."""
+        assert AccountConfig is IMAPAccountConfig
+
+    def test_shared_fields_live_on_base(self) -> None:
+        """Fields shared across account types are defined on BaseAccountConfig."""
+        base_fields = BaseAccountConfig.model_fields
+        for field in (
+            "id",
+            "permissions",
+            "protection",
+            "sender_rules",
+            "subject_rules",
+            "list_prompts",
+            "read_prompts",
+            "unscanned_list_prompt",
+            "unscanned_read_prompt",
+        ):
+            assert field in base_fields, f"Expected '{field}' on BaseAccountConfig"
+
+    def test_imap_specific_fields_not_on_base(self) -> None:
+        """IMAP-specific fields are NOT defined on BaseAccountConfig."""
+        base_fields = BaseAccountConfig.model_fields
+        for field in ("host", "port", "username", "ssl", "type"):
+            assert field not in base_fields, f"'{field}' should not be on BaseAccountConfig"
