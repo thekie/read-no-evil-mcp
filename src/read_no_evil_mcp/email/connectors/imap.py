@@ -138,7 +138,7 @@ class IMAPConnector(BaseConnector):
             criteria = AND(criteria, seen=False)
 
         summaries = []
-        for msg in self._mailbox.fetch(criteria, reverse=True, bulk=True):
+        for msg in self._mailbox.fetch(criteria, mark_seen=False, reverse=True, bulk=True):
             if not msg.uid:
                 logger.warning("Skipping email with missing UID (subject=%r)", msg.subject)
                 continue
@@ -220,7 +220,7 @@ class IMAPConnector(BaseConnector):
         self._mailbox.folder.set(folder)
 
         # Check if email exists
-        emails = list(self._mailbox.fetch(AND(uid=str(uid))))
+        emails = list(self._mailbox.fetch(AND(uid=str(uid)), mark_seen=False))
         if not emails:
             return False
 

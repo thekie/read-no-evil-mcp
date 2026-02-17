@@ -110,6 +110,9 @@ class TestIMAPConnector:
         assert emails[0].sender.address == "sender@example.com"
         assert emails[0].is_seen is True
 
+        # Listing emails must not mark them as read on the server
+        assert mock_mailbox.fetch.call_args.kwargs["mark_seen"] is False
+
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
     def test_fetch_emails_unseen(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
         """Test fetch_emails correctly identifies unseen messages."""
@@ -135,6 +138,9 @@ class TestIMAPConnector:
 
         assert len(emails) == 1
         assert emails[0].is_seen is False
+
+        # Listing emails must not mark them as read on the server
+        assert mock_mailbox.fetch.call_args.kwargs["mark_seen"] is False
 
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
     def test_fetch_emails_with_limit(
@@ -260,6 +266,9 @@ class TestIMAPConnector:
         assert email.body_html == "<p>HTML body</p>"
         assert len(email.to) == 1
         assert email.is_seen is True
+
+        # Reading an email should mark it as seen on the server (imap-tools default)
+        assert mock_mailbox.fetch.call_args.kwargs.get("mark_seen", True) is True
 
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
     def test_get_email_unseen(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
@@ -437,6 +446,9 @@ class TestIMAPConnector:
         assert result is True
         mock_mailbox.folder.set.assert_called_with("INBOX")
         mock_mailbox.move.assert_called_once_with("123", "Archive")
+
+        # Existence check must not mark the email as read
+        assert mock_mailbox.fetch.call_args.kwargs["mark_seen"] is False
 
     @patch("read_no_evil_mcp.email.connectors.imap.MailBox")
     def test_move_email_to_spam(self, mock_mailbox_class: MagicMock, config: IMAPConfig) -> None:
