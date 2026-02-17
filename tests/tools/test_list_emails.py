@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from read_no_evil_mcp.accounts.config import AccessLevel
 from read_no_evil_mcp.exceptions import PermissionDeniedError
+from read_no_evil_mcp.filtering.access_rules import DEFAULT_UNSCANNED_LIST_PROMPT
 from read_no_evil_mcp.mailbox import SecureEmailSummary
 from read_no_evil_mcp.models import EmailAddress, EmailSummary, FetchResult
 from read_no_evil_mcp.tools.list_emails import list_emails
@@ -18,6 +19,7 @@ def _create_secure_summary(
     prompt: str | None = None,
     has_attachments: bool = False,
     is_seen: bool = True,
+    protection_skipped: bool = False,
 ) -> SecureEmailSummary:
     """Create a SecureEmailSummary for testing."""
     summary = EmailSummary(
@@ -33,6 +35,7 @@ def _create_secure_summary(
         summary=summary,
         access_level=access_level,
         prompt=prompt,
+        protection_skipped=protection_skipped,
     )
 
 
@@ -455,3 +458,48 @@ class TestListEmailsFilterCounts:
 
         assert "Note: 2 emails blocked by security filter, 1 email hidden by sender rules" in result
         assert "Showing 2 of 5 emails. Use offset=2 to see more." in result
+
+
+class TestListEmailsUnscannedMarker:
+    def test_unscanned_marker_shown_when_protection_skipped(self) -> None:
+        """Test [UNSCANNED] marker appears when protection_skipped=True."""
+        secure_emails = [
+            _create_secure_summary(
+                subject="Internal Report",
+                sender="user@internal.com",
+                protection_skipped=True,
+                prompt=DEFAULT_UNSCANNED_LIST_PROMPT,
+            )
+        ]
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails)
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = list_emails.fn(account="work")
+
+        lines = result.split("\n")
+        assert lines[0] == (
+            "[1] 2026-02-03 12:00 | user@internal.com | Internal Report [UNSCANNED]"
+        )
+        assert lines[1] == f"    -> {DEFAULT_UNSCANNED_LIST_PROMPT}"
+
+    def test_unscanned_marker_not_shown_when_protection_not_skipped(self) -> None:
+        """Test [UNSCANNED] marker does NOT appear when protection_skipped=False."""
+        secure_emails = [
+            _create_secure_summary(
+                subject="Normal Email",
+                sender="user@example.com",
+                protection_skipped=False,
+            )
+        ]
+        mock_mailbox = _create_mock_mailbox(secure_emails=secure_emails)
+
+        with patch(
+            "read_no_evil_mcp.tools.list_emails.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = list_emails.fn(account="work")
+
+        assert "[UNSCANNED]" not in result

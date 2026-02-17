@@ -20,6 +20,8 @@ from read_no_evil_mcp.filtering.access_rules import (
     AccessRuleMatcher,
     get_list_prompt,
     get_read_prompt,
+    get_unscanned_list_prompt,
+    get_unscanned_read_prompt,
 )
 from read_no_evil_mcp.models import FetchResult, SecureEmail, SecureEmailSummary
 from read_no_evil_mcp.protection.models import ScanResult
@@ -66,6 +68,8 @@ class SecureMailbox:
         list_prompts: dict[AccessLevel, str | None] | None = None,
         read_prompts: dict[AccessLevel, str | None] | None = None,
         max_attachment_size: int = DEFAULT_MAX_ATTACHMENT_SIZE,
+        unscanned_list_prompt: str | None = None,
+        unscanned_read_prompt: str | None = None,
     ) -> None:
         """Initialize secure mailbox.
 
@@ -79,6 +83,8 @@ class SecureMailbox:
             list_prompts: Custom prompts for list_emails output per access level.
             read_prompts: Custom prompts for get_email output per access level.
             max_attachment_size: Maximum attachment size in bytes.
+            unscanned_list_prompt: Custom prompt for unscanned emails in list_emails.
+            unscanned_read_prompt: Custom prompt for unscanned emails in get_email.
         """
         self._connector = connector
         self._permissions = permissions
@@ -89,12 +95,18 @@ class SecureMailbox:
         self._list_prompts = list_prompts
         self._read_prompts = read_prompts
         self._max_attachment_size = max_attachment_size
+        self._unscanned_list_prompt = unscanned_list_prompt
+        self._unscanned_read_prompt = unscanned_read_prompt
 
     def _get_access_level(self, sender: str, subject: str) -> AccessLevel:
         """Get access level for an email based on sender and subject rules."""
         level = self._access_rules_matcher.get_access_level(sender, subject)
         logger.debug("Access level for sender=%s subject=%r: %s", sender, subject, level.value)
         return level
+
+    def _should_skip_protection(self, sender: str, subject: str) -> bool:
+        """Check if protection scanning should be skipped based on access rules."""
+        return self._access_rules_matcher.should_skip_protection(sender, subject)
 
     def _get_list_prompt(self, level: AccessLevel) -> str | None:
         """Get the prompt to show in list_emails for an access level."""
@@ -103,6 +115,14 @@ class SecureMailbox:
     def _get_read_prompt(self, level: AccessLevel) -> str | None:
         """Get the prompt to show in get_email for an access level."""
         return get_read_prompt(level, self._read_prompts)
+
+    def _get_unscanned_list_prompt(self) -> str:
+        """Get the prompt for unscanned emails in list_emails."""
+        return get_unscanned_list_prompt(self._unscanned_list_prompt)
+
+    def _get_unscanned_read_prompt(self) -> str:
+        """Get the prompt for unscanned emails in get_email."""
+        return get_unscanned_read_prompt(self._unscanned_read_prompt)
 
     def _require_read(self) -> None:
         """Check if read access is allowed."""
@@ -241,30 +261,11 @@ class SecureMailbox:
         blocked_count = 0
         hidden_count = 0
         for summary in summaries:
-            # Filter by prompt injection scanning
-            scan_result = self._scan_summary(summary)
-            if scan_result.is_blocked:
-                blocked_count += 1
-                logger.warning(
-                    "Prompt injection blocked in fetch_emails "
-                    "(uid=%s, folder=%s, subject=%r, score=%.2f, patterns=%s)",
-                    summary.uid,
-                    summary.folder,
-                    summary.subject,
-                    scan_result.score,
-                    scan_result.detected_patterns,
-                )
-                continue
-
-            logger.debug(
-                "Email scan safe (uid=%s, folder=%s, score=%.2f)",
-                summary.uid,
-                summary.folder,
-                scan_result.score,
-            )
+            sender = summary.sender.address
+            subject = summary.subject
 
             # Get access level
-            access_level = self._get_access_level(summary.sender.address, summary.subject)
+            access_level = self._get_access_level(sender, subject)
 
             # Filter hidden emails
             if access_level == AccessLevel.HIDE:
@@ -273,15 +274,54 @@ class SecureMailbox:
                     "Email hidden by access rules in fetch_emails (uid=%s, folder=%s, subject=%r)",
                     summary.uid,
                     summary.folder,
-                    summary.subject,
+                    subject,
                 )
                 continue
+
+            # Check if protection scanning should be skipped
+            skip_protection = self._should_skip_protection(sender, subject)
+            if skip_protection:
+                logger.info(
+                    "Protection skipped by rule in fetch_emails (uid=%s, folder=%s, sender=%s)",
+                    summary.uid,
+                    summary.folder,
+                    sender,
+                )
+            else:
+                # Filter by prompt injection scanning
+                scan_result = self._scan_summary(summary)
+                if scan_result.is_blocked:
+                    blocked_count += 1
+                    logger.warning(
+                        "Prompt injection blocked in fetch_emails "
+                        "(uid=%s, folder=%s, subject=%r, score=%.2f, patterns=%s)",
+                        summary.uid,
+                        summary.folder,
+                        subject,
+                        scan_result.score,
+                        scan_result.detected_patterns,
+                    )
+                    continue
+
+                logger.debug(
+                    "Email scan safe (uid=%s, folder=%s, score=%.2f)",
+                    summary.uid,
+                    summary.folder,
+                    scan_result.score,
+                )
+
+            # Build prompt — combine access-level prompt with unscanned prompt
+            prompt = self._get_list_prompt(access_level)
+            if skip_protection:
+                unscanned_prompt = self._get_unscanned_list_prompt()
+                prompt = f"{prompt} {unscanned_prompt}" if prompt else unscanned_prompt
 
             # Build secure summary with access info
             secure_summary = SecureEmailSummary(
                 summary=summary,
                 access_level=access_level,
-                prompt=self._get_list_prompt(access_level),
+                prompt=prompt,
+                protection_skipped=skip_protection,
             )
             secure_summaries.append(secure_summary)
 
@@ -320,8 +360,11 @@ class SecureMailbox:
         if email is None:
             return None
 
+        sender = email.sender.address
+        subject = email.subject
+
         # Get access level
-        access_level = self._get_access_level(email.sender.address, email.subject)
+        access_level = self._get_access_level(sender, subject)
 
         # Check if hidden by access rules
         if access_level == AccessLevel.HIDE:
@@ -329,37 +372,54 @@ class SecureMailbox:
                 "Email hidden by access rules in get_email (uid=%s, folder=%s, subject=%r)",
                 uid,
                 folder,
-                email.subject,
+                subject,
             )
             return None
 
-        combined = "\n".join(email.get_scannable_content().values())
-        scan_result = self._protection.scan(combined)
-
-        if scan_result.is_blocked:
-            logger.warning(
-                "Prompt injection detected in get_email "
-                "(uid=%s, folder=%s, subject=%r, score=%.2f, patterns=%s)",
+        # Check if protection scanning should be skipped
+        skip_protection = self._should_skip_protection(sender, subject)
+        if skip_protection:
+            logger.info(
+                "Protection skipped by rule in get_email (uid=%s, folder=%s, sender=%s)",
                 uid,
                 folder,
-                email.subject,
-                scan_result.score,
-                scan_result.detected_patterns,
+                sender,
             )
-            raise PromptInjectionError(scan_result, uid, folder)
+        else:
+            combined = "\n".join(email.get_scannable_content().values())
+            scan_result = self._protection.scan(combined)
 
-        logger.debug(
-            "Email scan safe (uid=%s, folder=%s, score=%.2f)",
-            uid,
-            folder,
-            scan_result.score,
-        )
+            if scan_result.is_blocked:
+                logger.warning(
+                    "Prompt injection detected in get_email "
+                    "(uid=%s, folder=%s, subject=%r, score=%.2f, patterns=%s)",
+                    uid,
+                    folder,
+                    subject,
+                    scan_result.score,
+                    scan_result.detected_patterns,
+                )
+                raise PromptInjectionError(scan_result, uid, folder)
+
+            logger.debug(
+                "Email scan safe (uid=%s, folder=%s, score=%.2f)",
+                uid,
+                folder,
+                scan_result.score,
+            )
+
+        # Build prompt — combine access-level prompt with unscanned prompt
+        prompt = self._get_read_prompt(access_level)
+        if skip_protection:
+            unscanned_prompt = self._get_unscanned_read_prompt()
+            prompt = f"{prompt} {unscanned_prompt}" if prompt else unscanned_prompt
 
         # Return secure email with access info
         return SecureEmail(
             email=email,
             access_level=access_level,
-            prompt=self._get_read_prompt(access_level),
+            prompt=prompt,
+            protection_skipped=skip_protection,
         )
 
     def send_email(

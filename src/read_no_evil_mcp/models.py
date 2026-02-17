@@ -59,6 +59,7 @@ class SecureEmailSummary:
     summary: EmailSummary
     access_level: AccessLevel
     prompt: str | None = None
+    protection_skipped: bool = False
 
 
 @dataclass
@@ -72,3 +73,4 @@ class SecureEmail:
     email: Email
     access_level: AccessLevel
     prompt: str | None = None
+    protection_skipped: bool = False

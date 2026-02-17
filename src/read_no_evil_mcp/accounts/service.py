@@ -157,4 +157,6 @@ class AccountService:
             list_prompts=config.list_prompts or None,
             read_prompts=config.read_prompts or None,
             max_attachment_size=self._max_attachment_size,
+            unscanned_list_prompt=config.unscanned_list_prompt,
+            unscanned_read_prompt=config.unscanned_read_prompt,
         )

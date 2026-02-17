@@ -20,6 +20,7 @@ def _create_secure_email(
     is_seen: bool = True,
     access_level: AccessLevel = AccessLevel.SHOW,
     prompt: str | None = None,
+    protection_skipped: bool = False,
 ) -> SecureEmail:
     """Create a SecureEmail for testing."""
     email = Email(
@@ -38,6 +39,7 @@ def _create_secure_email(
         email=email,
         access_level=access_level,
         prompt=prompt,
+        protection_skipped=protection_skipped,
     )
 
 
@@ -309,3 +311,43 @@ class TestGetEmailValidation:
     def test_whitespace_folder_rejected(self) -> None:
         result = get_email.fn(account="work", folder="   ", uid=1)
         assert result == "Invalid parameter: folder must not be empty"
+
+
+class TestGetEmailProtectionSkipped:
+    def test_protection_skipped_shown(self) -> None:
+        """Test that 'Protection: SKIPPED' line appears when protection_skipped=True."""
+        secure_email = _create_secure_email(
+            subject="Internal Report",
+            sender="user@internal.com",
+            body_plain="Content here.",
+            protection_skipped=True,
+        )
+        mock_mailbox = _create_mock_mailbox(secure_email=secure_email)
+
+        with patch(
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = get_email.fn(account="work", folder="INBOX", uid=123)
+
+        lines = result.split("\n")
+        assert "Protection: SKIPPED" in lines
+
+    def test_protection_skipped_not_shown(self) -> None:
+        """Test that 'Protection: SKIPPED' line does NOT appear when protection_skipped=False."""
+        secure_email = _create_secure_email(
+            subject="Normal Email",
+            sender="user@example.com",
+            body_plain="Normal content.",
+            protection_skipped=False,
+        )
+        mock_mailbox = _create_mock_mailbox(secure_email=secure_email)
+
+        with patch(
+            "read_no_evil_mcp.tools.get_email.create_securemailbox",
+            return_value=mock_mailbox,
+        ):
+            result = get_email.fn(account="work", folder="INBOX", uid=123)
+
+        lines = result.split("\n")
+        assert "Protection: SKIPPED" not in lines
