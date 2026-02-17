@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `unread_only` filter parameter for `list_emails` tool with server-side IMAP filtering ([#269])
+
 ## [0.3.3] - 2026-02-16
 
 ### Fixed
@@ -114,6 +118,8 @@ Initial public release with core email gateway functionality:
 [0.3.1]: https://github.com/thekie/read-no-evil-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/thekie/read-no-evil-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/thekie/read-no-evil-mcp/releases/tag/v0.2.0
+
+[#269]: https://github.com/thekie/read-no-evil-mcp/issues/269
 
 [#245]: https://github.com/thekie/read-no-evil-mcp/issues/245
 [#251]: https://github.com/thekie/read-no-evil-mcp/issues/251

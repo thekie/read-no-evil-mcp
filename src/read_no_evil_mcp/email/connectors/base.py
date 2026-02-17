@@ -37,6 +37,7 @@ class BaseConnector(ABC):
         lookback: timedelta,
         from_date: date | None = None,
         limit: int | None = None,
+        unread_only: bool = False,
     ) -> list[EmailSummary]:
         """Fetch email summaries from a folder within a time range.
 
@@ -45,6 +46,7 @@ class BaseConnector(ABC):
             lookback: How far back to look from from_date
             from_date: Starting point for lookback (default: today)
             limit: Maximum number of emails to return
+            unread_only: Only return unread (unseen) emails
 
         Returns:
             List of EmailSummary objects, newest first.

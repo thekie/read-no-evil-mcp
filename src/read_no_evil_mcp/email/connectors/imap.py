@@ -109,6 +109,7 @@ class IMAPConnector(BaseConnector):
         lookback: timedelta,
         from_date: date | None = None,
         limit: int | None = None,
+        unread_only: bool = False,
     ) -> list[EmailSummary]:
         """Fetch email summaries from a folder within a time range.
 
@@ -117,6 +118,7 @@ class IMAPConnector(BaseConnector):
             lookback: Required. How far back to look (e.g., timedelta(days=7))
             from_date: Starting point for lookback (default: today)
             limit: Optional max number of emails to return
+            unread_only: Only return unread (unseen) emails
 
         Returns:
             List of EmailSummary, newest first
@@ -132,6 +134,8 @@ class IMAPConnector(BaseConnector):
 
         # Build IMAP criteria - filter happens server-side
         criteria = AND(date_gte=start_date, date_lt=end_date + timedelta(days=1))
+        if unread_only:
+            criteria = AND(criteria, seen=False)
 
         summaries = []
         for msg in self._mailbox.fetch(criteria, reverse=True, bulk=True):
