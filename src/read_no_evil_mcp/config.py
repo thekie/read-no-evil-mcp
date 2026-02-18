@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import Field, ValidationError, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -13,6 +13,7 @@ from pydantic_settings import (
 
 from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.defaults import DEFAULT_MAX_ATTACHMENT_SIZE
+from read_no_evil_mcp.exceptions import ConfigError
 from read_no_evil_mcp.protection.models import ProtectionConfig
 
 
@@ -54,9 +55,32 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
 
         for path in config_paths:
             if path and Path(path).exists():
-                with open(path) as f:
-                    data = yaml.safe_load(f)
-                    return data if data else {}
+                resolved = Path(path).resolve()
+                try:
+                    with open(resolved) as f:
+                        data = yaml.safe_load(f)
+                        return data if data else {}
+                except yaml.YAMLError as e:
+                    # Extract line info from YAML parse errors
+                    location = ""
+                    if hasattr(e, "problem_mark") and e.problem_mark is not None:
+                        mark = e.problem_mark
+                        location = f" at line {mark.line + 1}, column {mark.column + 1}"
+                    problem = getattr(e, "problem", "invalid syntax")
+                    raise ConfigError(
+                        f"Configuration error: Invalid YAML syntax in "
+                        f"{resolved}{location}: {problem}"
+                    ) from e
+                except PermissionError as e:
+                    raise ConfigError(
+                        f"Configuration error: Permission denied reading "
+                        f"{resolved}. Check file permissions."
+                    ) from e
+                except OSError as e:
+                    raise ConfigError(
+                        f"Configuration error: Cannot read config file "
+                        f"{resolved}: {e}"
+                    ) from e
 
         return {}
 
@@ -111,3 +135,51 @@ class Settings(BaseSettings):
             dotenv_settings,
             file_secret_settings,
         )
+
+
+def _format_validation_errors(e: ValidationError) -> str:
+    """Convert Pydantic ValidationError into human-readable messages."""
+    messages = []
+    for error in e.errors():
+        loc = " → ".join(str(part) for part in error["loc"]) if error["loc"] else "root"
+        msg = error["msg"]
+        err_type = error["type"]
+
+        # Provide friendly messages for common error types
+        if err_type == "missing":
+            messages.append(f"  - '{loc}': required field is missing")
+        elif err_type == "string_pattern_mismatch":
+            if error["loc"] and error["loc"][-1] == "id":
+                messages.append(
+                    f"  - '{loc}': invalid format. "
+                    f"Must start with a letter and contain only letters, "
+                    f"numbers, hyphens, and underscores (e.g., 'work', 'my-gmail')"
+                )
+            else:
+                messages.append(f"  - '{loc}': {msg}")
+        else:
+            messages.append(f"  - '{loc}': {msg}")
+
+    return "Configuration error: invalid settings:\n" + "\n".join(messages)
+
+
+def load_settings(**kwargs: Any) -> Settings:
+    """Load and validate settings, converting errors to friendly ConfigError messages.
+
+    This is the recommended way to create Settings instances. It catches
+    Pydantic validation errors and re-raises them as readable ConfigError
+    messages.
+
+    Returns:
+        Validated Settings instance.
+
+    Raises:
+        ConfigError: If configuration is invalid, with a human-readable message.
+    """
+    try:
+        return Settings(**kwargs)
+    except ConfigError:
+        # Already a friendly error (e.g., from YAML parsing), re-raise as-is
+        raise
+    except ValidationError as e:
+        raise ConfigError(_format_validation_errors(e)) from e
