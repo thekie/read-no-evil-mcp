@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `is_seen` always returned `true` for listed emails because IMAP fetch marked messages as read server-side ([#270])
+- Improved config parsing error messages for common mistakes: YAML syntax errors, permission errors, and validation errors now show friendly messages instead of raw tracebacks ([#268]) — thanks @nightcityblade
 
 ## [0.3.3] - 2026-02-16
 
@@ -186,3 +187,4 @@ Initial public release with core email gateway functionality:
 [#198]: https://github.com/thekie/read-no-evil-mcp/pull/198
 [#201]: https://github.com/thekie/read-no-evil-mcp/pull/201
 [#203]: https://github.com/thekie/read-no-evil-mcp/pull/203
+[#268]: https://github.com/thekie/read-no-evil-mcp/pull/268
