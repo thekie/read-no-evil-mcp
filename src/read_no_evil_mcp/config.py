@@ -78,8 +78,7 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
                     ) from e
                 except OSError as e:
                     raise ConfigError(
-                        f"Configuration error: Cannot read config file "
-                        f"{resolved}: {e}"
+                        f"Configuration error: Cannot read config file {resolved}: {e}"
                     ) from e
 
         return {}

@@ -170,8 +170,9 @@ class TestYamlConfigLoading:
         config_file.write_text("invalid: yaml: [unterminated\n")
 
         env = {"RNOE_CONFIG_FILE": str(config_file)}
-        with pytest.raises(ConfigError, match="Invalid YAML syntax"), patch.dict(
-            os.environ, env, clear=True
+        with (
+            pytest.raises(ConfigError, match="Invalid YAML syntax"),
+            patch.dict(os.environ, env, clear=True),
         ):
             Settings()
 
@@ -183,8 +184,9 @@ class TestYamlConfigLoading:
 
         env = {"RNOE_CONFIG_FILE": str(config_file)}
         try:
-            with pytest.raises(ConfigError, match="Permission denied"), patch.dict(
-                os.environ, env, clear=True
+            with (
+                pytest.raises(ConfigError, match="Permission denied"),
+                patch.dict(os.environ, env, clear=True),
             ):
                 Settings()
         finally:
@@ -287,15 +289,13 @@ class TestLoadSettings:
         """load_settings raises ConfigError for missing required fields."""
         config_file = tmp_path / "bad.yaml"
         config_file.write_text(
-            "accounts:\n"
-            "  - id: work\n"
-            "    type: imap\n"
-            "    username: user@example.com\n"
+            "accounts:\n  - id: work\n    type: imap\n    username: user@example.com\n"
         )
 
         env = {"RNOE_CONFIG_FILE": str(config_file)}
-        with pytest.raises(ConfigError, match="required field is missing"), patch.dict(
-            os.environ, env, clear=True
+        with (
+            pytest.raises(ConfigError, match="required field is missing"),
+            patch.dict(os.environ, env, clear=True),
         ):
             load_settings()
 
@@ -311,8 +311,9 @@ class TestLoadSettings:
         )
 
         env = {"RNOE_CONFIG_FILE": str(config_file)}
-        with pytest.raises(ConfigError, match="Must start with a letter"), patch.dict(
-            os.environ, env, clear=True
+        with (
+            pytest.raises(ConfigError, match="Must start with a letter"),
+            patch.dict(os.environ, env, clear=True),
         ):
             load_settings()
 
@@ -322,7 +323,8 @@ class TestLoadSettings:
         config_file.write_text("invalid: yaml: [unterminated\n")
 
         env = {"RNOE_CONFIG_FILE": str(config_file)}
-        with pytest.raises(ConfigError, match="Invalid YAML syntax"), patch.dict(
-            os.environ, env, clear=True
+        with (
+            pytest.raises(ConfigError, match="Invalid YAML syntax"),
+            patch.dict(os.environ, env, clear=True),
         ):
             load_settings()
