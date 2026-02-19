@@ -5,7 +5,7 @@ from functools import lru_cache
 from read_no_evil_mcp.accounts.config import AccountConfig
 from read_no_evil_mcp.accounts.credentials.env import EnvCredentialBackend
 from read_no_evil_mcp.accounts.service import AccountService
-from read_no_evil_mcp.config import Settings
+from read_no_evil_mcp.config import load_settings
 from read_no_evil_mcp.exceptions import ConfigError
 from read_no_evil_mcp.mailbox import SecureMailbox
 
@@ -20,7 +20,7 @@ def get_account_service() -> AccountService:
     Raises:
         ConfigError: If no accounts are configured.
     """
-    settings = Settings()
+    settings = load_settings()
 
     if not settings.accounts:
         raise ConfigError("No accounts configured. Configure accounts via YAML config file.")

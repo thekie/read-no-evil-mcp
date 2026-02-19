@@ -6,8 +6,9 @@ from unittest.mock import patch
 
 import pytest
 
-from read_no_evil_mcp.config import Settings, YamlConfigSettingsSource
+from read_no_evil_mcp.config import Settings, YamlConfigSettingsSource, load_settings
 from read_no_evil_mcp.defaults import DEFAULT_MAX_ATTACHMENT_SIZE
+from read_no_evil_mcp.exceptions import ConfigError
 
 
 class TestSettings:
@@ -163,26 +164,30 @@ class TestYamlConfigLoading:
 
         assert settings.default_lookback_days == 7
 
-    def test_malformed_yaml_raises_error(self, tmp_path: Path) -> None:
-        """Malformed YAML raises an error during settings loading."""
-        import yaml
-
+    def test_malformed_yaml_raises_config_error(self, tmp_path: Path) -> None:
+        """Malformed YAML raises a friendly ConfigError during settings loading."""
         config_file = tmp_path / "bad.yaml"
         config_file.write_text("invalid: yaml: [unterminated\n")
 
         env = {"RNOE_CONFIG_FILE": str(config_file)}
-        with pytest.raises(yaml.YAMLError), patch.dict(os.environ, env, clear=True):
+        with (
+            pytest.raises(ConfigError, match="Invalid YAML syntax"),
+            patch.dict(os.environ, env, clear=True),
+        ):
             Settings()
 
     def test_file_permission_error(self, tmp_path: Path) -> None:
-        """A config file that can't be read raises an error."""
+        """A config file that can't be read raises a friendly ConfigError."""
         config_file = tmp_path / "noperm.yaml"
         config_file.write_text("default_lookback_days: 10\n")
         config_file.chmod(0o000)
 
         env = {"RNOE_CONFIG_FILE": str(config_file)}
         try:
-            with pytest.raises(PermissionError), patch.dict(os.environ, env, clear=True):
+            with (
+                pytest.raises(ConfigError, match="Permission denied"),
+                patch.dict(os.environ, env, clear=True),
+            ):
                 Settings()
         finally:
             config_file.chmod(0o644)
@@ -264,3 +269,62 @@ class TestYamlConfigLoading:
 
         assert first is second
         assert first["default_lookback_days"] == 42
+
+
+class TestLoadSettings:
+    """Tests for the load_settings() helper with friendly error messages."""
+
+    def test_load_settings_success(self, tmp_path: Path) -> None:
+        """load_settings returns valid Settings on good config."""
+        config_file = tmp_path / "good.yaml"
+        config_file.write_text("default_lookback_days: 30\n")
+
+        env = {"RNOE_CONFIG_FILE": str(config_file)}
+        with patch.dict(os.environ, env, clear=True):
+            settings = load_settings()
+
+        assert settings.default_lookback_days == 30
+
+    def test_load_settings_missing_required_field(self, tmp_path: Path) -> None:
+        """load_settings raises ConfigError for missing required fields."""
+        config_file = tmp_path / "bad.yaml"
+        config_file.write_text(
+            "accounts:\n  - id: work\n    type: imap\n    username: user@example.com\n"
+        )
+
+        env = {"RNOE_CONFIG_FILE": str(config_file)}
+        with (
+            pytest.raises(ConfigError, match="required field is missing"),
+            patch.dict(os.environ, env, clear=True),
+        ):
+            load_settings()
+
+    def test_load_settings_invalid_account_id(self, tmp_path: Path) -> None:
+        """load_settings raises ConfigError for invalid account ID format."""
+        config_file = tmp_path / "bad_id.yaml"
+        config_file.write_text(
+            "accounts:\n"
+            "  - id: 123-invalid\n"
+            "    type: imap\n"
+            "    host: mail.example.com\n"
+            "    username: user@example.com\n"
+        )
+
+        env = {"RNOE_CONFIG_FILE": str(config_file)}
+        with (
+            pytest.raises(ConfigError, match="Must start with a letter"),
+            patch.dict(os.environ, env, clear=True),
+        ):
+            load_settings()
+
+    def test_load_settings_yaml_error_passes_through(self, tmp_path: Path) -> None:
+        """load_settings re-raises ConfigError from YAML parsing as-is."""
+        config_file = tmp_path / "bad.yaml"
+        config_file.write_text("invalid: yaml: [unterminated\n")
+
+        env = {"RNOE_CONFIG_FILE": str(config_file)}
+        with (
+            pytest.raises(ConfigError, match="Invalid YAML syntax"),
+            patch.dict(os.environ, env, clear=True),
+        ):
+            load_settings()
