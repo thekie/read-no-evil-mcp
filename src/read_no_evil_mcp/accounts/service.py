@@ -2,11 +2,16 @@
 
 from pydantic import SecretStr
 
-from read_no_evil_mcp.accounts.config import AccountConfig
+from read_no_evil_mcp.accounts.config import (
+    AccountConfig,
+    GmailAccountConfig,
+    IMAPAccountConfig,
+)
 from read_no_evil_mcp.accounts.credentials.base import CredentialBackend
 from read_no_evil_mcp.defaults import DEFAULT_MAX_ATTACHMENT_SIZE
 from read_no_evil_mcp.email.connectors.base import BaseConnector
-from read_no_evil_mcp.email.connectors.config import IMAPConfig, SMTPConfig
+from read_no_evil_mcp.email.connectors.config import GmailConfig, IMAPConfig, SMTPConfig
+from read_no_evil_mcp.email.connectors.gmail import GmailConnector
 from read_no_evil_mcp.email.connectors.imap import IMAPConnector
 from read_no_evil_mcp.exceptions import AccountNotFoundError, UnsupportedConnectorError
 from read_no_evil_mcp.filtering.access_rules import AccessRuleMatcher
@@ -67,12 +72,14 @@ class AccountService:
             raise AccountNotFoundError(account_id)
         return config
 
-    def _create_connector(self, config: AccountConfig, password: SecretStr) -> BaseConnector:
+    def _create_connector(
+        self, config: IMAPAccountConfig | GmailAccountConfig, password: SecretStr | None
+    ) -> BaseConnector:
         """Create a connector based on account configuration.
 
         Args:
             config: The account configuration.
-            password: The account password.
+            password: The account password (None for OAuth-based connectors).
 
         Returns:
             A configured connector instance.
@@ -80,7 +87,8 @@ class AccountService:
         Raises:
             UnsupportedConnectorError: If the connector type is not supported.
         """
-        if config.type == "imap":
+        if isinstance(config, IMAPAccountConfig):
+            assert password is not None
             imap_config = IMAPConfig(
                 host=config.host,
                 port=config.port,
@@ -106,6 +114,13 @@ class AccountService:
                 smtp_config=smtp_config,
             )
 
+        if isinstance(config, GmailAccountConfig):
+            gmail_config = GmailConfig(
+                credentials_file=config.credentials_file,
+                token_file=config.token_file,
+            )
+            return GmailConnector(gmail_config)
+
         raise UnsupportedConnectorError(config.type)
 
     def get_mailbox(self, account_id: str) -> SecureMailbox:
@@ -126,11 +141,23 @@ class AccountService:
         if not config:
             raise AccountNotFoundError(account_id)
 
-        password = self._credentials.get_password(account_id)
+        # Gmail uses OAuth, not passwords
+        password: SecretStr | None = None
+        if isinstance(config, IMAPAccountConfig):
+            password = self._credentials.get_password(account_id)
+
         connector = self._create_connector(config, password)
 
-        # Use config.from_address, fall back to config.username if not set
-        from_address = config.from_address or config.username
+        # Resolve from_address and from_name based on connector type
+        if isinstance(config, IMAPAccountConfig):
+            from_address = config.from_address or config.username
+            from_name = config.from_name
+        elif isinstance(config, GmailAccountConfig):
+            from_address = config.from_address or config.email
+            from_name = config.from_name
+        else:
+            from_address = account_id
+            from_name = None
 
         # Create access rules matcher if rules are configured
         access_rules_matcher = AccessRuleMatcher(
@@ -152,7 +179,7 @@ class AccountService:
             config.permissions,
             protection=protection,
             from_address=from_address,
-            from_name=config.from_name,
+            from_name=from_name,
             access_rules_matcher=access_rules_matcher,
             list_prompts=config.list_prompts or None,
             read_prompts=config.read_prompts or None,

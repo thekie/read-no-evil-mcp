@@ -1,7 +1,7 @@
 """Account configuration models with discriminated union for multi-connector support."""
 
 from enum import Enum
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -188,13 +188,45 @@ class IMAPAccountConfig(BaseAccountConfig):
     )
 
 
-# Discriminated union on the "type" field.
-# Python's Union collapses single-member unions, so this is a plain alias for now.
-# When adding a second connector type, change to:
-#   from typing import Annotated, Union
-#   from pydantic import Field
-#   AccountConfig = Annotated[
-#       Union[IMAPAccountConfig, GmailAccountConfig],
-#       Field(discriminator="type"),
-#   ]
-AccountConfig = IMAPAccountConfig
+class GmailAccountConfig(BaseAccountConfig):
+    """Gmail API account configuration.
+
+    Attributes:
+        type: Connector type, always "gmail" for this class.
+        email: Gmail address for this account.
+        credentials_file: Path to Google OAuth2 client credentials JSON.
+        token_file: Path to store/load the OAuth2 token.
+        from_address: Sender email address for outgoing emails.
+        from_name: Display name for outgoing emails.
+    """
+
+    type: Literal["gmail"] = Field(
+        default="gmail",
+        description="Connector type (gmail)",
+    )
+    email: str = Field(..., min_length=1, description="Gmail address")
+    credentials_file: str = Field(
+        ...,
+        min_length=1,
+        description="Path to Google OAuth2 client credentials JSON file",
+    )
+    token_file: str = Field(
+        default="gmail_token.json",
+        min_length=1,
+        description="Path to store/load the OAuth2 token",
+    )
+    from_address: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Sender email address for outgoing emails (defaults to email)",
+    )
+    from_name: str | None = Field(
+        default=None,
+        description="Display name for outgoing emails",
+    )
+
+
+AccountConfig = Annotated[
+    IMAPAccountConfig | GmailAccountConfig,
+    Field(discriminator="type"),
+]

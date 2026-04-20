@@ -8,6 +8,7 @@ from read_no_evil_mcp.accounts.config import (
     AccessLevel,
     AccountConfig,
     BaseAccountConfig,
+    GmailAccountConfig,
     IMAPAccountConfig,
     SenderRule,
     SubjectRule,
@@ -18,7 +19,7 @@ from read_no_evil_mcp.protection.models import ProtectionConfig
 class TestAccountConfig:
     def test_valid_config(self) -> None:
         """Test valid account configuration."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             type="imap",
             host="mail.example.com",
@@ -32,7 +33,7 @@ class TestAccountConfig:
 
     def test_custom_port(self) -> None:
         """Test account configuration with custom port."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             port=143,
@@ -45,7 +46,7 @@ class TestAccountConfig:
     def test_id_validation_starts_with_letter(self) -> None:
         """Test that ID must start with a letter."""
         with pytest.raises(ValidationError) as exc_info:
-            AccountConfig(
+            IMAPAccountConfig(
                 id="123invalid",
                 host="mail.example.com",
                 username="user@example.com",
@@ -54,7 +55,7 @@ class TestAccountConfig:
 
     def test_id_validation_allows_hyphens_underscores(self) -> None:
         """Test that ID allows hyphens and underscores."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="my-work_email",
             host="mail.example.com",
             username="user@example.com",
@@ -63,7 +64,7 @@ class TestAccountConfig:
 
     def test_id_validation_allows_email_address(self) -> None:
         """Test that ID accepts an email address like user@example.com."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="user@example.com",
             host="mail.example.com",
             username="user@example.com",
@@ -72,7 +73,7 @@ class TestAccountConfig:
 
     def test_id_validation_allows_email_with_dots(self) -> None:
         """Test that ID accepts an email with dots in local part."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="john.doe@example.com",
             host="mail.example.com",
             username="john.doe@example.com",
@@ -81,7 +82,7 @@ class TestAccountConfig:
 
     def test_id_validation_allows_email_with_subdomains(self) -> None:
         """Test that ID accepts an email with subdomains."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="user@mail.company.co.uk",
             host="mail.company.co.uk",
             username="user@mail.company.co.uk",
@@ -91,7 +92,7 @@ class TestAccountConfig:
     def test_id_validation_empty(self) -> None:
         """Test that ID cannot be empty."""
         with pytest.raises(ValidationError):
-            AccountConfig(
+            IMAPAccountConfig(
                 id="",
                 host="mail.example.com",
                 username="user@example.com",
@@ -100,7 +101,7 @@ class TestAccountConfig:
     def test_host_required(self) -> None:
         """Test that host is required."""
         with pytest.raises(ValidationError):
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 username="user@example.com",
             )  # type: ignore[call-arg]
@@ -108,7 +109,7 @@ class TestAccountConfig:
     def test_username_required(self) -> None:
         """Test that username is required."""
         with pytest.raises(ValidationError):
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.example.com",
             )  # type: ignore[call-arg]
@@ -116,7 +117,7 @@ class TestAccountConfig:
     def test_port_validation(self) -> None:
         """Test port validation (1-65535)."""
         with pytest.raises(ValidationError):
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.example.com",
                 port=0,
@@ -124,7 +125,7 @@ class TestAccountConfig:
             )
 
         with pytest.raises(ValidationError):
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.example.com",
                 port=70000,
@@ -133,7 +134,7 @@ class TestAccountConfig:
 
     def test_from_address_and_from_name(self) -> None:
         """Test from_address and from_name fields."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -145,7 +146,7 @@ class TestAccountConfig:
 
     def test_from_address_without_from_name(self) -> None:
         """Test from_address without from_name."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -156,7 +157,7 @@ class TestAccountConfig:
 
     def test_from_address_defaults_to_none(self) -> None:
         """Test that from_address defaults to None."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -165,7 +166,7 @@ class TestAccountConfig:
         assert config.from_name is None
 
     def test_sent_folder_defaults_to_sent(self) -> None:
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -173,7 +174,7 @@ class TestAccountConfig:
         assert config.sent_folder == "Sent"
 
     def test_sent_folder_custom(self) -> None:
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -182,7 +183,7 @@ class TestAccountConfig:
         assert config.sent_folder == "[Gmail]/Sent Mail"
 
     def test_sent_folder_disabled(self) -> None:
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -193,7 +194,7 @@ class TestAccountConfig:
     def test_from_address_cannot_be_empty(self) -> None:
         """Test that from_address cannot be empty string."""
         with pytest.raises(ValidationError):
-            AccountConfig(
+            IMAPAccountConfig(
                 id="work",
                 host="mail.example.com",
                 username="user",
@@ -202,7 +203,7 @@ class TestAccountConfig:
 
     def test_protection_defaults_to_none(self) -> None:
         """Test that protection defaults to None."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user@example.com",
@@ -211,7 +212,7 @@ class TestAccountConfig:
 
     def test_protection_with_custom_threshold(self) -> None:
         """Test that protection accepts a ProtectionConfig with custom threshold."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user@example.com",
@@ -222,7 +223,7 @@ class TestAccountConfig:
 
     def test_sender_rules_default_empty(self) -> None:
         """Test that sender_rules defaults to empty list."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -231,7 +232,7 @@ class TestAccountConfig:
 
     def test_sender_rules_with_rules(self) -> None:
         """Test sender_rules with configured rules."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -247,7 +248,7 @@ class TestAccountConfig:
 
     def test_subject_rules_default_empty(self) -> None:
         """Test that subject_rules defaults to empty list."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -256,7 +257,7 @@ class TestAccountConfig:
 
     def test_subject_rules_with_rules(self) -> None:
         """Test subject_rules with configured rules."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -269,7 +270,7 @@ class TestAccountConfig:
 
     def test_list_prompts_default_empty(self) -> None:
         """Test that list_prompts defaults to empty dict."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -278,7 +279,7 @@ class TestAccountConfig:
 
     def test_list_prompts_with_custom_prompts(self) -> None:
         """Test list_prompts with custom prompts."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -292,7 +293,7 @@ class TestAccountConfig:
 
     def test_read_prompts_default_empty(self) -> None:
         """Test that read_prompts defaults to empty dict."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -301,7 +302,7 @@ class TestAccountConfig:
 
     def test_read_prompts_with_custom_prompts(self) -> None:
         """Test read_prompts with custom prompts."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -313,7 +314,7 @@ class TestAccountConfig:
 
     def test_full_access_rules_config(self) -> None:
         """Test complete access rules configuration."""
-        config = AccountConfig(
+        config = IMAPAccountConfig(
             id="work",
             host="mail.example.com",
             username="user",
@@ -401,10 +402,6 @@ class TestBaseAccountConfig:
         )
         assert isinstance(config, BaseAccountConfig)
 
-    def test_account_config_alias_is_imap(self) -> None:
-        """AccountConfig type alias resolves to IMAPAccountConfig."""
-        assert AccountConfig is IMAPAccountConfig
-
     def test_shared_fields_live_on_base(self) -> None:
         """Fields shared across account types are defined on BaseAccountConfig."""
         base_fields = BaseAccountConfig.model_fields
@@ -426,3 +423,97 @@ class TestBaseAccountConfig:
         base_fields = BaseAccountConfig.model_fields
         for field in ("host", "port", "username", "ssl", "type"):
             assert field not in base_fields, f"'{field}' should not be on BaseAccountConfig"
+
+
+class TestGmailAccountConfig:
+    """Tests for GmailAccountConfig."""
+
+    def test_valid_gmail_config(self) -> None:
+        """Test creating a valid GmailAccountConfig."""
+        config = GmailAccountConfig(
+            id="gmail-personal",
+            email="user@gmail.com",
+            credentials_file="/path/to/credentials.json",
+        )
+        assert config.id == "gmail-personal"
+        assert config.type == "gmail"
+        assert config.email == "user@gmail.com"
+        assert config.credentials_file == "/path/to/credentials.json"
+        assert config.token_file == "gmail_token.json"
+        assert config.from_address is None
+        assert config.from_name is None
+
+    def test_gmail_config_with_custom_token_file(self) -> None:
+        """Test GmailAccountConfig with custom token file."""
+        config = GmailAccountConfig(
+            id="gmail-work",
+            email="work@gmail.com",
+            credentials_file="/path/to/credentials.json",
+            token_file="/custom/token.json",
+        )
+        assert config.token_file == "/custom/token.json"
+
+    def test_gmail_config_with_from_address(self) -> None:
+        """Test GmailAccountConfig with from_address and from_name."""
+        config = GmailAccountConfig(
+            id="gmail-work",
+            email="work@gmail.com",
+            credentials_file="/path/to/credentials.json",
+            from_address="alias@gmail.com",
+            from_name="Atlas",
+        )
+        assert config.from_address == "alias@gmail.com"
+        assert config.from_name == "Atlas"
+
+    def test_gmail_config_inherits_from_base(self) -> None:
+        """GmailAccountConfig inherits from BaseAccountConfig."""
+        config = GmailAccountConfig(
+            id="gmail-personal",
+            email="user@gmail.com",
+            credentials_file="/path/to/credentials.json",
+        )
+        assert isinstance(config, BaseAccountConfig)
+
+    def test_gmail_config_has_base_fields(self) -> None:
+        """GmailAccountConfig inherits shared fields from BaseAccountConfig."""
+        config = GmailAccountConfig(
+            id="gmail-personal",
+            email="user@gmail.com",
+            credentials_file="/path/to/credentials.json",
+        )
+        assert config.permissions is not None
+        assert config.protection is None
+        assert config.sender_rules == []
+        assert config.subject_rules == []
+
+    def test_discriminated_union_parses_gmail_type(self) -> None:
+        """Test AccountConfig discriminated union correctly parses type='gmail'."""
+        from pydantic import TypeAdapter
+
+        adapter = TypeAdapter(AccountConfig)
+        config = adapter.validate_python(
+            {
+                "type": "gmail",
+                "id": "my-gmail",
+                "email": "user@gmail.com",
+                "credentials_file": "/path/to/creds.json",
+            }
+        )
+        assert isinstance(config, GmailAccountConfig)
+        assert config.type == "gmail"
+        assert config.email == "user@gmail.com"
+
+    def test_discriminated_union_parses_imap_type(self) -> None:
+        """Test AccountConfig discriminated union still parses type='imap'."""
+        from pydantic import TypeAdapter
+
+        adapter = TypeAdapter(AccountConfig)
+        config = adapter.validate_python(
+            {
+                "type": "imap",
+                "id": "my-imap",
+                "host": "mail.example.com",
+                "username": "user@example.com",
+            }
+        )
+        assert isinstance(config, IMAPAccountConfig)
